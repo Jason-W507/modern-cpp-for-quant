@@ -1,0 +1,29 @@
+#pragma once
+
+#include <cstdint>
+#include <optional>
+
+#include "quant/types.hpp"
+
+namespace quant {
+
+class ThresholdStrategy final {
+ public:
+  ThresholdStrategy(double buy_below_or_equal, std::int64_t order_quantity)
+      : threshold_(buy_below_or_equal), order_quantity_(order_quantity) {}
+
+  [[nodiscard]] std::optional<OrderIntent> on_market_event(
+      const MarketEvent& event, const PortfolioSnapshot& portfolio) const {
+    if (event.price > threshold_ || portfolio.quantity != 0 ||
+        order_quantity_ <= 0) {
+      return std::nullopt;
+    }
+    return OrderIntent{event.symbol, Side::buy, order_quantity_};
+  }
+
+ private:
+  double threshold_;
+  std::int64_t order_quantity_;
+};
+
+}  // namespace quant

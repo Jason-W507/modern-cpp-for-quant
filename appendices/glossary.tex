@@ -1,0 +1,33 @@
+\chapter{术语表}
+
+\begin{longtable}{p{0.22\textwidth}p{0.68\textwidth}}
+\toprule
+术语 & 本书中的含义 \\
+\midrule
+ABI & 二进制接口约定，包括调用、布局与符号兼容。\\
+AoS / SoA & 结构数组与数组结构，两种字段布局方式。\\
+backpressure & 下游跟不上时，系统对生产者施加的限速、阻塞或丢弃策略。\\
+benchmark & 在定义好的工作负载和环境中测量性能的实验。\\
+concept & C++20 对模板参数能力的编译期约束。\\
+data race & 未同步的并发冲突访问，至少一个写入；在 C++ 中属于 UB。\\
+event & 已验证、带时间和代码的市场事实。\\
+fill & 撮合后形成的成交事实，而不是订单意图。\\
+happens-before & C++ 内存模型中保证效果可见与排序的关系。\\
+iterator invalidation & 容器操作使既有迭代器、引用或指针不再有效。\\
+latency tail & 延迟分布高百分位，如 \(p_{99}\) 与 \(p_{99.9}\)。\\
+market event & 规范化行情事件，包含时间、代码、价格与数量。\\
+move & 从可被转移资源的对象构造/赋值；\texttt{std::move} 仅转换值类别。\\
+order intent & 策略产生的买卖意图，尚不是成交。\\
+ownership & 谁负责保持对象存活并最终释放其资源。\\
+PortfolioSnapshot & 组合通过公开接口暴露的只读持仓、现金与权益值。\\
+profiling & 定位程序时间、分配或硬件事件分布的测量。\\
+RAII & 将资源取得与对象初始化绑定、释放与析构绑定。\\
+seam & 通过公开接口观察行为的测试边界。\\
+slippage & 决策或参考价格与实际模拟/成交价格之间的差异。\\
+tracer bullet & 从输入到输出贯通、可独立验证的最小纵向切片。\\
+UB & 未定义行为；语言标准不再约束程序结果。\\
+value semantics & 对象复制后成为具有相同含义的独立值。\\
+view & 通常不拥有元素、惰性描述遍历方式的范围适配器。\\
+zero-cost abstraction & 不使用不付费，使用抽象通常不劣于对应手写底层机制的设计原则。\\
+\bottomrule
+\end{longtable}

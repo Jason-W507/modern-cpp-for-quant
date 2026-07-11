@@ -1,0 +1,59 @@
+\chapter{模板、concepts 与编译期契约}
+
+\begin{introduction}
+  \item 理解函数模板的实例化与代码生成成本
+  \item 使用 concepts 表达最小、可诊断的能力要求
+  \item 在运行时多态与编译期多态之间做工程选择
+  \item 避免模板元编程成为炫技层
+\end{introduction}
+
+\section{泛型不是宏替换}
+
+模板描述一族函数或类型；当代码以具体类型使用模板时，编译器执行实例化、检查表达式并生成所需代码。与 \python{} 鸭子类型相似之处是“只要求所用能力”，不同之处是错误发生在编译期，类型和调用路径参与优化与二进制生成。
+
+无约束模板的错误常在深层表达式爆发。concepts 把要求放到接口位置：
+
+\lstinputlisting[caption={策略 concept 与回测入口},firstline=1,lastline=31]{project/include/quant/backtest.hpp}
+
+\texttt{StrategyForMarketEvent} 要求只读策略能以事件和组合快照产生 \texttt{optional<OrderIntent>}。它没有要求继承基类、暴露字段或使用某种内部算法，因此约束的是行为形状而非实现。
+
+\section{概念应当有语义}
+
+编译器只能检查表达式是否合法，无法完全证明语义。一个类型可能具有名为 \texttt{on\_market\_event} 的函数，却违反“无订单时返回空值”或“订单代码与事件一致”等约定。这些语义仍需文档和行为测试。
+
+好的 concept 名称来自领域能力，如 \texttt{Strategy}、\texttt{PriceFeed}；只把若干语法条件命名为 \texttt{HasFoo} 往往泄漏机制而没有解释用途。
+
+\section{静态与动态多态}
+
+模板适合类型集合在编译时已知、调用位于热路径且希望内联的场景。虚接口适合插件在运行时选择、实现隔离编译、需要稳定 ABI 或控制代码体积的场景。类型擦除可以在非模板边界保存不同实现，同时把具体类型保留在内部。
+
+量化平台常混合使用：配置层根据名称创建运行时策略，策略内部的数值内核使用模板；网络或存储边界保持稳定接口。单一机制不必统治整个系统。
+
+\section{编译时间与代码体积}
+
+每种模板参数组合可能生成独立实例，导致编译变慢和二进制膨胀。把稳定、非类型相关逻辑移到普通函数；在头文件只保留实例化所需定义；使用显式实例化控制常用组合。优化器的内联合并可能缓解体积，但不能把它当保证。
+
+\section{constexpr 的适用边界}
+
+\texttt{constexpr} 允许表达式在满足条件时于编译期求值，也可在运行时调用。适合单位转换、查表、固定协议字段和小型数学函数。不要把大规模市场数据计算搬到编译期；这会增加构建成本且失去运行时输入意义。
+
+\begin{pythonbridge}
+\python{} protocol/ABC 可帮助静态检查或运行时约束；C++ concept 直接参与重载选择和模板实例化。二者都应描述调用者真正需要的最小能力。
+\end{pythonbridge}
+
+\begin{interviewcheck}
+concept 能检查哪些内容、不能证明哪些语义？虚函数与模板的主要权衡是什么？为什么模板可能增加代码体积？\texttt{constexpr} 是否保证编译期执行？
+\end{interviewcheck}
+
+\section{练习}
+
+\begin{enumerate}
+  \item 写一个不满足策略 concept 的类型，比较加约束前后的编译错误。
+  \item 设计卖出策略并让同一回测入口接受它，不修改引擎实现。
+  \item 把一个过度泛型函数拆成模板薄层和普通实现，比较重新编译范围。
+  \item 列出需要运行时加载策略插件时，concept 不能独自解决的三个问题。
+\end{enumerate}
+
+\section{本章小结}
+
+模板提供编译期多态，concepts 把能力要求放在接口边界。它们的价值是清晰契约与可优化代码，而非复杂语法；运行时多态仍是稳定边界和插件系统的重要工具。

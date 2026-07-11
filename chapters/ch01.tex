@@ -1,0 +1,110 @@
+\chapter{Python 开发者的 C++ 心智切换}
+
+\begin{introduction}
+  \item 理解源文件、编译单元、链接与可执行文件之间的关系
+  \item 区分语言规则、实现定义行为与未定义行为
+  \item 用成本模型理解“零成本抽象”，而不是把它误解为“所有抽象都免费”
+  \item 建立适用于量化工程的首次编译、运行与诊断流程
+\end{introduction}
+
+\section{为什么量化岗位仍然需要 C++}
+
+\python{} 擅长快速表达研究想法：NumPy 把密集数值循环交给本地代码，pandas 提供高层数据操作，notebook 缩短探索反馈。\cpp{} 解决的是另一组约束：可预测的资源生命周期、接近硬件的数据布局、可控的二进制接口，以及在长时间运行的进程中保持延迟和内存稳定。
+
+不要用“\cpp{} 比 \python{} 快”作为学习理由。一个调用优化库的 \python{} 表达式可能远快于手写的低效 \cpp{} 循环。更准确的说法是：\cpp{} 允许你直接选择数据表示、所有权和执行策略，因此也要求你对这些选择负责。
+
+\begin{pythonbridge}
+在 \python{} 中，源文件通常由解释器加载，名称解析和大量类型检查发生在运行时。在 \cpp{} 中，源文件先被翻译为目标文件，再由链接器组合。许多错误会更早出现，但错误信息也会跨越预处理、模板实例化和链接几个阶段。
+\end{pythonbridge}
+
+\section{从源代码到进程}
+
+假设项目有两个文件：一个声明成交名义金额函数，另一个调用它。构建过程可以抽象为
+\[
+  \text{source} \xrightarrow{\text{preprocess}} \text{translation unit}
+  \xrightarrow{\text{compile}} \text{object file}
+  \xrightarrow{\text{link}} \text{executable}.
+\]
+
+头文件通常提供声明和可内联定义，\texttt{.cpp} 文件提供实现。每个翻译单元独立编译，因此编译器必须在当前单元里看见所需声明。链接器随后解析跨单元符号。如果函数只声明未定义，编译可能成功而链接失败；如果同一个非内联定义出现多次，则违反单一定义规则。
+
+\begin{lstlisting}[caption={最小构建命令},language=bash,numbers=none]
+g++ -std=c++20 -O2 -Wall -Wextra -Wpedantic \
+    code/ch01/compilation_model.cpp -o compilation_model
+./compilation_model
+\end{lstlisting}
+
+在真实项目中用 CMake 描述目标，而不是把一条越来越长的编译命令当作构建系统。目标表达了源文件、编译特性、警告和依赖之间的关系；生成器再为 Ninja、Make、Visual Studio 等后端产生实际构建步骤。
+
+\section{静态类型不是类型标注}
+
+\python{} 的类型标注主要帮助工具和读者；常规解释器不会因为注解而改变对象布局。\cpp{} 类型参与对象表示、重载解析、模板实例化和生成代码。下面的 \texttt{Trade} 不只是文档，它决定字段的排列、对齐和可执行操作。
+
+\lstinputlisting[caption={成交记录与名义金额计算}]{code/ch01/compilation_model.cpp}
+
+参数类型 \texttt{const std::vector<Trade>\&} 同时表达三件事：函数借用容器、不复制容器、也不通过该引用修改容器。这个契约并不保证其他线程不会修改同一对象，也不延长悬空对象的生命周期；这些边界将在后续章节展开。
+
+\section{未定义行为：没有“合理默认结果”}
+
+越界访问、使用已经结束生命周期的对象、带符号整数溢出和数据竞争都可能产生未定义行为（undefined behavior, UB）。UB 不是一种可捕获的普通异常，也不是“这台机器上通常返回零”。语言标准不再约束结果，优化器可以基于“正确程序不会触发 UB”的前提重排或删除代码。
+
+开发阶段建议同时使用高警告级别、调试信息与 sanitizer：
+
+\begin{lstlisting}[language=bash,numbers=none]
+g++ -std=c++20 -O1 -g -Wall -Wextra -Wpedantic \
+    -fsanitize=address,undefined example.cpp
+\end{lstlisting}
+
+sanitizer 是动态证据，只覆盖实际执行路径；静态分析、代码审查和清晰的所有权设计仍不可替代。在低延迟程序中，发布构建通常不会启用 sanitizer，但应在测试和预发布环境持续运行。
+
+\section{零成本抽象的正确含义}
+
+零成本抽象原则常被概括为：不用的能力不付费；使用抽象后的代码，不应系统性地比手写底层实现更差。它不是“抽象没有成本”。动态分配、虚函数分派、缓存未命中和同步仍有真实成本；关键是接口是否让编译器看见并优化这些选择。
+
+以范围循环为例，清晰的写法可以编译为与索引循环相当的机器码。但如果循环中反复构造临时容器，语法再现代也无法抹去分配成本。判断方式不是阅读源码时凭感觉，而是：先检查算法复杂度和对象生命周期，再用基准与 profiler 验证热点。
+
+\section{量化工程的构建配置}
+
+至少区分三类配置：
+
+\begin{table}[htbp]
+  \centering
+  \caption{常见构建配置的用途}
+  \begin{tabularx}{\textwidth}{lXX}
+    \toprule
+    配置 & 主要设置 & 用途 \\
+    \midrule
+    Debug & 低优化、调试信息、断言 & 单步调试与快速定位逻辑错误 \\
+    Sanitized & 适度优化、ASan/UBSan & 捕获越界、生命周期和部分 UB \\
+    Release & 高优化、通常关闭调试检查 & 性能测试和生产部署候选 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+不能用 Debug 构建的延迟代表生产性能，也不能只测试 Release 构建，因为优化可能让错误更难复现。可靠流程在多个配置中给同一行为提供证据。
+
+\section{常见错误}
+
+\begin{enumerate}
+  \item \textbf{把警告当噪声。} 新项目应尽量保持高价值警告为零，但不要盲目开启互相冲突的所有警告。
+  \item \textbf{在头文件放非内联定义。} 头文件被多个翻译单元包含时会触发重复定义。
+  \item \textbf{只在本机一种配置构建。} 模板、未初始化变量和条件编译问题常在另一编译器或优化级别暴露。
+  \item \textbf{先优化再测量。} 没有基线的“优化”无法区分收益、噪声和回归。
+\end{enumerate}
+
+\begin{interviewcheck}
+请用自己的话回答：编译错误和链接错误有什么区别？为什么 UB 不能视为一种随机但可接受的结果？\texttt{const T\&} 表达了哪些承诺，又没有表达哪些承诺？“零成本抽象”是否意味着 \texttt{std::vector} 永远不产生分配成本？
+\end{interviewcheck}
+
+\section{练习}
+
+\begin{enumerate}[label=\arabic*.]
+  \item 将本章示例拆成声明、实现和主程序三个文件，用 CMake 构建。故意删除实现，观察链接器错误。
+  \item 为示例加入一次越界读取，分别在普通 Release 和 ASan 构建中运行，记录差异。完成后恢复正确代码。
+  \item 写出三个你在 \python{} 中依赖运行时完成、而在 \cpp{} 中更可能发生于编译期的检查。
+  \item 解释为什么“把循环改成 ranges”本身不能证明性能提升，并设计一个可反驳的基准假设。
+\end{enumerate}
+
+\section{本章小结}
+
+\cpp{} 的第一道门槛不是语法，而是构建与成本模型。源文件独立编译、链接器组合符号、静态类型参与对象表示、UB 破坏语言保证，抽象是否高效则必须由生成代码和测量回答。掌握这些边界后，下一章将具体处理类型、值类别、引用与 \texttt{const}。

@@ -1,0 +1,67 @@
+\chapter{数值计算与 Python 互操作}
+
+\begin{introduction}
+  \item 理解浮点表示、舍入与误差传播
+  \item 使用稳定归约与容差测试
+  \item 设计清楚的 Python/C++ 所有权和数组边界
+  \item 判断何时值得把热点移入 C++
+\end{introduction}
+
+\section{浮点不是实数}
+
+IEEE 754 二进制浮点只能精确表示有限集合。多数十进制小数会被舍入；加法不满足结合律；数量级相差悬殊时，小值可能消失。直接用 \texttt{==} 比较经计算结果通常不合适，但容差也必须结合量纲和误差模型。
+
+经典灾难例子是 \(10^{16}+1-10^{16}\)：按双精度顺序累加可能得到 0。补偿求和保留舍入中丢失的一部分：
+
+\lstinputlisting[caption={普通求和与补偿求和}]{code/ch12/numerical_stability.cpp}
+
+补偿算法提高精度但增加运算和依赖链，并非所有工作负载都更快。先定义允许误差，再在真实数据分布上测试。
+
+\section{价格、收益与方差}
+
+交易金额常需要可审计舍入，可用整数最小货币单位或定点表示；收益率和模型计算通常需要浮点。跨表示转换必须集中并写明舍入模式。在线方差应使用数值稳定算法，而不是分别累计 \(\sum x\) 与 \(\sum x^2\) 后相减。
+
+测试浮点结果时可使用绝对与相对容差组合：
+\[
+ |a-b| \leq \epsilon_{abs} + \epsilon_{rel}\max(|a|,|b|).
+\]
+容差不是让测试变绿的旋钮，应来自业务最小显著差异和算法误差分析。
+
+\section{先确认 Python 热点在哪里}
+
+NumPy、SciPy 和许多 pandas 操作已经在 C/C++/Fortran 中执行。把外层 \python{} 函数重写为 \cpp{} 可能没有收益，反而增加复制与绑定成本。profiler 应区分 Python 调度、原生内核、内存分配和数据转换。
+
+\section{pybind11 边界}
+
+pybind11 适合暴露小而稳定的 C++ API。边界必须说明：数组是否连续、dtype 与字节序、谁拥有内存、调用期间能否释放 GIL、异常如何映射、返回视图能活多久。
+
+\begin{lstlisting}
+// Design sketch; enabled only when pybind11 is an explicit dependency.
+PYBIND11_MODULE(quant_core, module) {
+  module.def("run_backtest", &run_backtest,
+             py::arg("prices"), py::arg("initial_cash"));
+}
+\end{lstlisting}
+
+对 NumPy 数组，零拷贝视图要求底层缓冲在 C++ 使用期间存活；返回指向临时 \texttt{vector} 的数组是悬空错误。若 C++ 长计算不访问 Python 对象，可释放 GIL，但重新调用 Python 前必须获取。
+
+\section{批量边界胜过逐元素调用}
+
+跨语言调用具有固定成本。每个 tick 从 Python 调一次 C++，往往不如一次传入连续批次；反过来，若实时回调由 C++ 驱动，则策略接口和 GIL 行为要单独设计。边界应传递领域批次，而不是暴露大量细碎 getter。
+
+\begin{interviewcheck}
+为什么浮点加法不满足结合律？金额与收益率为何可能选择不同表示？零拷贝 NumPy 视图需要什么生命周期保证？何时可以释放 GIL？
+\end{interviewcheck}
+
+\section{练习}
+
+\begin{enumerate}
+  \item 为收益率比较定义绝对/相对容差，并解释数值来源。
+  \item 用 Welford 算法实现在线方差，与两遍算法比较。
+  \item 设计批量回测绑定，列出 shape、dtype、所有权和错误契约。
+  \item profiler 一个 NumPy 工作流，判断瓶颈是否真的位于 Python 循环。
+\end{enumerate}
+
+\section{本章小结}
+
+数值正确性需要表示、算法和容差共同定义。Python/C++ 互操作的核心是批量边界和生命周期，不是绑定语法；只有测得热点且接口稳定时，迁移到 C++ 才有工程价值。

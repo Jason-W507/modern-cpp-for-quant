@@ -1,0 +1,52 @@
+\chapter{工具链速查}
+
+\section{本书验证环境}
+
+本项目在 Windows 上使用 MiKTeX 26.1、XeLaTeX、latexmk、CMake 3.29、GCC 13.2（MinGW-w64）验证。书稿主线代码以 Linux GCC/Clang 为目标，Windows 命令用于本机复现。
+
+\section{构建 C++}
+
+\begin{lstlisting}[language=bash,numbers=none]
+cmake -S . -B build-mingw -G "MinGW Makefiles" \
+      -DCMAKE_BUILD_TYPE=Release
+cmake --build build-mingw
+ctest --test-dir build-mingw --output-on-failure
+\end{lstlisting}
+
+Linux/Ninja 常用命令：
+
+\begin{lstlisting}[language=bash,numbers=none]
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+ctest --test-dir build --output-on-failure
+\end{lstlisting}
+
+诊断配置可加入 \texttt{-fsanitize=address,undefined -fno-omit-frame-pointer}。ThreadSanitizer 通常单独构建，不与 AddressSanitizer 混用。
+
+\section{构建 PDF}
+
+\begin{lstlisting}[language=bash,numbers=none]
+latexmk -xelatex -interaction=nonstopmode -halt-on-error \
+        -outdir=build main.tex
+\end{lstlisting}
+
+若 MiKTeX 为最小安装，可用新版 CLI 显式保证依赖：
+
+\begin{lstlisting}[language=bash,numbers=none]
+miktex packages require elegantbook csquotes comment esint mwe \
+  enumitem caption footmisc multirow fancyvrb makecell lipsum \
+  hologo titlesec appendix biblatex pgf apptools bbding tcolorbox \
+  manfnt fancyhdr tocloft siunitx
+\end{lstlisting}
+
+本项目复制的 ElegantBook 4.7 在 MiKTeX 26.1 上遇到 \texttt{adforn} 的缺失间接依赖；本地类文件仅把问题集标题的两个装饰符替换为模板已加载的 pifont 字形。原模板目录未修改。
+
+\section{日志检查}
+
+\begin{lstlisting}[language=bash,numbers=none]
+rg -n "Undefined|undefined references|Missing character|Fatal error" \
+   build/main.log
+rg -n "Overfull|Underfull" build/main.log
+\end{lstlisting}
+
+未定义引用、缺字和致命错误必须修复。Overfull 需要逐条检查；Underfull 常是可接受的排版松弛，但不应忽略大段异常。

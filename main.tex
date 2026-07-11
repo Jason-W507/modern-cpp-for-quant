@@ -1,0 +1,109 @@
+\documentclass[lang=cn,newtx,10pt,scheme=chinese,color=blue]{elegantbook}
+
+\title{Python 量化人的 Modern C++}
+\subtitle{从研究原型到可靠、可测量的生产系统}
+\author{Modern C++ 量化教程项目}
+\institute{面向 Quant Developer 与 Research Engineer}
+\date{2026 年 7 月}
+\version{0.1}
+\bioinfo{读者基础}{已掌握 Python}
+\extrainfo{先建立正确性，再讨论速度；先取得证据，再做优化。}
+
+\setcounter{tocdepth}{2}
+\logo{logo-blue.png}
+\cover{cover.jpg}
+
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{xurl}
+\usepackage{siunitx}
+
+\definecolor{cppblue}{RGB}{30,90,150}
+\definecolor{cppgreen}{RGB}{35,120,75}
+\definecolor{codegray}{RGB}{245,247,249}
+\lstdefinelanguage{ModernCpp}{
+  language=C++,
+  morekeywords={concept,requires,consteval,constinit,co_await,co_return,co_yield}
+}
+\lstset{
+  language=ModernCpp,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{cppblue}\bfseries,
+  commentstyle=\color{cppgreen},
+  stringstyle=\color{purple},
+  backgroundcolor=\color{codegray},
+  frame=single,
+  rulecolor=\color{black!15},
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  numbers=left,
+  numberstyle=\tiny\color{black!50},
+  xleftmargin=2em,
+  framexleftmargin=1.5em
+}
+
+\newcommand{\python}{\textsf{Python}}
+\newcommand{\cpp}{\textsf{C++}}
+\newcommand{\quant}{\textsf{Quant}}
+\newenvironment{pythonbridge}{\begin{remark}\textbf{Python 迁移提示：}}{\end{remark}}
+\newenvironment{interviewcheck}{\begin{problem}[面试检查点]}{\end{problem}}
+\addbibresource{references.bib}
+
+\begin{document}
+
+\maketitle
+\frontmatter
+\input{chapters/preface}
+\tableofcontents
+
+\mainmatter
+\part{从 Python 迁移}
+\include{chapters/ch01}
+\include{chapters/ch02}
+\include{chapters/ch03}
+\include{chapters/ch04}
+
+\part{写出可靠组件}
+\include{chapters/ch05}
+\include{chapters/ch06}
+\include{chapters/ch07}
+\include{chapters/ch08}
+
+\part{量化性能工程}
+\include{chapters/ch09}
+\include{chapters/ch10}
+\include{chapters/ch11}
+\include{chapters/ch12}
+
+\part{求职到工作}
+\include{chapters/ch13}
+\include{chapters/ch14}
+
+\appendix
+\include{appendices/toolchain}
+\include{appendices/glossary}
+\include{appendices/solutions}
+\include{appendices/learning_path}
+
+\backmatter
+\nocite{*}
+\printbibliography[heading=bibintoc,title={参考文献}]
+\chapter*{模板与许可说明}
+本书使用 ElegantBook 模板排版，项目主页如下：
+\begin{center}
+  \url{https://github.com/ElegantLaTeX/ElegantBook}
+\end{center}
+类文件依照 LaTeX Project Public License 1.3c 或更高版本发布。模板许可文本随项目
+保存在独立文件中：
+\begin{center}
+  \texttt{ELEGANTBOOK-LICENSE}
+\end{center}
+
+\end{document}

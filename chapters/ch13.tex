@@ -1,0 +1,92 @@
+\chapter{贯穿项目：事件驱动回测引擎}
+
+\begin{introduction}
+  \item 把输入、策略、撮合、组合与统计组装为完整数据流
+  \item 用公开 seam 验证组件与端到端行为
+  \item 识别教学引擎与生产平台之间的明确边界
+  \item 把项目讲成可复现的求职作品，而不是代码堆积
+\end{introduction}
+
+\section{从一个事件开始}
+
+贯穿项目的数据流是
+\[
+\text{CSV}\rightarrow\text{MarketEvent}\rightarrow\text{Strategy}
+\rightarrow\text{OrderIntent}\rightarrow\text{Fill}
+\rightarrow\text{Portfolio}\rightarrow\text{BacktestResult}.
+\]
+
+每条箭头都是边界：CSV 解析将不可信文本变为已验证值；策略只观察事件和只读组合快照；撮合器决定订单能否成为成交；组合只接受事实成交；结果汇总成交、最终快照、收益和回撤。
+
+这种设计避免“策略直接改现金”或“CSV 行同时充当领域对象”。边界越清楚，越容易替换数据源、策略或撮合模型，也越容易在正确位置测试错误。
+
+\section{运行项目}
+
+\begin{lstlisting}[language=bash,numbers=none]
+cmake -S . -B build-mingw -G "MinGW Makefiles" \
+      -DCMAKE_BUILD_TYPE=Release
+cmake --build build-mingw
+ctest --test-dir build-mingw --output-on-failure
+./build-mingw/quant_backtest.exe project/data/sample.csv
+\end{lstlisting}
+
+样例从 \(10000\) 现金出发，在价格 \(99\) 时买入 25 股，末价为 \(103\)，输出一笔成交、权益 \(10100\) 和 \(1\%\) 总收益。这个结果来自独立手算，是端到端测试的事实来源。
+
+\section{四个测试 seam}
+
+\begin{enumerate}
+  \item 行情输入：文本要么成为规范事件，要么给出带行号错误。
+  \item 策略决策：给定事件和快照，产生订单或正常的空值。
+  \item 成交与组合：订单按明确模型成交，快照显示一致现金和持仓。
+  \item 整段回测：已知事件序列产生确定成交与绩效摘要。
+\end{enumerate}
+
+这些测试通过公开接口观察行为。持仓内部使用哈希表只是实现细节；更换容器不应让测试失败。相反，若成交价格或现金符号改变，行为测试必须失败。
+
+\section{当前引擎明确不做什么}
+
+教学引擎只处理单资产快照、市场事件驱动的立即成交、无手续费、无滑点、无延迟和单币种现金。它没有公司行动、交易日历、订单生命周期、部分成交、借券、保证金、复权、数据修订或生存者偏差控制。
+
+这些限制不是脚注。若把样例收益解释为可交易结果，就犯了模型风险错误。生产演进应先选择一个真实用例，再增加对应契约和测试。例如支持手续费时，成交模型产生费用明细，组合一次性提交现金、持仓与费用，端到端预期由独立账本例子给出。
+
+\section{扩展顺序}
+
+合理演进路线如下：
+
+\begin{enumerate}
+  \item 多资产估值：引入价格映射和缺失价格政策。
+  \item 订单生命周期：订单 ID、状态、部分成交、撤单和拒绝原因。
+  \item 成本模型：手续费、点差、滑点与容量限制。
+  \item 数据正确性：交易日历、时区、复权、公司行动和版本化数据。
+  \item 性能：批量解析、列式事件、分片回测和受控基准。
+  \item 实时化：有界队列、时钟、网络适配器、背压和恢复协议。
+\end{enumerate}
+
+每一步都应保持旧行为绿色，并添加一条穿过输入、领域、输出与测试的新 tracer bullet。
+
+\section{性能报告怎么写}
+
+报告应包含硬件、操作系统、编译器、优化级别、数据规模、命令、预热、重复次数和统计量。布局基准只显示本机一次微观观测；有价值的结论是“在指定环境与工作负载下，方案 A 的中位数比 B 低多少，并保持同一 checksum”，不是“二维数组永远更快”。
+
+\section{作为求职作品}
+
+README 的第一屏应回答问题、构建、运行和验证方式。面试讲解按“约束—设计—证据—限制”展开：为什么用值语义，为什么测试四个 seam，哪次测试发现真实问题，当前模型不能支持什么，下一步扩展如何保持契约。
+
+展示失败和修复比声称“高性能框架”更可信。本项目中 Release 移除 \texttt{assert} 造成假绿色、ranges 的 const 视图编译失败、MiKTeX 依赖与模板兼容问题，都是工程判断的具体证据。
+
+\begin{interviewcheck}
+请在五分钟内画出引擎数据流并说明每个所有权边界；解释为什么策略不直接修改组合；选择一个生产特性，描述其 tracer bullet 与验收事实；说明当前收益为何不能代表真实可交易表现。
+\end{interviewcheck}
+
+\section{练习}
+
+\begin{enumerate}
+  \item 增加固定每笔手续费，先写端到端手算测试，再实现。
+  \item 设计多资产权益快照，明确缺失行情和币种转换政策。
+  \item 为部分成交写状态机，列出非法状态转换。
+  \item 写一页性能实验报告，包含可复现命令和结论限制。
+\end{enumerate}
+
+\section{本章小结}
+
+贯穿项目的价值不在功能数量，而在端到端契约：不可信输入被验证，组件各守边界，结果可手算，限制被明示，演进可由 tracer bullet 驱动。这正是生产工程和面试系统设计共同需要的能力。

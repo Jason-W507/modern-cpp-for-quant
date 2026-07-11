@@ -1,0 +1,68 @@
+\chapter{CMake、测试与代码质量}
+
+\begin{introduction}
+  \item 用 target-based CMake 表达构建关系
+  \item 在公开 seam 编写不依赖内部实现的行为测试
+  \item 组织警告、sanitizer、静态分析和 CI 配置
+  \item 让研究代码具备可重复构建路径
+\end{introduction}
+
+\section{构建系统描述目标}
+
+现代 CMake 的中心是目标。每个可执行文件或库声明自己的源文件、头文件搜索路径、编译特性和依赖；\texttt{PRIVATE}、\texttt{PUBLIC} 与 \texttt{INTERFACE} 控制需求是否传播。避免全局加入所有 include 路径和编译选项，这会让无关目标互相污染。
+
+\begin{lstlisting}[language=bash,numbers=none]
+cmake -S . -B build-mingw -G "MinGW Makefiles" \
+      -DCMAKE_BUILD_TYPE=Release
+cmake --build build-mingw
+ctest --test-dir build-mingw --output-on-failure
+\end{lstlisting}
+
+Linux 上推荐 Ninja 或 Unix Makefiles，编译器由工具链文件或环境选择。团队应保存可重复命令、依赖版本和至少一种受支持配置，不要求每位开发者手工点击 IDE 才能构建。
+
+\section{测试公开行为}
+
+本项目预先确认四个 seam：行情输入、策略决策、成交与组合、整段回测。测试只调用公开接口，不访问私有持仓表，也不验证某函数内部调用次数。这样数据结构和算法可以重构，而业务行为仍受保护。
+
+TDD 循环是一条竖直切片：写一个失败行为，确认失败原因正确，只实现足够代码让它通过，再进入下一行为。一次写几十个基于想象的测试，常会锁定错误接口。
+
+\section{独立预期值}
+
+测试预期应来自手算例子、规范或可信外部数据，而不是把实现公式复制进测试。回测例子用三笔已知价格手算：以 99 买入 25 股，从 10000 现金出发，末价 103 时权益为
+\[
+  10000 - 25\times 99 + 25\times 103 = 10100,
+\]
+总收益为 \(1\%\)。这个字面预期可以与实现真正分歧。
+
+\section{测试也会失效}
+
+Release 配置通常定义 \texttt{NDEBUG}，会移除标准 \texttt{assert}。本项目最初的 seam 测试曾因此“绿色但未断言”，编译器的 unused 警告揭示了问题。测试框架或自定义检查必须在所有测试配置中保持有效。
+
+\section{质量工具分工}
+
+编译器警告发现可疑转换和未使用代码；sanitizer 观察执行路径上的内存与 UB；静态分析覆盖未运行路径和代码模式；格式化器减少无意义差异；代码审查检查契约、命名和范围。它们互补，任何一个绿色都不能证明程序无错。
+
+建议 CI 矩阵至少包含：GCC/Clang Debug + 测试，sanitizer 配置，Release + 基准烟雾测试。性能回归阈值要考虑共享机器噪声，严肃延迟验证应在固定硬件和受控负载上进行。
+
+\section{端到端样例}
+
+\lstinputlisting[caption={从 CSV 到回测摘要的命令行程序}]{project/src/main.cpp}
+
+这个程序在进程边界处理文件打开和解析错误，核心引擎只接收已验证事件。它很小，却贯通输入、策略、撮合、组合与报告，是比大量孤立类更有价值的 tracer bullet。
+
+\begin{interviewcheck}
+为什么 target-based CMake 优于全局 flags？什么是测试 seam？为什么复制实现公式会产生恒真测试？sanitizer 绿色可以证明什么、不能证明什么？
+\end{interviewcheck}
+
+\section{练习}
+
+\begin{enumerate}
+  \item 新增 Debug + ASan/UBSan 配置并运行全部测试。
+  \item 故意改变撮合价格，确认端到端测试以有意义消息失败。
+  \item 将一个测试改写为只验证公开结果，不检查内部容器。
+  \item 设计一份 CI 矩阵，说明每个 job 捕获的失败类别和成本。
+\end{enumerate}
+
+\section{本章小结}
+
+CMake 让构建关系显式，测试在公开 seam 保护行为，多类工具提供互补证据。可靠工程的关键不是工具数量，而是每个检查都真实执行、失败可诊断、从干净环境可重复。

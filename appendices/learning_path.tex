@@ -1,0 +1,46 @@
+\chapter{推荐阅读与 30 天路线}
+
+\section{推荐阅读}
+
+\begin{itemize}
+  \item Bjarne Stroustrup, \emph{A Tour of C++}：建立现代语言全貌。
+  \item Scott Meyers, \emph{Effective Modern C++}：C++11/14 机制仍是所有权与移动语义基础。
+  \item Anthony Williams, \emph{C++ Concurrency in Action}：线程、内存模型与并发结构。
+  \item Agner Fog 的优化手册：指令、微架构与测量，阅读时结合目标硬件更新资料。
+  \item Brendan Gregg, \emph{Systems Performance}：系统观测、方法与工具。
+  \item John Lakos 等，\emph{Large-Scale C++}：依赖、组件和大型代码库边界。
+  \item cppreference：核对语言与标准库语义；不要只依赖博客摘要。
+  \item C++ Core Guidelines：作为审查清单，结合团队规则而非机械执行。
+\end{itemize}
+
+\section{第 1 周：语言与所有权}
+
+\begin{longtable}{p{0.12\textwidth}p{0.75\textwidth}}
+\toprule
+日 & 任务 \\
+\midrule
+1 & 配置 CMake/GCC/Clang，构建第 1 章示例，解释编译与链接。\\
+2 & 完成类型、初始化与窄化练习。\\
+3 & 练习引用、\texttt{const}、值类别与移动。\\
+4 & 用 RAII 封装文件和计时器。\\
+5 & 比较值成员、unique pointer 与 shared pointer。\\
+6 & 完成 vector、算法和 ranges 数据管道。\\
+7 & 复盘四章面试检查点，不看书口述答案。\\
+\bottomrule
+\end{longtable}
+
+\section{第 2 周：接口与可靠性}
+
+第 8--9 天设计事件、订单、成交和组合不变量；第 10 天练习模板与 concepts；第 11 天完成 CSV 错误测试；第 12 天运行四个 seam；第 13 天添加 sanitizer 构建；第 14 天从干净目录重新构建并写一页架构说明。
+
+\section{第 3 周：性能与并发}
+
+第 15 天学习缓存与布局；第 16 天重复布局基准并做统计；第 17 天使用 profiler；第 18 天复习浮点误差；第 19 天实现稳定归约；第 20 天画出并发所有权图；第 21 天实现一个有界队列设计文档并说明背压，不急于写无锁代码。
+
+\section{第 4 周：项目与求职}
+
+第 22--24 天为回测项目增加一个经 TDD 驱动的真实特性；第 25 天完善 README 和复现命令；第 26 天写性能报告；第 27 天准备语言问答；第 28 天做系统设计模拟；第 29 天录制项目讲解；第 30 天完成一次全流程模拟面试并制定下一月计划。
+
+\section{完成判据}
+
+30 天后，不以“读完章节”为成功，而以以下证据验收：能从干净目录构建；能解释四个 seam；能手算一个回测结果；能展示一次红绿循环；能提供带环境和限制的性能报告；能画出系统边界、背压和停止协议；能诚实陈述项目非目标。

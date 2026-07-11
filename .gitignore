@@ -1,0 +1,15 @@
+/build/
+/build-*/
+/tmp/
+*.synctex.gz
+*.aux
+*.bcf
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.run.xml
+*.toc
+*.xdv

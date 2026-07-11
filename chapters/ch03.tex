@@ -1,0 +1,61 @@
+\chapter{RAII、智能指针与所有权}
+
+\begin{introduction}
+  \item 用 RAII 将资源释放绑定到对象生命周期
+  \item 区分唯一所有权、共享所有权和非拥有观察
+  \item 遵循 Rule of Zero，避免手写脆弱的资源管理
+  \item 为文件、锁和线程建立异常安全边界
+\end{introduction}
+
+\section{资源不只是内存}
+
+文件句柄、互斥锁、socket、线程和临时文件都需要成对操作。如果打开之后的任何一步可能抛出异常，手写“最后记得关闭”会迅速形成多条泄漏路径。RAII（Resource Acquisition Is Initialization）把资源取得放进构造，把释放放进析构；栈展开会自动调用已构造对象的析构函数。
+
+\lstinputlisting[caption={文件流本身就是 RAII 对象}]{code/ch03/raii_file.cpp}
+
+输出流离开内部作用域时自动刷新并关闭，输入对象离开作用域时自动关闭。没有 \texttt{finally}，也没有依赖垃圾回收何时运行。
+
+\begin{pythonbridge}
+\python{} 的 \texttt{with open(...)} 是非常接近的心智模型：上下文管理器明确资源边界。区别在于 \cpp{} 析构与普通自动对象生命周期直接绑定，适用于任何作用域退出路径。
+\end{pythonbridge}
+
+\section{Rule of Zero}
+
+如果成员都能正确管理自身资源，外层类型通常不需要自定义析构、复制或移动操作，这就是 Rule of Zero。\texttt{std::vector}、\texttt{std::string}、文件流和智能指针应成为资源成员，而不是裸句柄加手写清理逻辑。
+
+一旦类型手写析构函数，就应重新审视复制语义：默认浅复制是否会导致两次释放？移动后源对象是否仍可析构？多数业务类型的最好答案，是组合标准 RAII 类型并让编译器生成特殊成员。
+
+\section{智能指针不是默认容器}
+
+\texttt{std::unique\_ptr<T>} 表示唯一所有权，可移动不可复制；\texttt{std::shared\_ptr<T>} 表示引用计数共享所有权；\texttt{std::weak\_ptr<T>} 打破共享环并提供可失效观察。选择顺序应是：先尝试直接成员和值语义；确实需要动态多态或可选堆对象时用 \texttt{unique\_ptr}；只有生命周期真正共同且没有自然所有者时才用 \texttt{shared\_ptr}。
+
+共享指针会增加控制块、原子引用计数和隐含的架构耦合。它解决“何时销毁”，并不自动解决对象内部的并发访问。
+
+\section{借用不等于所有权}
+
+裸指针和引用可以是清楚的非拥有接口。风险不在“裸”，而在所有权约定不可见。一个函数接收 \texttt{const MarketEvent\&} 并在调用期间读取它，是合理借用；把该地址保存到异步队列中，则必须证明事件在消费完成前存活。
+
+在事件驱动回测中，最简单的初始设计是事件按值存储在拥有容器中，事件循环按常量引用短暂分发。只有 profiler 证明复制或布局是瓶颈后，才改变表示。
+
+\section{异常安全等级}
+
+基本保证意味着失败后对象仍有效且不泄漏；强保证意味着操作要么成功，要么可观察状态不变；不抛保证常用于析构、交换和部分移动操作。交易状态更新常需要强保证：先在局部计算新状态并验证，再一次提交，避免现金已变而持仓未变。
+
+析构函数不应让异常逃逸，因为栈展开中再次抛出会终止进程。关闭资源若可能失败，应提供显式 \texttt{close()} 报告错误，同时让析构执行尽力清理。
+
+\begin{interviewcheck}
+为什么 RAII 比“在函数末尾释放”可靠？\texttt{unique\_ptr} 和直接成员各适用于什么情形？\texttt{shared\_ptr} 为什么不等于线程安全？什么是强异常保证？
+\end{interviewcheck}
+
+\section{练习}
+
+\begin{enumerate}
+  \item 写一个计时器 RAII 类型，在作用域结束时记录耗时；说明析构中日志失败如何处理。
+  \item 把一个拥有裸文件句柄的类型改写为 Rule of Zero 或单一自定义 deleter 的 \texttt{unique\_ptr}。
+  \item 画出策略、事件循环、组合和行情事件的所有权图，标出每条借用边的最长寿命。
+  \item 构造一个 \texttt{shared\_ptr} 环并用 \texttt{weak\_ptr} 修复，解释为什么原环不会释放。
+\end{enumerate}
+
+\section{本章小结}
+
+RAII 把资源正确性变成对象生命周期的结构性结果。值成员和唯一所有权应是默认，共享所有权需要架构理由；异常安全则要求每次状态改变都有清楚的提交边界。

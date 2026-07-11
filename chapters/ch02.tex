@@ -1,0 +1,91 @@
+\chapter{类型、值类别与 const：从动态对象到静态契约}
+
+\begin{introduction}
+  \item 用类型表达数量、方向和时间等领域约束
+  \item 区分对象、表达式、左值与右值
+  \item 正确选择按值、引用和 \texttt{const} 引用参数
+  \item 识别隐式转换、窄化和悬空引用
+\end{introduction}
+
+\section{类型决定表示与合法操作}
+
+在 \python{} 中，变量名引用对象，名称本身没有固定类型；在 \cpp{} 中，对象的类型决定大小、对齐、生命周期和候选操作。量化代码若把价格、数量、时间戳和方向都表示成无语义的 \texttt{double} 或 \texttt{int}，编译器无法阻止参数错位。
+
+最小改进是使用作用域枚举和领域结构体：
+
+\begin{lstlisting}
+enum class Side : std::uint8_t { buy, sell };
+struct OrderIntent {
+  std::string symbol;
+  Side side;
+  std::int64_t quantity;
+};
+\end{lstlisting}
+
+\texttt{enum class} 不会隐式转换为整数，也不会把 \texttt{buy} 泄漏到外围命名空间。对于货币，教程示例会明确说明使用二进制浮点是为了聚焦语言机制；生产系统需要根据资产最小报价单位、舍入规则和跨币种计算选择整数 ticks、定点数或经过验证的十进制类型。
+
+\section{初始化优先于赋值}
+
+对象生命周期从初始化开始。优先使用花括号初始化，因为它禁止部分窄化转换：
+
+\begin{lstlisting}
+int quantity{100};
+// int broken{100.5}; // compile error: narrowing
+double price{188.5};
+\end{lstlisting}
+
+默认初始化基础类型可能留下不确定值，读取它会导致错误甚至 UB。聚合类型用成员默认值建立可预测状态，但“全为零”不一定是业务上合法的订单；应在构造边界验证正数量、有限价格和非空代码。
+
+\section{表达式也有值类别}
+
+对象有类型和生命周期，表达式还具有值类别。够用的工作模型是：左值通常具有稳定身份，可以取地址；纯右值通常代表待物化的计算结果；将亡值允许资源被移动。\texttt{std::move} 不移动任何东西，它只是把表达式转换为允许移动构造/赋值的值类别。
+
+\begin{pythonbridge}
+\python{} 赋值通常复制引用；\cpp{} 的按值赋值通常复制或移动对象本身。\texttt{auto b = a;} 对 \texttt{std::vector} 意味着独立容器复制，而不是让两个名称自然共享同一列表。
+\end{pythonbridge}
+
+\section{四种常用参数形式}
+
+\begin{longtable}{p{0.24\textwidth}p{0.30\textwidth}p{0.36\textwidth}}
+\toprule
+形式 & 语义 & 典型用途 \\
+\midrule
+\texttt{T value} & 函数拥有独立值 & 小对象；需要取得所有权并可能移动 \\
+\texttt{const T\&} & 只读借用 & 大对象输入；调用期间必须存活 \\
+\texttt{T\&} & 可变借用 & 明确修改调用者对象 \\
+\texttt{T*} & 可空或指针语义借用 & “无对象”是合法状态；与底层接口交互 \\
+\bottomrule
+\end{longtable}
+
+不要因为“引用更快”就把所有参数改成引用。两个机器字以内、复制廉价的值类型按值传递往往更清楚；字符串视图等非拥有类型虽然廉价，却要求调用者保证底层存储寿命。
+
+\lstinputlisting[caption={值对象和显式可变借用}]{code/ch02/value_semantics.cpp}
+
+\section{const 的边界}
+
+成员函数末尾的 \texttt{const} 表示不通过该接口修改对象的逻辑状态，并允许在常量对象上调用。它不是线程安全承诺。多个线程同时访问对象时，只要至少一个写入且缺少同步，就可能形成数据竞争。
+
+顶层 \texttt{const} 修饰对象本身；底层 \texttt{const} 修饰指向或引用的对象。阅读复杂声明时先找到变量名，再由内向外读取。更重要的是减少复杂声明：用类型别名、范围和小接口表达意图。
+
+\section{生命周期与悬空}
+
+返回局部变量的引用、把临时字符串转成长期保存的 \texttt{string\_view}、在容器扩容后继续使用旧迭代器，都会产生悬空。编译器无法识别所有此类错误。
+
+安全默认值是：跨作用域保存数据时拥有它；只在短而清晰的调用链中借用它；容器变更前查阅迭代器失效规则。所有权不清时，先画出“谁创建、谁销毁、借用持续多久”。
+
+\begin{interviewcheck}
+解释按值传递和 \texttt{const T\&} 的成本与生命周期差异；\texttt{std::move} 实际做什么；为什么 \texttt{const} 成员函数并不自动线程安全；举出一个 \texttt{string\_view} 悬空场景。
+\end{interviewcheck}
+
+\section{练习}
+
+\begin{enumerate}
+  \item 为价格和数量设计两个小类型，阻止二者在函数调用中交换位置。
+  \item 修改示例，使卖出成交减少持仓；为卖空是否允许写出明确不变量。
+  \item 找出一段保存容器元素引用后执行 \texttt{push\_back} 的代码可能出错的条件。
+  \item 比较按值接收字符串后移动到成员，与提供 \texttt{const std::string\&} 重载的接口复杂度。
+\end{enumerate}
+
+\section{本章小结}
+
+类型是可执行契约，不是装饰。按值表达所有权，引用表达借用，\texttt{const} 表达接口可见的只读意图，值类别决定复制或移动的候选路径。下一章把这些规则提升为资源管理策略。

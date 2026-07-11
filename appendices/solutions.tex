@@ -1,0 +1,115 @@
+\chapter{练习答案与思路}
+
+本附录给出检查点而非唯一实现。编码题应以可编译代码、行为测试和复杂度说明为最终答案。
+
+\section{第 1 章}
+\begin{enumerate}
+  \item 头文件放声明，\texttt{.cpp} 放定义；删除定义后编译单元仍合法，链接器报告 unresolved symbol。
+  \item ASan 应定位越界位置；普通 Release 的任何表现都不能作为保证，恢复后需重跑测试。
+  \item 例：重载解析、模板约束、基础类型转换；Python 多在运行时确定对象操作。
+  \item 假设应包含输入规模、编译选项与指标，例如“同一过滤工作负载的中位耗时降低”，并保留 checksum。
+\end{enumerate}
+
+\section{第 2 章}
+\begin{enumerate}
+  \item 用显式构造的 \texttt{Price} 与 \texttt{Quantity} 小类型，避免二者隐式互换。
+  \item 卖出使用负 signed quantity；是否允许结果小于零应在组合不变量中定义。
+  \item 当 size 达到 capacity 时 \texttt{push\_back} 可能重分配；可预留、重取引用或改用稳定句柄。
+  \item 按值 + move 通常只需一个入口；引用重载可能减少一次复制，却扩大接口和重载组合。
+\end{enumerate}
+
+\section{第 3 章}
+\begin{enumerate}
+  \item 计时器保存起点，析构计算耗时；日志失败不得从析构逃逸，可写 noexcept sink 或计数器。
+  \item 优先标准流或带 deleter 的唯一所有权，复制禁用、移动转移句柄。
+  \item 事件容器拥有值，循环短借用；异步保存必须转移所有权或延长拥有对象寿命。
+  \item 双向 shared pointer 形成环；一侧改 weak pointer，让强引用计数能归零。
+\end{enumerate}
+
+\section{第 4 章}
+\begin{enumerate}
+  \item filter 代码和 side 后循环累计 \(price\times quantity\)，分母累计 quantity。
+  \item 小规模连续扫描可能胜出；报告交叉点、构建成本和查询次数。
+  \item 扩容后旧引用悬空；预留容量或用索引并在操作后重新取元素。
+  \item 使用容差或稳定归约；若要求逐位确定，应固定顺序并避免不受控并行归约。
+\end{enumerate}
+
+\section{第 5 章}
+\begin{enumerate}
+  \item ID 若决定订单身份应是值字段；追踪批次等上下文可放外部 envelope。
+  \item 返回成交与剩余量，且任何成交量不超过订单和事件可用量。
+  \item 快照接收价格映射和估值时刻，并返回完整性状态；禁止静默把缺价当零。
+  \item 按不变量拆分，例如订单生命周期与风险检查，不按“工具方法”随意切。
+\end{enumerate}
+
+\section{第 6 章}
+\begin{enumerate}
+  \item 缺少正确返回类型时 concept 在调用边界失败；无约束模板通常在引擎内部产生长错误。
+  \item 新策略只需满足同一 \texttt{on\_market\_event} 契约，引擎不变。
+  \item 模板薄层提取类型相关值，再调用普通函数，可减少实例化体积。
+  \item 动态加载、ABI、生命周期和版本协商仍需稳定运行时接口。
+\end{enumerate}
+
+\section{第 7 章}
+\begin{enumerate}
+  \item 三个输入均应返回失败，错误包含行号和类别；测试不依赖内部解析步骤。
+  \item 结构化错误便于程序判断和本地化，字符串简单但难稳定消费。
+  \item 若调用者需要统计拒绝原因，返回枚举/结果；空值只适合原因不重要。
+  \item 例：解析失败率、队列深度、任务耗时；失败日志记录路径摘要和任务 ID。
+\end{enumerate}
+
+\section{第 8 章}
+\begin{enumerate}
+  \item 单独 build 目录加入 sanitizer flags；全部测试绿色且无 sanitizer 报告才通过。
+  \item 端到端权益应偏离 10100，并以“最终权益”行为消息失败。
+  \item 只调用 run 并检查结果，不读取 Portfolio 的内部 map。
+  \item GCC/Clang Debug、sanitizer、Release smoke 各覆盖不同故障；固定硬件另跑性能。
+\end{enumerate}
+
+\section{第 9 章}
+\begin{enumerate}
+  \item 循环 20 次并交替顺序，报告中位数与 IQR；不要删除异常值而不说明。
+  \item 对象缩小可能提高扫描密度，实际收益依赖读取字段与缓存层次。
+  \item 若分配样本占比很低，不引入池；可先 reserve 并重测。
+  \item 每线程独立 cache-line-aware 累计，join 后单线程归约。
+\end{enumerate}
+
+\section{第 10 章}
+\begin{enumerate}
+  \item 保存每次耗时，排序取中位数和四分位；同时验证每次 checksum。
+  \item 假设应可反驳，例如“解析占 CPU 样本超过 40\%”；profile 后接受或拒绝。
+  \item 指标必须带负载，如每秒百万事件下 \(p_{99}<X\)，且错误/丢弃为零。
+  \item 需要显著业务容量或成本收益、可维护封装、回归基准和回退路径。
+\end{enumerate}
+
+\section{第 11 章}
+\begin{enumerate}
+  \item 按资产分区输入，每线程只写自己的结果 map，join 后合并。
+  \item 阻塞传播背压；丢最新损失新信息；覆盖最旧损失历史，均需指标和业务许可。
+  \item 先停接收，再通知消费者排空/取消，唤醒阻塞，join，最后释放依赖。
+  \item TSan 报告定位冲突访问；修复应建立所有权分片或明确同步，而非加随机 sleep。
+\end{enumerate}
+
+\section{第 12 章}
+\begin{enumerate}
+  \item 容差来自收益报告最小单位和算法误差，使用绝对 + 相对组合。
+  \item Welford 同时更新均值与平方差，避免大数相减；与两遍算法用高精度参考比较。
+  \item 规定二维/一维 shape、float64、C contiguous、借用期、异常映射和批量返回。
+  \item 若时间已在 NumPy 原生核，重写外层无益；若 Python 逐元素循环主导，批量 C++ 值得原型。
+\end{enumerate}
+
+\section{第 13 章}
+\begin{enumerate}
+  \item 手算权益应再减手续费；测试先红，再让成交/组合一次性记录费用。
+  \item 价格映射带时刻与币种，缺价返回不完整或错误，不能默认为零。
+  \item 典型状态为 new、partially filled、filled、cancelled、rejected；终态不能再成交。
+  \item 报告必须列环境、命令、数据、重复、统计、checksum 和结论适用范围。
+\end{enumerate}
+
+\section{第 14 章}
+\begin{enumerate}
+  \item 每项证据可链接代码、测试、基准或事故复盘；“了解”不是证据。
+  \item 删除“高性能、生产级”等无测量词，保留边界、行为和限制。
+  \item 复盘应区分理解、算法、编码、测试与沟通时间，选一个改进动作。
+  \item 图中至少含输入、排序、队列、消费者、状态、存储、恢复和指标/告警。
+\end{enumerate}
