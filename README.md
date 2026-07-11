@@ -22,6 +22,8 @@ ctest --test-dir build-cpp --output-on-failure
 
 主线采用 C++20 和 Linux GCC/Clang；Windows 上可使用 GCC、Clang 或 MSVC。示例不依赖大型量化框架。
 
+性能基准 `layout_benchmark` 使用固定的 100 万条合成记录，预热后交替测量 AoS/SoA 各 20 次，输出中位数、IQR 与 checksum 一致性。结果只适用于记录过的硬件、编译器和负载；正式比较应保存命令与原始样本，并跨独立进程重复。
+
 ## 模板许可
 
 本书使用 ElegantBook 类文件。本项目中的 `elegantbook.cls` 与模板许可见 `ELEGANTBOOK-LICENSE`，模板项目地址为 <https://github.com/ElegantLaTeX/ElegantBook>。

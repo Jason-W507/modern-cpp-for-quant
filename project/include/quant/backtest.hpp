@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "quant/execution.hpp"
+#include "quant/statistics.hpp"
 #include "quant/strategy.hpp"
 #include "quant/types.hpp"
 
@@ -22,8 +23,7 @@ concept StrategyForMarketEvent = requires(const Strategy& strategy,
 struct BacktestResult final {
   std::vector<Fill> fills;
   PortfolioSnapshot final_portfolio;
-  double total_return{};
-  double max_drawdown{};
+  PerformanceSummary performance;
 };
 
 class BacktestEngine final {
@@ -36,11 +36,14 @@ class BacktestEngine final {
     Portfolio portfolio{initial_cash_};
     SimulatedExchange exchange;
     BacktestResult result;
-    double peak_equity = initial_cash_;
+    std::vector<double> equity_curve;
+    equity_curve.reserve(events.size());
 
     if (events.empty()) {
       result.final_portfolio = PortfolioSnapshot{"", 0, initial_cash_,
                                                   initial_cash_};
+      result.performance =
+          summarize_performance(initial_cash_, equity_curve, result.fills);
       return result;
     }
 
@@ -53,19 +56,11 @@ class BacktestEngine final {
         }
       }
       result.final_portfolio = portfolio.snapshot(event.symbol, event.price);
-      peak_equity = std::max(peak_equity, result.final_portfolio.equity);
-      if (peak_equity > 0.0) {
-        result.max_drawdown =
-            std::max(result.max_drawdown,
-                     (peak_equity - result.final_portfolio.equity) /
-                         peak_equity);
-      }
+      equity_curve.push_back(result.final_portfolio.equity);
     }
 
-    if (initial_cash_ != 0.0) {
-      result.total_return =
-          result.final_portfolio.equity / initial_cash_ - 1.0;
-    }
+    result.performance =
+        summarize_performance(initial_cash_, equity_curve, result.fills);
     return result;
   }
 

@@ -28,5 +28,8 @@ int main(int argc, char** argv) {
   const auto result = engine.run(parsed.events, strategy);
   std::cout << "fills=" << result.fills.size() << " equity="
             << result.final_portfolio.equity << " return=" << std::fixed
-            << std::setprecision(0) << result.total_return * 100.0 << "%\n";
+            << std::setprecision(0) << result.performance.total_return * 100.0
+            << "% volatility=" << std::setprecision(6)
+            << result.performance.volatility << " trades="
+            << result.performance.trades.fill_count << '\n';
 }

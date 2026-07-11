@@ -1,18 +1,8 @@
-#include <cmath>
 #include <iostream>
-#include <stdexcept>
 #include <vector>
 
 #include "quant/backtest.hpp"
-
-namespace {
-void require(bool condition, const char* message) {
-  if (!condition) {
-    throw std::runtime_error(message);
-  }
-}
-bool close_to(double lhs, double rhs) { return std::abs(lhs - rhs) < 1e-9; }
-}  // namespace
+#include "test_support.hpp"
 
 int main() {
   const std::vector<quant::MarketEvent> events{
@@ -24,17 +14,28 @@ int main() {
   const quant::BacktestEngine engine{10'000.0};
 
   const auto result = engine.run(events, strategy);
-  require(result.fills.size() == 1, "strategy should fill exactly once");
-  require(result.final_portfolio.quantity == 25,
-          "final position should contain the purchased shares");
-  require(close_to(result.final_portfolio.cash, 7'525.0),
-          "final cash should reflect the purchase");
-  require(close_to(result.final_portfolio.equity, 10'100.0),
-          "final equity should use the last market price");
-  require(close_to(result.total_return, 0.01),
-          "total return should be one percent");
-  require(close_to(result.max_drawdown, 0.0),
-          "monotone equity should have zero drawdown");
+  test_support::require(result.fills.size() == 1,
+                        "strategy should fill exactly once");
+  test_support::require(result.final_portfolio.quantity == 25,
+                        "final position should contain the purchased shares");
+  test_support::require(
+      test_support::close_to(result.final_portfolio.cash, 7'525.0),
+      "final cash should reflect the purchase");
+  test_support::require(
+      test_support::close_to(result.final_portfolio.equity, 10'100.0),
+      "final equity should use the last market price");
+  test_support::require(
+      test_support::close_to(result.performance.total_return, 0.01),
+      "total return should be one percent");
+  test_support::require(
+      test_support::close_to(result.performance.max_drawdown, 0.0),
+      "monotone equity should have zero drawdown");
+  test_support::require(result.performance.volatility > 0.0 &&
+                            result.performance.volatility < 0.001,
+                        "step-return volatility should be small and positive");
+  test_support::require(result.performance.trades.fill_count == 1 &&
+                            result.performance.trades.buy_quantity == 25,
+                        "trade summary should aggregate the fill");
 
   std::cout << "end-to-end backtest seam ok\n";
 }

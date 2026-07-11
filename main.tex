@@ -54,6 +54,12 @@
 \newcommand{\quant}{\textsf{Quant}}
 \newenvironment{pythonbridge}{\begin{remark}\textbf{Python 迁移提示：}}{\end{remark}}
 \newenvironment{interviewcheck}{\begin{problem}[面试检查点]}{\end{problem}}
+\newcommand{\chaptermeta}[3]{%
+  \begin{remark}
+    \textbf{先修知识：}#1\par
+    \textbf{Python 迁移边界：}#2\par
+    \textbf{常见错误与诊断：}#3
+  \end{remark}}
 \addbibresource{references.bib}
 
 \begin{document}

@@ -14,6 +14,12 @@ Issues and PRDs for this repo live as Markdown files in `.scratch/`.
 
 Create a new file under `.scratch/<feature-slug>/`, creating the directory if needed.
 
+Exception: the Matt Pocock `/to-tickets` skill publishes one aggregate
+`tickets.md` at the repository root, in dependency order, as required by that
+skill's local-tracker workflow. This file is the execution breakdown, not a PRD
+or an individually triaged issue; it therefore does not require per-ticket
+`Status:` and `## Comments` fields.
+
 ## When a skill says "fetch the relevant ticket"
 
 Read the file at the referenced path. The user will normally pass the path or issue number directly.

@@ -2,7 +2,7 @@
 
 ### Issue tracker
 
-Issues and PRDs are tracked as local Markdown under `.scratch/`; external PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
+Issues and PRDs are tracked as local Markdown under `.scratch/`; an approved `/to-tickets` breakdown is published as root `tickets.md`. External PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

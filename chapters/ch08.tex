@@ -7,6 +7,8 @@
   \item 让研究代码具备可重复构建路径
 \end{introduction}
 
+\chaptermeta{能使用 Python 测试框架和虚拟环境，理解公开接口。}{CMake target 类似可复现环境声明，但还决定编译、链接与传递依赖；CTest 必须在 Release 下仍执行真实断言。}{绿色但无断言是测试基础设施故障；检查测试发现数、失败敏感性、编译配置和干净构建。}
+
 \section{构建系统描述目标}
 
 现代 CMake 的中心是目标。每个可执行文件或库声明自己的源文件、头文件搜索路径、编译特性和依赖；\texttt{PRIVATE}、\texttt{PUBLIC} 与 \texttt{INTERFACE} 控制需求是否传播。避免全局加入所有 include 路径和编译选项，这会让无关目标互相污染。

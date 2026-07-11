@@ -7,6 +7,8 @@
   \item 判断何时值得把热点移入 C++
 \end{introduction}
 
+\chaptermeta{理解 Python/NumPy 数组、浮点基础和 C++ 生命周期。}{NumPy 已调用原生内核；只有 Python 调度或逐元素循环真是热点时，跨语言批量边界才可能获益。}{数值差异先检查表示、归约顺序和容差；绑定崩溃则检查 dtype、连续性、GIL 与缓冲所有权。}
+
 \section{浮点不是实数}
 
 IEEE 754 二进制浮点只能精确表示有限集合。多数十进制小数会被舍入；加法不满足结合律；数量级相差悬殊时，小值可能消失。直接用 \texttt{==} 比较经计算结果通常不合适，但容差也必须结合量纲和误差模型。
@@ -35,13 +37,9 @@ NumPy、SciPy 和许多 pandas 操作已经在 C/C++/Fortran 中执行。把外�
 
 pybind11 适合暴露小而稳定的 C++ API。边界必须说明：数组是否连续、dtype 与字节序、谁拥有内存、调用期间能否释放 GIL、异常如何映射、返回视图能活多久。
 
-\begin{lstlisting}
-// Design sketch; enabled only when pybind11 is an explicit dependency.
-PYBIND11_MODULE(quant_core, module) {
-  module.def("run_backtest", &run_backtest,
-             py::arg("prices"), py::arg("initial_cash"));
-}
-\end{lstlisting}
+\lstinputlisting[caption={可编译的 pybind11 可选边界}]{code/ch12/pybind11_boundary.cpp}
+
+该源文件始终作为 C++20 可执行目标编译并验证边界函数；若 CMake 找到 pybind11，还会额外构建名为 \texttt{quant\_boundary} 的真实 Python 模块。这样默认教程不强制下载依赖，安装依赖的环境又会编译绑定代码，而不是让书中草图长期漂移。
 
 对 NumPy 数组，零拷贝视图要求底层缓冲在 C++ 使用期间存活；返回指向临时 \texttt{vector} 的数组是悬空错误。若 C++ 长计算不访问 Python 对象，可释放 GIL，但重新调用 Python 前必须获取。
 

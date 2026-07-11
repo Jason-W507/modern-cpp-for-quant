@@ -7,6 +7,8 @@
   \item 为文件、锁和线程建立异常安全边界
 \end{introduction}
 
+\chaptermeta{理解作用域、异常和 Python 上下文管理器。}{RAII 类似 \texttt{with} 的资源边界，但适用于所有自动对象并由确定性析构驱动。}{双重释放、泄漏或析构异常通常来自所有权不明；先改用值成员和 Rule of Zero。}
+
 \section{资源不只是内存}
 
 文件句柄、互斥锁、socket、线程和临时文件都需要成对操作。如果打开之后的任何一步可能抛出异常，手写“最后记得关闭”会迅速形成多条泄漏路径。RAII（Resource Acquisition Is Initialization）把资源取得放进构造，把释放放进析构；栈展开会自动调用已构造对象的析构函数。
