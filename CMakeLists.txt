@@ -16,18 +16,14 @@ function(quant_target target source)
   endif()
 endfunction()
 
-function(quant_example target source)
-  quant_target(${target} ${source})
-endfunction()
-
 function(quant_project_target target source)
   quant_target(${target} ${source})
   target_include_directories(${target} PRIVATE project/include project/tests)
 endfunction()
 
-quant_example(ch01_compilation_model code/ch01/compilation_model.cpp)
+quant_target(ch01_compilation_model code/ch01/compilation_model.cpp)
 quant_project_target(ch02_value_semantics code/ch02/value_semantics.cpp)
-quant_example(ch03_raii_file code/ch03/raii_file.cpp)
+quant_target(ch03_raii_file code/ch03/raii_file.cpp)
 quant_project_target(ch04_ranges_pipeline code/ch04/ranges_pipeline.cpp)
 
 quant_project_target(test_strategy project/tests/test_strategy.cpp)
@@ -48,10 +44,10 @@ add_test(NAME sample_backtest_runs
 set_tests_properties(sample_backtest_runs PROPERTIES
   PASS_REGULAR_EXPRESSION "fills=1 equity=10100 return=1%")
 
-quant_example(layout_benchmark project/benchmarks/layout_benchmark.cpp)
-quant_example(ch11_parallel_sum code/ch11/parallel_sum.cpp)
-quant_example(ch12_numerical_stability code/ch12/numerical_stability.cpp)
-quant_example(ch12_pybind_boundary code/ch12/pybind11_boundary.cpp)
+quant_target(layout_benchmark project/benchmarks/layout_benchmark.cpp)
+quant_target(ch11_parallel_sum code/ch11/parallel_sum.cpp)
+quant_target(ch12_numerical_stability code/ch12/numerical_stability.cpp)
+quant_target(ch12_pybind_boundary code/ch12/pybind11_boundary.cpp)
 add_test(NAME layout_benchmark_smoke COMMAND layout_benchmark)
 set_tests_properties(layout_benchmark_smoke PROPERTIES
   PASS_REGULAR_EXPRESSION "checksum-match=true")
