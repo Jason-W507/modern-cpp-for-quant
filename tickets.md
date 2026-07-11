@@ -88,4 +88,4 @@
 - [x] 所有关键示例通过 C++20 编译，全量测试通过
 - [x] MiKTeX/XeLaTeX 从干净构建目录生成最终 PDF
 - [x] 编译日志无未定义引用、缺失字形或致命错误，并抽查版面警告
-- [ ] code-review 的 Standards 与 Spec 两轴无未解决高优先级问题
+- [x] code-review 的 Standards 与 Spec 两轴无未解决高优先级问题
