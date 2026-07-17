@@ -8,6 +8,10 @@
       "evidence": {
         "tex": "chapters/ch02.tex",
         "examples": [
+          "code/ch02/objects_and_literals.cpp",
+          "code/ch02/expressions.cpp",
+          "code/ch02/branches.cpp",
+          "code/ch02/for_scope.cpp",
           "code/ch02/market_filter.cpp",
           "code/ch02/exercises/risk_budget_solution.cpp"
         ],
@@ -15,7 +19,7 @@
           "source": "code/ch02/failures/narrowing.cpp",
           "diagnostic_category": "list initialization rejects a narrowing conversion"
         },
-        "output_task": "Read five fixed numeric market rows from standard input, select valid buy rows, and print selected=2 rejected=3 buy_notional=1205.00 average=602.50.",
+        "output_task": "Read five fixed numeric market rows from standard input, select valid buy rows, and print selected=2 rejected=3 buy_notional=1035.75 average=517.875.",
         "self_checks": 6,
         "feedback": "appendices/solutions.tex",
         "checklist_markers": [

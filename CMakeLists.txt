@@ -24,6 +24,10 @@ function(quant_project_target target source)
 endfunction()
 
 quant_target(ch01_compilation_model code/ch01/compilation_model.cpp)
+quant_target(ch02_objects_and_literals code/ch02/objects_and_literals.cpp)
+quant_target(ch02_expressions code/ch02/expressions.cpp)
+quant_target(ch02_branches code/ch02/branches.cpp)
+quant_target(ch02_for_scope code/ch02/for_scope.cpp)
 quant_target(ch02_market_filter code/ch02/market_filter.cpp)
 quant_target(ch02_risk_budget_solution code/ch02/exercises/risk_budget_solution.cpp)
 quant_target(ch03_raii_file code/ch03/raii_file.cpp)
@@ -73,23 +77,37 @@ endif()
 add_test(NAME ch01_compilation_model_runs COMMAND ch01_compilation_model)
 set_tests_properties(ch01_compilation_model_runs PROPERTIES
   PASS_REGULAR_EXPRESSION "notional=125173.50")
+add_test(NAME ch02_objects_and_literals_show_independent_values
+  COMMAND ch02_objects_and_literals)
+set_tests_properties(ch02_objects_and_literals_show_independent_values PROPERTIES
+  PASS_REGULAR_EXPRESSION
+    "side=1 price=100.5 quantity=10 buy=1 venue=X changed=11 copied=10")
+add_test(NAME ch02_expressions_preserve_fractional_results COMMAND ch02_expressions)
+set_tests_properties(ch02_expressions_preserve_fractional_results PROPERTIES
+  PASS_REGULAR_EXPRESSION "notional=1005 average=502.5 integer_division=2")
+add_test(NAME ch02_branches_select_valid_buy COMMAND ch02_branches)
+set_tests_properties(ch02_branches_select_valid_buy PROPERTIES
+  PASS_REGULAR_EXPRESSION "selected")
+add_test(NAME ch02_for_scope_counts_even_rows COMMAND ch02_for_scope)
+set_tests_properties(ch02_for_scope_counts_even_rows PROPERTIES
+  PASS_REGULAR_EXPRESSION "selected=3")
 add_test(NAME ch02_market_filter_summarizes_valid_buys
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/run_with_input.py
           --input ${CMAKE_CURRENT_SOURCE_DIR}/code/ch02/data/market_rows.txt
-          --expected "selected=2 rejected=3 buy_notional=1205.00 average=602.50"
+          --expected "selected=2 rejected=3 buy_notional=1035.75 average=517.875"
           -- $<TARGET_FILE:ch02_market_filter>)
 add_test(NAME ch02_risk_budget_solution_counts_affordable_trades
   COMMAND ch02_risk_budget_solution)
 set_tests_properties(ch02_risk_budget_solution_counts_affordable_trades PROPERTIES
-  PASS_REGULAR_EXPRESSION "accepted_trades=4 remaining_budget=200.00")
+  PASS_REGULAR_EXPRESSION "accepted_trades=4 remaining_budget=200")
 add_test(NAME ch02_narrowing_is_rejected_at_compile_time
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_compile_failure.py
           --compiler ${CMAKE_CXX_COMPILER}
           --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch02/failures/narrowing.cpp
           --output ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch02_narrowing.obj
-          --diagnostic "narrowing|narrowed|C2397|C4838")
+          --diagnostic "narrowing|narrowed")
 add_test(NAME ch03_raii_file_runs COMMAND ch03_raii_file)
 set_tests_properties(ch03_raii_file_runs PROPERTIES
   PASS_REGULAR_EXPRESSION "rows=2")

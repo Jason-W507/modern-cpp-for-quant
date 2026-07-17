@@ -23,12 +23,12 @@
 101 1 100.5 10
 102 2 50.0 4
 103 1 25.0 0
-104 1 10.0 20
+104 1 10.25 3
 105 9 12.0 5
 \end{lstlisting}
 
 \begin{lstlisting}[numbers=none]
-selected=2 rejected=3 buy_notional=1205.00 average=602.50
+selected=2 rejected=3 buy_notional=1035.75 average=517.875
 \end{lstlisting}
 
 这就是本章的验收标准：不是“看懂语法”，而是能在不复制最终答案的前提下重写程序、解释每个对象的状态变化，并用给定数据复现输出。
@@ -41,20 +41,17 @@ selected=2 rejected=3 buy_notional=1205.00 average=602.50
 
 \subsection{语法规则与最小实验}
 
-最常见的声明由“类型、对象名、初始化器、分号”组成：
+最常见的声明由“类型、对象名、初始化器、分号”组成。下面不是省略外壳的片段，而是参与 C++20 构建并由 CTest 检查输出的完整程序：
 
-\begin{lstlisting}
-int side_code{1};
-double price{100.5};
-std::int64_t quantity{10};
-bool is_buy{true};
-\end{lstlisting}
+\lstinputlisting[caption={对象、字面量与独立复制}]{code/ch02/objects_and_literals.cpp}
 
-\texttt{int} 保存整数，\texttt{double} 保存双精度浮点数，\texttt{bool} 只有 \texttt{true} 和 \texttt{false} 两种逻辑状态。\texttt{std::int64\_t} 来自 \texttt{<cstdint>}，在提供它的平台上恰有 64 位；当数量或时间戳需要明确位宽时，它比“希望 \texttt{long} 足够大”更可检查。
+\texttt{int} 保存整数，\texttt{double} 保存双精度浮点数，\texttt{bool} 只有 \texttt{true} 和 \texttt{false} 两种逻辑状态，\texttt{char} 保存一个字符。\texttt{std::int64\_t} 来自 \texttt{<cstdint>}，在提供它的平台上恰有 64 位；当数量或时间戳需要明确位宽时，它比“希望 \texttt{long} 足够大”更可检查。
 
 花括号 \texttt{\{\}} 同时标记对象从这里开始生命周期，并拒绝一部分会丢信息的窄化。空花括号执行值初始化：\texttt{int selected\{\};} 得到零，\texttt{bool is\_buy\{\};} 得到 \texttt{false}。相反，局部基础类型 \texttt{int selected;} 没有可靠的业务初值；读取它不是“随机但可用”，而是程序错误。
 
-字面量本身也有类型。\texttt{1} 通常是 \texttt{int}，\texttt{1.0} 是 \texttt{double}，\texttt{true} 是 \texttt{bool}。因此 \texttt{double price\{100\};} 可以精确表示该值，而 \texttt{int price\{100.5\};} 会在编译阶段被拒绝。
+字面量本身也有类型。\texttt{1} 通常是 \texttt{int}，\texttt{1.0} 是 \texttt{double}，\texttt{true} 是 \texttt{bool}，单引号中的 \texttt{'X'} 是字符字面量，双引号中的 \texttt{"side="} 是字符串字面量。\texttt{'\textbackslash n'} 表示换行字符，它与包含两个可见字符的 \texttt{"\textbackslash\textbackslash n"} 不同。因此 \texttt{double price\{100\};} 可以精确表示该值，而 \texttt{int price\{100.5\};} 会在编译阶段被拒绝。
+
+程序入口 \texttt{main} 和头文件沿用第 1 章，但这里把输出语法补全：\texttt{std::cout} 是标准输出流，\texttt{<<} 依次把右侧的字符串字面量和对象值送入流。\texttt{std::} 指明标准库名称所在的命名空间。最后一个右花括号结束 \texttt{main}；走到这里等价于成功返回状态 0。
 
 \subsection{逐步观察：Python 名称不等于 C++ 对象}
 
@@ -67,16 +64,9 @@ a[0] = 11
 print(b[0])          # 11
 \end{lstlisting}
 
-在 C++ 中，下面两次声明创建两个独立的 \texttt{int} 对象。\texttt{b\{a\}} 用 \texttt{a} 当时的值初始化 \texttt{b}，之后修改 \texttt{a} 不会改动 \texttt{b}：
+在上面的完整 C++ 程序中，\texttt{original} 与 \texttt{copied} 是两个独立的 \texttt{int} 对象。\texttt{copied\{original\}} 用 \texttt{original} 当时的值初始化新对象，之后把 \texttt{original} 赋值为 11，不会改动 \texttt{copied}；可观察输出同时包含 \texttt{changed=11} 与 \texttt{copied=10}。
 
-\begin{lstlisting}
-int a{10};
-int b{a};
-a = 11;
-std::cout << b << '\n';  // prints 10
-\end{lstlisting}
-
-等号在第二阶段出现时是赋值，不是初始化：\texttt{a = 11;} 修改已存在对象的值。对象的类型仍是 \texttt{int}，不能像 Python 名称那样下一行重新绑定成字符串。共享和借用当然可以在 C++ 中表达，但要用后续章节才教学的引用、指针或拥有型对象，不能从普通按值声明中猜出来。
+等号在对象创建之后出现时是赋值，不是初始化。对象的类型仍是 \texttt{int}，不能像 Python 名称那样下一行重新绑定成字符串。共享和借用当然可以在 C++ 中表达，但要用后续章节才教学的引用、指针或拥有型对象，不能从普通按值声明中猜出来。
 
 \begin{pythonbridge}
 两种语言都允许把已有值用于新变量；边界在于 Python 名称通常保存对象引用，而本章的 C++ 基础类型声明创建独立对象。Python 类型标注通常不改变运行期绑定规则，C++ 对象类型则直接限制初始化、运算和存储表示。
@@ -104,26 +94,15 @@ int rounded_price{100.5};  // intentional compile failure
 
 算术运算符包括 \texttt{+}、\texttt{-}、\texttt{*}、\texttt{/} 和整数余数 \texttt{\%}。乘除先于加减；括号既能改变顺序，也能让审阅者看清意图。比较运算 \texttt{<}、\texttt{<=}、\texttt{>}、\texttt{>=}、\texttt{==}、\texttt{!=} 产生 \texttt{bool}。
 
-\begin{lstlisting}
-double price{100.5};
-std::int64_t quantity{10};
-const auto notional = price * static_cast<double>(quantity);
-\end{lstlisting}
+下面的完整程序由构建目标 \texttt{ch02\_expressions} 编译，并输出三个可独立核算的结果：
+
+\lstinputlisting[caption={算术、类型推导与显式转换}]{code/ch02/expressions.cpp}
 
 \texttt{auto} 让编译器从初始化表达式推导对象类型；它不是 Python 式动态类型。这里推导结果仍固定为 \texttt{double}。必须同时写初始化器，不能写孤立的 \texttt{auto notional;}。当类型本身承载业务信息时仍应显式写出，例如数量使用 \texttt{std::int64\_t}，不要为了少打字全部改成 \texttt{auto}。
 
-\texttt{static\_cast<double>(quantity)} 明确表达“此处要以浮点数参与计算”。对本例的乘法，即使不写转换，\texttt{double} 价格也会促使数量转换为 \texttt{double}；保留显式转换是为了把边界写给读者，并为随后的除法建立习惯：
+\texttt{static\_cast<double>(quantity)} 明确表达“此处要以浮点数参与计算”。对本例的乘法，即使不写转换，\texttt{double} 价格也会促使数量转换为 \texttt{double}；保留显式转换是为了把边界写给读者，并为随后的除法建立习惯。程序依次得到 \texttt{notional=1005}、\texttt{average=502.5} 和 \texttt{integer\_division=2}；最后一个结果来自两个 \texttt{int} 的 \texttt{5 / 2}。
 
-\begin{lstlisting}
-int selected{2};
-double total{1205.0};
-double average = total / static_cast<double>(selected);  // 602.5
-
-int wrong = 5 / 2;       // 2, because both operands are int
-double right = 5.0 / 2;  // 2.5
-\end{lstlisting}
-
-复合赋值 \texttt{buy\_notional += notional;} 等价于按该运算规则更新左侧对象；\texttt{++selected;} 把整数加一。二者都修改对象，因此不应作用于用 \texttt{const} 声明的值。\texttt{const auto notional} 表示该行计算完后不再改变，有助于缩小可变状态。
+复合赋值 \texttt{buy\_notional += notional;} 等价于按该运算规则更新左侧对象；\texttt{++selected;} 把整数加一。二者都会修改左侧对象；如何声明只读对象留到第 3 章。
 
 \begin{pythonbridge}
 Python 的 \texttt{/} 总是产生浮点除法，\texttt{//} 才是向下取整除法；C++ 的 \texttt{/} 取决于两侧类型，两个整数相除先得到整数结果。\texttt{auto} 只省略静态类型拼写，不允许对象之后换类型。
@@ -133,7 +112,7 @@ Python 的 \texttt{/} 总是产生浮点除法，\texttt{//} 才是向下取整�
 
 若平均值意外变成 \texttt{602}，先打印或说明除法两侧的类型，不要先怀疑格式化。另一个常见失败是选中数为零时仍做除法；浮点除零可能得到无穷而继续污染结果，整数除零则是更严重的运行期错误。正确做法是在控制流中显式保护分母。
 
-立即练习：分别预测并运行 \texttt{7 / 3}、\texttt{7.0 / 3}、\texttt{static\_cast<double>(7) / 3}。把结果保留两位小数，并指出哪一步发生类型转换。
+立即练习：分别预测并运行 \texttt{7 / 3}、\texttt{7.0 / 3}、\texttt{static\_cast<double>(7) / 3}。写出实际结果，并指出哪一步发生类型转换。
 
 \section{条件表达式、\texttt{if} 与 \texttt{switch}}
 
@@ -145,36 +124,13 @@ Python 的 \texttt{/} 总是产生浮点除法，\texttt{//} 才是向下取整�
 
 逻辑与写作 \lstinline|&&|，逻辑或写作 \lstinline!||!，逻辑非写作 \texttt{!}。\lstinline|a && b| 只有两侧都为真才为真，并且当 \texttt{a} 已为假时不会求值 \texttt{b}；\lstinline!a || b! 在 \texttt{a} 已为真时不会求值 \texttt{b}。这种短路行为既能表达保护条件，也意味着右侧可能根本不执行，不能偷偷依赖它产生副作用。
 
-\begin{lstlisting}
-const bool valid_row = symbol_id > 0 && price > 0.0 && quantity > 0;
+完整分支实验同时包含布尔表达式、\texttt{switch} 和 \texttt{if}/\texttt{else}，给定内置行情时输出 \texttt{selected}：
 
-if (is_buy && valid_row) {
-  buy_notional += row_notional;
-  ++selected;
-} else {
-  ++rejected;
-}
-\end{lstlisting}
+\lstinputlisting[caption={离散方向分派与有效性筛选}]{code/ch02/branches.cpp}
 
 \texttt{if} 后的圆括号放条件；条件为真执行第一对花括号，为假执行 \texttt{else} 的花括号。即使分支只有一行，本书也保留花括号，避免后来新增语句时出现视觉缩进与真实控制流不一致。
 
-方向代码是少量离散整数，适合用 \texttt{switch} 明确列出分支：
-
-\begin{lstlisting}
-switch (side_code) {
-  case 1:
-    is_buy = true;
-    break;
-  case 2:
-    is_buy = false;
-    break;
-  default:
-    is_buy = false;
-    break;
-}
-\end{lstlisting}
-
-\texttt{case} 标签必须是可在编译期确定的离散值。\texttt{break} 离开当前 \texttt{switch}；漏写时会继续执行下一标签，这叫贯穿，除非有明确意图和注释，否则通常是缺陷。\texttt{default} 接住未列出的代码，使新出现的脏数据不会悄悄被当成买单。
+方向代码是少量离散整数，适合用清单中的 \texttt{switch} 明确列出分支。\texttt{case} 标签必须是可在编译期确定的离散值。\texttt{break} 离开当前 \texttt{switch}；漏写时会继续执行下一标签，这叫贯穿，除非有明确意图和注释，否则通常是缺陷。\texttt{default} 接住未列出的代码，使新出现的脏数据不会悄悄被当成买单。
 
 \begin{pythonbridge}
 Python 的 \texttt{if}/\texttt{elif}/\texttt{else} 与 C++ 分支目标相似，但 C++ 用圆括号和花括号界定结构，并要求条件可转换为布尔值。C++ \texttt{switch} 不是 Python \texttt{match} 的完整对应物：这里只把它当作离散整数分派，不期待结构模式匹配。
@@ -186,7 +142,7 @@ Python 的 \texttt{if}/\texttt{elif}/\texttt{else} 与 C++ 分支目标相似，
 
 立即练习：把有效规则改成“买单且价格至少 10，数量在 1 到 100（含端点）”。用恰好位于 10、1、100 的三条记录验证端点，再用价格 9.99 验证拒绝路径。
 
-\section{\texttt{for}、\texttt{while} 与作用域}
+\section[循环与作用域]{\texttt{for}、\texttt{while} 与作用域}
 
 \subsection{场景：已知行数与未知次数是两种循环}
 
@@ -194,11 +150,9 @@ Python 的 \texttt{if}/\texttt{elif}/\texttt{else} 与 C++ 分支目标相似，
 
 \subsection{计数循环与对象可见范围}
 
-\begin{lstlisting}
-for (int row{}; row < row_count; ++row) {
-  // Read and process exactly one row.
-}
-\end{lstlisting}
+计数循环也有独立、可构建的最小程序。它检查 0 到 4 的余数，选中三个偶数行：
+
+\lstinputlisting[caption={计数循环与块作用域}]{code/ch02/for_scope.cpp}
 
 圆括号内由三个分号分隔的部分依次是：只执行一次的初始化 \texttt{int row\{\}}；每轮开始前检查的条件 \texttt{row < row\_count}；每轮末尾执行的更新 \texttt{++row}。当条件变假，循环结束。若 \texttt{row\_count} 为 5，\texttt{row} 依次为 0、1、2、3、4，共五轮；写成 \texttt{<=} 会多处理一轮。
 
@@ -210,7 +164,7 @@ for (int row{}; row < row_count; ++row) {
 
 \lstinputlisting[caption={用 while 计算可接纳交易数}]{code/ch02/exercises/risk_budget_solution.cpp}
 
-初始预算 3200；四轮后剩 200，第五轮开始前 \texttt{200 >= 750} 为假，因此接纳数为 4、剩余预算为 200.00。循环体必须让条件朝终止方向变化；若忘记扣减预算，就会形成无限循环。
+初始预算 3200；四轮后剩 200，第五轮开始前 \texttt{200 >= 750} 为假，因此接纳数为 4、剩余预算为 200。循环体必须让条件朝终止方向变化；若忘记扣减预算，就会形成无限循环。
 
 \begin{pythonbridge}
 两种语言的 \texttt{while} 都在每轮前检查条件。Python 常写 \texttt{for row in range(n)}；C++ 的经典 \texttt{for} 把初始化、条件和更新显式放在一处。本章还没有容器，所以暂不使用范围 \texttt{for}，它会在第 4 章教学。
@@ -220,11 +174,11 @@ for (int row{}; row < row_count; ++row) {
 
 循环结果差一条时，手工列出“进入本轮前的 \texttt{row}、条件结果、本轮后的 \texttt{row}”三列，比盯着代码更快。程序长时间不结束时，检查每条分支是否都会更新终止状态，以及输入失败后是否还在重复使用旧值。
 
-立即练习：把风险预算改为 2999、每笔风险改为 1000。先预测循环次数与余数，再运行验证，结果应为 \texttt{accepted\_trades=2 remaining\_budget=999.00}。
+立即练习：把风险预算改为 2999、每笔风险改为 1000。先预测循环次数与余数，再运行验证，结果应为 \texttt{accepted\_trades=2 remaining\_budget=999}。
 
 \section{整合：读取、筛选并汇总固定行情}
 
-下面是本章输出任务的完整源码。它只组合已经教学的对象、初始化、表达式、转换、分支、循环和作用域。\texttt{std::cin}、\texttt{std::cout} 与 \texttt{main} 沿用第 1 章；\texttt{std::fixed} 和 \texttt{std::setprecision(2)} 只负责固定显示两位小数，不改变内存中的计算值。
+下面是本章输出任务的完整源码。它只组合已经教学的对象、初始化、表达式、转换、分支、循环和作用域。这里补齐输入与错误流规则，不要求读者从旧版第 1 章猜语法：\texttt{std::cin >> row\_count} 把以空白分隔的文本转换后写入对象，多个 \texttt{>>} 可以从左到右连续提取；输入失败时流状态在条件中为假，前缀 \texttt{!} 将它取反。\texttt{std::cerr} 用于错误消息，正常结果仍送到已经教学的 \texttt{std::cout}。
 
 \lstinputlisting[caption={固定行情筛选与汇总}]{code/ch02/market_filter.cpp}
 
@@ -234,9 +188,9 @@ for (int row{}; row < row_count; ++row) {
   \item \texttt{row\_count\{\}} 先得到零；输入成功后变成 5。若读取失败或行数为负，程序向错误流报告并返回非零状态。
   \item 三个累计对象从零开始。它们声明在循环外，因此每轮的更新会保留到下一轮。
   \item 每轮创建四个字段对象并读取一行。第 1 行方向为买、各字段为正，行名义金额为 $100.5\times10=1005$。
-  \item 第 2 行是卖，第 3 行数量为零，第 5 行方向代码未知，三者都走拒绝分支。第 4 行贡献 $10\times20=200$。
-  \item 循环结束时总额为 $1005+200=1205$，选中数为 2。分母保护通过后，平均值为 $1205/2=602.5$。
-  \item 输出格式把两个金额显示为两位小数，所以得到本章开头约定的确定字符串。
+  \item 第 2 行是卖，第 3 行数量为零，第 5 行方向代码未知，三者都走拒绝分支。第 4 行贡献 $10.25\times3=30.75$。
+  \item 循环结束时总额为 $1005+30.75=1035.75$，选中数为 2。分母保护通过后，平均值为 $1035.75/2=517.875$。
+  \item 输出流依次写出标签与对象值，所以得到本章开头约定的确定字符串。
 \end{enumerate}
 
 在 Linux/WSL 中，从项目根目录运行：
@@ -267,7 +221,7 @@ Windows 的生成器可能把程序放到配置子目录，或在文件名后加
 
 \begin{enumerate}
   \item 从空文件开始重写行情筛选器，不复制清单。先只输出 \texttt{selected} 和 \texttt{rejected}，再加入总额与平均值；使用给定输入达到本章约定输出。完整可运行答案是 \path{code/ch02/market_filter.cpp}。
-  \item 写一个 \texttt{while} 程序：风险预算足够时接纳一笔固定风险交易，最后打印接纳数和余数。用 3200 与 750 得到 4 和 200.00。完整可运行答案是 \path{code/ch02/exercises/risk_budget_solution.cpp}。
+  \item 写一个 \texttt{while} 程序：风险预算足够时接纳一笔固定风险交易，最后打印接纳数和余数。用 3200 与 750 得到 4 和 200。完整可运行答案是 \path{code/ch02/exercises/risk_budget_solution.cpp}。
   \item 单独编译窄化失败实验，记录失败阶段和诊断类别；然后提出两种修复：改变目标类型，或在明确舍入政策后显式转换。不要把关闭警告当成修复。
 \end{enumerate}
 

@@ -12,10 +12,10 @@
 
 \section{第 2 章}
 \begin{enumerate}
-  \item 初始化在对象创建时给出初始状态；赋值修改已存在对象。局部 \texttt{int x;} 没有可靠初值，\texttt{int x\{\};} 值初始化为零。完整筛选答案见 \path{code/ch02/market_filter.cpp}，给定五行输入应输出 \texttt{selected=2 rejected=3 buy\_notional=1205.00 average=602.50}。
+  \item 初始化在对象创建时给出初始状态；赋值修改已存在对象。局部 \texttt{int x;} 没有可靠初值，\texttt{int x\{\};} 值初始化为零。字符字面量用单引号，字符串字面量用双引号；可运行演示见 \path{code/ch02/objects_and_literals.cpp}。完整筛选答案见 \path{code/ch02/market_filter.cpp}，给定五行输入应输出 \texttt{selected=2 rejected=3 buy\_notional=1035.75 average=517.875}。
   \item \texttt{auto} 仍在编译期推导出固定类型；当位宽或领域含义重要时显式写出类型。\texttt{5 / 2} 先做整数除法得到 2，\texttt{5.0 / 2} 得到 2.5；平均值分母可写成 \texttt{static\_cast<double>(selected)}。
   \item \lstinline|a && b| 在 \texttt{a} 为假时不求值 \texttt{b}。\texttt{switch} 漏写 \texttt{break} 会贯穿后续标签；\texttt{default} 接住未识别方向。已知迭代次数用 \texttt{for}，由状态决定终止用 \texttt{while}。
-  \item 风险预算题的完整答案见 \path{code/ch02/exercises/risk_budget_solution.cpp}；3200 按每笔 750 扣减四次后剩 200。若循环体不扣减预算，条件永不改变，会形成无限循环。
+  \item 风险预算题的完整答案见 \path{code/ch02/exercises/risk_budget_solution.cpp}；3200 按每笔 750 扣减四次后剩 200。计数循环的独立答案见 \path{code/ch02/for_scope.cpp}。若循环体不扣减预算，条件永不改变，会形成无限循环。
   \item \path{code/ch02/failures/narrowing.cpp} 应在编译阶段得到“列表初始化拒绝窄化转换”类别。可把接收对象改为 \texttt{double}；若业务确实需要整数，先定义截断、四舍五入或拒绝策略，再显式转换。
 \end{enumerate}
 

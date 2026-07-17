@@ -1,5 +1,4 @@
 #include <cstdint>
-#include <iomanip>
 #include <iostream>
 
 int main() {
@@ -36,9 +35,9 @@ int main() {
         break;
     }
 
-    const bool valid_row = symbol_id > 0 && price > 0.0 && quantity > 0;
+    bool valid_row = symbol_id > 0 && price > 0.0 && quantity > 0;
     if (is_buy && valid_row) {
-      const auto row_notional = price * static_cast<double>(quantity);
+      auto row_notional = price * static_cast<double>(quantity);
       buy_notional += row_notional;
       ++selected;
     } else {
@@ -51,8 +50,7 @@ int main() {
     average = buy_notional / static_cast<double>(selected);
   }
 
-  std::cout << std::fixed << std::setprecision(2)
-            << "selected=" << selected << " rejected=" << rejected
+  std::cout << "selected=" << selected << " rejected=" << rejected
             << " buy_notional=" << buy_notional << " average=" << average
             << '\n';
 }

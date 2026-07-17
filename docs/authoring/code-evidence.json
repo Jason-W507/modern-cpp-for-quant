@@ -2,6 +2,10 @@
   "schema_version": 1,
   "complete_listings": [
     {"tex": "chapters/ch01.tex", "source": "code/ch01/compilation_model.cpp", "target": "ch01_compilation_model"},
+    {"tex": "chapters/ch02.tex", "source": "code/ch02/objects_and_literals.cpp", "target": "ch02_objects_and_literals"},
+    {"tex": "chapters/ch02.tex", "source": "code/ch02/expressions.cpp", "target": "ch02_expressions"},
+    {"tex": "chapters/ch02.tex", "source": "code/ch02/branches.cpp", "target": "ch02_branches"},
+    {"tex": "chapters/ch02.tex", "source": "code/ch02/for_scope.cpp", "target": "ch02_for_scope"},
     {"tex": "chapters/ch02.tex", "source": "code/ch02/market_filter.cpp", "target": "ch02_market_filter"},
     {"tex": "chapters/ch02.tex", "source": "code/ch02/exercises/risk_budget_solution.cpp", "target": "ch02_risk_budget_solution"},
     {"tex": "chapters/ch03.tex", "source": "code/ch03/raii_file.cpp", "target": "ch03_raii_file"},
