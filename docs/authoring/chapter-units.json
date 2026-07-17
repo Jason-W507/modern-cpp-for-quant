@@ -47,6 +47,8 @@
       "state": "accepted",
       "evidence": {
         "tex": "chapters/ch06.tex",
+        "prerequisite_mode": "calibration-contract",
+        "prerequisite_chapters": [2, 3, 4, 5],
         "examples": [
           "code/ch06/lifetime_trace.cpp",
           "code/ch06/borrowing_and_legacy.cpp",
@@ -60,6 +62,7 @@
         "output_task": "Build the ownership-choice program and print direct=direct copied=copy unique_empty=1 unique_owner=unique shared_owners=1 weak_expired=0 weak_after_reset=1.",
         "self_checks": 7,
         "feedback": "appendices/solutions.tex",
+        "project_connection": "The chapter explains the direct-value and const-reference ownership choices already used by project/include/quant/types.hpp and the backtest entry boundary.",
         "checklist_markers": [
           "prerequisites",
           "learning-output",

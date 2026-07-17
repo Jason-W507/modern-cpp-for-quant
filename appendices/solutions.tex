@@ -44,12 +44,24 @@
 \end{enumerate}
 
 \section{第 6 章}
+\subsection*{自测答案}
 \begin{enumerate}
-  \item 构造成功开始对象生命周期，析构结束生命周期；自动对象按逆构造顺序销毁。复制/移动轨迹的完整答案及逐行预期见 \path{code/ch06/lifetime_trace.cpp} 与 \path{code/ch06/expected/lifetime_trace.txt}。
-  \item 引用必须绑定且不能表达空，裸指针可空但默认不拥有；两者都不延长所指对象寿命。C 数组退化后不再携带长度，\texttt{new[]} 必须与 \texttt{delete[]} 配对。可运行答案见 \path{code/ch06/borrowing_and_legacy.cpp}。
-  \item RAII 文件答案见 \path{code/ch06/raii_file.cpp}：输出流作用域结束后确定性关闭，随后输入流读到两行；输入流再析构后文件才能在 Windows 删除。Python 应用 \texttt{with} 表达同类边界，不依赖垃圾回收及时释放外部资源。
-  \item 所有权选择答案见 \path{code/ch06/ownership_choices.cpp}：直接值优先；唯一所有权可移动不可复制；共享所有权需要共同寿命理由；弱观察不增加强计数并在最后一个所有者消失后失效。
-  \item 失败实验位于目录 \path{code/ch06/failures/} 的 \path{use_after_free.cpp}。用 ASan 编译运行应非零退出并报告 \texttt{heap-use-after-free}；修复是恢复唯一清楚的拥有者与有效借用期，而不是假定旧地址仍可读。
+  \item 构造成功后对象生命周期开始，析构完成后结束；存储中的旧比特不会让已析构对象重新存在。自动对象按逆构造顺序销毁。
+  \item \texttt{std::move} 只把表达式转换为可选择移动操作的值类别。移动后的源对象仍可析构、可赋值，但除非类型契约另有保证，不能假定保留原值。
+  \item 引用和裸指针通常只借用；\texttt{unique\_ptr} 是可转移的唯一所有者；\texttt{shared\_ptr} 让多个参与者共同决定寿命。直接值仍是最简单的默认所有权。
+  \item C 数组退化为指针后不再携带长度。\texttt{new[]} 建立的数组必须由 \texttt{delete[]} 释放；与标量释放形式混用是未定义行为。
+  \item RAII 让栈展开和所有提前离开路径都触发析构；Rule of Zero 把释放交给可靠成员，避免外层类型手写一组容易不一致的复制、移动和析构操作。
+  \item \texttt{weak\_ptr} 不增加强计数，因此可打破共享环；\texttt{shared\_ptr} 只协调控制块寿命，不会自动同步被管理对象的字段。
+  \item ASan 报告同时给出分配、释放和非法访问位置。按这三处重建生命周期图，再恢复单一明确的所有者和不越界的借用期。
+\end{enumerate}
+
+\subsection*{编码练习反馈}
+\begin{enumerate}
+  \item 复制/移动轨迹的完整答案及精确输出见 \path{code/ch06/lifetime_trace.cpp} 与 \path{code/ch06/expected/lifetime_trace.txt}。
+  \item 引用、可空观察、C 数组和手动释放的可运行答案见 \path{code/ch06/borrowing_and_legacy.cpp}。
+  \item RAII 文件答案见 \path{code/ch06/raii_file.cpp}：输出流析构后输入流读到两行，输入流析构后文件才删除。
+  \item 所有权输出任务见 \path{code/ch06/ownership_choices.cpp}；答案必须与对应 expected 文件逐字一致。
+  \item 故意失败源码位于目录 \path{code/ch06/failures/} 的 \path{use_after_free.cpp}。ASan 应非零退出并报告 \texttt{heap-use-after-free}，不验收未定义的输出值。
 \end{enumerate}
 
 \section{第 7 章}

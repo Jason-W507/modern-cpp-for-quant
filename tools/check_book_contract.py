@@ -229,7 +229,11 @@ def validate_coverage(
 
 
 def validate_chapter_units(
-    units: dict[str, object], chapter_numbers: set[int], root: Path, errors: list[str]
+    units: dict[str, object],
+    chapter_numbers: set[int],
+    calibration_chapters: set[int],
+    root: Path,
+    errors: list[str],
 ) -> int:
     entries = units.get("chapters")
     if not isinstance(entries, list):
@@ -258,6 +262,28 @@ def validate_chapter_units(
         if not isinstance(evidence, dict):
             errors.append(f"accepted chapter {number} is missing evidence")
             continue
+
+        prerequisite_mode = evidence.get("prerequisite_mode")
+        if prerequisite_mode is not None:
+            if prerequisite_mode != "calibration-contract":
+                errors.append(
+                    f"accepted chapter {number} has invalid prerequisite mode "
+                    f"{prerequisite_mode!r}"
+                )
+            if number not in calibration_chapters:
+                errors.append(f"chapter {number} is not a declared calibration chapter")
+            prerequisites = evidence.get("prerequisite_chapters")
+            if (
+                not isinstance(prerequisites, list)
+                or not prerequisites
+                or not all(
+                    isinstance(chapter, int) and 0 < chapter < number
+                    for chapter in prerequisites
+                )
+            ):
+                errors.append(
+                    f"calibration chapter {number} needs earlier prerequisite chapters"
+                )
 
         for field in ("tex", "feedback"):
             relative = evidence.get(field)
@@ -425,9 +451,21 @@ def main() -> int:
         coverage_text, chapter_numbers, required_syntax_ids, errors
     )
 
+    raw_calibration_chapters = contract.get("calibration_chapters", [])
+    if not isinstance(raw_calibration_chapters, list) or not all(
+        isinstance(number, int) and number in chapter_numbers
+        for number in raw_calibration_chapters
+    ):
+        errors.append("book contract has invalid calibration chapters")
+        calibration_chapters: set[int] = set()
+    else:
+        calibration_chapters = set(raw_calibration_chapters)
+
     units_path = args.units.resolve() if args.units else authoring / "chapter-units.json"
     units = load_json_document(units_path, errors)
-    accepted_units = validate_chapter_units(units, chapter_numbers, root, errors)
+    accepted_units = validate_chapter_units(
+        units, chapter_numbers, calibration_chapters, root, errors
+    )
 
     evidence_path = (
         args.code_evidence.resolve()

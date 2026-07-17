@@ -61,6 +61,19 @@ class BookContractCliTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("accepted chapter 1 is missing evidence", result.stderr)
 
+    def test_only_declared_calibration_chapters_can_use_contract_prerequisites(self) -> None:
+        invalid_units = (
+            REPOSITORY_ROOT
+            / "tools"
+            / "tests"
+            / "fixtures"
+            / "undeclared-calibration-contract.json"
+        )
+        result = self.run_checker("--units", str(invalid_units))
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("chapter 3 is not a declared calibration chapter", result.stderr)
+
     def test_every_tex_listing_requires_code_evidence(self) -> None:
         invalid_evidence = (
             REPOSITORY_ROOT

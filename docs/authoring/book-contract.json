@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "edition": "0.2",
+  "calibration_chapters": [2, 6],
   "target_pages": {
     "minimum": 145,
     "planned": 150,

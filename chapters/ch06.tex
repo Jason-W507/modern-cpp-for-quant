@@ -56,32 +56,6 @@ Python 的 \texttt{b = a} 通常让两个名称指向同一对象；C++ 的 \tex
 
 立即练习：把内部两次声明交换顺序，先预测构造和析构行的顺序，再运行 \texttt{ch06\_lifetime\_trace}。只改这一处，并解释为什么析构顺序随构造顺序反转。
 
-\section{引用、裸指针与底层内存识读}
-
-\subsection{场景：观察价格不等于拥有价格}
-
-引用 \texttt{T\&} 是已有对象的别名，声明时必须绑定；裸指针 \texttt{T*} 保存地址，可以改指向、可以为空。\texttt{\&price} 取得地址，\texttt{*observer} 解引用并访问所指对象，\texttt{nullptr} 明确表示没有对象。二者默认都不拥有对象，也不会自动延长被观察对象的生命周期。
-
-\subsection{完整实验：借用、C 数组与手动释放}
-
-\lstinputlisting[caption={非拥有借用与旧式内存语法识读}]{code/ch06/borrowing_and_legacy.cpp}
-
-\texttt{alias} 与 \texttt{price} 是同一对象的两个名字，因此函数通过可变引用把价格从 100 改到 100.5。\texttt{observer} 只读观察同一地址；置为 \texttt{nullptr} 后，程序先检查再避免解引用。
-
-\texttt{int stack\_quotes[3]} 是含三个元素的 C 数组，下标有效范围为 0、1、2。它在许多表达式和函数参数中会退化为指向首元素的指针，长度信息不随指针传递；越界不会自动抛出 Python 式异常。现代业务代码默认用 \texttt{std::array} 或 \texttt{std::vector} 保留大小与值语义，C 数组主要用于识读接口、协议布局和遗留代码。
-
-\texttt{new int\{10\}} 在动态存储期创建整数并返回拥有它的裸指针；\texttt{delete heap\_quantity} 结束对象生命周期并释放存储。数组形式 \texttt{new T[n]} 必须与 \texttt{delete[]} 配对，混用释放形式属于未定义行为。这里展示手动配对是为了读懂底层代码，不是鼓励把它作为默认方案。
-
-\begin{pythonbridge}
-Python 名称没有直接的“可空地址并手动解引用”语法。切片和容器通常携带长度；C++ 裸指针不携带长度或所有权。Python 的对象引用也可能让对象继续存活，而 C++ 裸引用和裸指针不会延寿。
-\end{pythonbridge}
-
-\subsection{失败诊断与立即练习}
-
-离开被指对象的作用域后继续解引用会悬空；释放后继续读取是 use-after-free；对同一地址再次 \texttt{delete} 是 double-free。把指针设为空只能防止该变量再次误用，不能修复其他别名。根因分析必须回到唯一的拥有者和销毁时刻。
-
-立即练习：把 \texttt{observer = nullptr;} 后面增加条件分支，只在非空时读取；分别用空与非空观察者验证。不要直接写 \texttt{*observer} 来“看看会发生什么”，未定义行为没有可接受的固定输出。
-
 \section{RAII：把释放变成结构性结果}
 
 \subsection{场景：提前返回也必须关闭报告文件}
@@ -130,9 +104,9 @@ Python 名称共享对象更像隐式共享引用，但没有在类型中区分�
 
 立即练习：在输出任务中复制一个 \texttt{shared\_ptr} 到内部作用域，预测作用域内外的 \texttt{use\_count()}，再运行验证。离开作用域后计数应恢复，不要把具体计数当成并发同步机制。
 
-\section{把所有权意图写进函数接口}
+\subsection{整合补充：把所有权意图写进函数接口}
 
-所有权判断不应只存在于注释里。函数签名是第一道约束：按值参数取得自己的副本或被移动进来的值；\texttt{const T\&} 表达调用期间只读借用；\texttt{T\&} 表达调用期间可变借用；\texttt{unique\_ptr<T>} 按值传入通常表示接管唯一所有权；\texttt{shared\_ptr<T>} 按值传入则表示函数要成为共同所有者。若函数只在调用期间读取共享对象，仍应优先接收 \texttt{const T\&}，不要为方便而增加引用计数。
+所有权判断不应只存在于注释里。函数签名是第一道约束：按值参数取得自己的副本或被移动进来的值；\texttt{const T\&} 表达调用期间只读借用；\texttt{T\&} 表达调用期间可变借用；\texttt{unique\_ptr<T>} 按值传入通常表示接管唯一所有权；\texttt{shared\_ptr<T>} 按值传入则表示函数要成为共同所有者。若函数只在调用期间读取共享对象，仍应优先接收 \texttt{const T\&}，不要为方便而增加引用计数。下面只比较声明，省略类型定义与函数体，不是可单独编译的完整程序：
 
 \begin{lstlisting}[numbers=none]
 double mark_value(const Quote& quote);       // read-only borrow
@@ -141,11 +115,43 @@ void enqueue(std::unique_ptr<Order> order);  // ownership transfer
 void retain(std::shared_ptr<Feed> feed);     // shared lifetime
 \end{lstlisting}
 
+Python 的参数名称和常规类型标注不会在语言层面区分借用、转移与共同延寿，调用约定通常依靠文档和对象行为表达；C++ 接口可以让编译器拒绝复制唯一所有者，却仍不能替程序员证明借用期足够长。
+
 返回值也优先表达值语义。现代 C++ 能通过复制消除或移动高效返回对象，调用者得到清楚的所有权。返回裸指针或引用只有在“被返回对象由别处拥有，且寿命明确长于调用者使用期”时才合理；接口文档还必须说明能否为空。切勿返回局部自动对象的指针或引用，因为函数返回时该对象已经析构。
 
 审查一条接口时可以按四问展开：它是否创建对象；谁在调用后拥有对象；借用最长持续到何时；并发任务或回调能否越过该寿命边界。若回答需要“大家小心一点”，类型通常还没有表达真实关系。量化系统里尤其要警惕把栈上行情对象的引用捕获到异步任务：提交函数很快返回，而任务稍后才解引用，形成确定的悬空窗口。
 
-立即练习：给一个“异步保存订单”函数分别写出按值、\texttt{unique\_ptr} 和 \texttt{shared\_ptr} 三个签名。说明哪个版本复制数据，哪个版本转移所有权，哪个版本允许调用者与任务共同延寿；然后选择能满足需求且关系最简单的版本。
+贯穿项目也刻意遵循这条顺序：\path{project/include/quant/types.hpp} 让行情、订单、成交和组合快照直接拥有各自的值；回测入口只读借用事件序列与策略，结果则按值返回。项目目前不需要智能指针，这不是遗漏，而是“没有共同动态寿命就不引入共享所有权”的设计证据。
+
+整合练习：只考察“异步保存一份订单”这一处寿命变化。先写按值版本；若订单不可复制，再把同一个参数改为按值接收 \texttt{unique\_ptr}，并用调用后原指针为空验证所有权已经转移。不要同时引入共享所有权；只有需求明确允许调用者与任务共同延寿时，才另行比较 \texttt{shared\_ptr} 版本。
+
+\section{引用、裸指针与底层内存识读}
+
+前两节已经建立现代默认路线：先用直接值和 RAII，确有动态寿命再选择智能指针。现在才进入裸指针、C 数组与手动分配；目标是识读遗留接口和诊断内存错误，而不是建立另一套推荐风格。
+
+\subsection{场景：观察价格不等于拥有价格}
+
+引用 \texttt{T\&} 是已有对象的别名，声明时必须绑定；裸指针 \texttt{T*} 保存地址，可以改指向、可以为空。\texttt{\&price} 取得地址，\texttt{*observer} 解引用并访问所指对象，\texttt{nullptr} 明确表示没有对象。二者默认都不拥有对象，也不会自动延长被观察对象的生命周期。
+
+\subsection{完整实验：借用、C 数组与手动释放}
+
+\lstinputlisting[caption={非拥有借用与旧式内存语法识读}]{code/ch06/borrowing_and_legacy.cpp}
+
+\texttt{alias} 与 \texttt{price} 是同一对象的两个名字，因此函数通过可变引用把价格从 100 改到 100.5。\texttt{observer} 只读观察同一地址；置为 \texttt{nullptr} 后，程序先检查再避免解引用。
+
+\texttt{int stack\_quotes[3]} 是含三个元素的 C 数组，下标有效范围为 0、1、2。它在许多表达式和函数参数中会退化为指向首元素的指针，长度信息不随指针传递；越界不会自动抛出 Python 式异常。现代业务代码默认用 \texttt{std::array} 或 \texttt{std::vector} 保留大小与值语义，C 数组主要用于识读接口、协议布局和遗留代码。
+
+\texttt{new int\{10\}} 在动态存储期创建整数并返回拥有它的裸指针；\texttt{delete heap\_quantity} 结束对象生命周期并释放存储。数组形式 \texttt{new T[n]} 必须与 \texttt{delete[]} 配对，混用释放形式属于未定义行为。这里展示手动配对是为了读懂底层代码，不是鼓励把它作为默认方案。
+
+\begin{pythonbridge}
+Python 名称没有直接的“可空地址并手动解引用”语法。切片和容器通常携带长度；C++ 裸指针不携带长度或所有权。Python 的对象引用也可能让对象继续存活，而 C++ 裸引用和裸指针不会延寿。
+\end{pythonbridge}
+
+\subsection{失败诊断与立即练习}
+
+离开被指对象的作用域后继续解引用会悬空；释放后继续读取是 use-after-free；对同一地址再次 \texttt{delete} 是 double-free。把指针设为空只能防止该变量再次误用，不能修复其他别名。根因分析必须回到唯一的拥有者和销毁时刻。
+
+立即练习：把 \texttt{observer = nullptr;} 后面增加条件分支，只在非空时读取；分别用空与非空观察者验证。不要直接写 \texttt{*observer} 来“看看会发生什么”，未定义行为没有可接受的固定输出。
 
 \section{失败实验：让 AddressSanitizer 证明悬空}
 

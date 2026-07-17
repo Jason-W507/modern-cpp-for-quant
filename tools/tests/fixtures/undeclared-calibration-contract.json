@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "calibration_chapters": [2, 6],
+  "chapters": [
+    {"number": 1, "state": "planned"},
+    {"number": 2, "state": "planned"},
+    {
+      "number": 3,
+      "state": "accepted",
+      "evidence": {
+        "prerequisite_mode": "calibration-contract",
+        "prerequisite_chapters": [1, 2]
+      }
+    },
+    {"number": 4, "state": "planned"},
+    {"number": 5, "state": "planned"},
+    {"number": 6, "state": "planned"},
+    {"number": 7, "state": "planned"},
+    {"number": 8, "state": "planned"},
+    {"number": 9, "state": "planned"},
+    {"number": 10, "state": "planned"},
+    {"number": 11, "state": "planned"},
+    {"number": 12, "state": "planned"},
+    {"number": 13, "state": "planned"},
+    {"number": 14, "state": "planned"},
+    {"number": 15, "state": "planned"},
+    {"number": 16, "state": "planned"},
+    {"number": 17, "state": "planned"},
+    {"number": 18, "state": "planned"}
+  ]
+}
