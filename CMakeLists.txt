@@ -23,7 +23,7 @@ function(quant_project_target target source)
   target_include_directories(${target} PRIVATE project/include project/tests)
 endfunction()
 
-quant_target(ch01_compilation_model code/ch01/compilation_model.cpp)
+quant_target(ch01_first_program code/ch01/first_program.cpp)
 quant_target(ch02_objects_and_literals code/ch02/objects_and_literals.cpp)
 quant_target(ch02_expressions code/ch02/expressions.cpp)
 quant_target(ch02_branches code/ch02/branches.cpp)
@@ -78,9 +78,43 @@ if(pybind11_FOUND)
   target_compile_definitions(quant_boundary PRIVATE QUANT_WITH_PYBIND11=1)
 endif()
 
-add_test(NAME ch01_compilation_model_runs COMMAND ch01_compilation_model)
-set_tests_properties(ch01_compilation_model_runs PROPERTIES
-  PASS_REGULAR_EXPRESSION "notional=125173.50")
+add_test(NAME ch01_first_program_prints_exact_readiness_message
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch01/expected/first_program.txt
+          -- $<TARGET_FILE:ch01_first_program>)
+add_test(NAME ch01_clean_cmake_project_configures_builds_and_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
+          --cmake ${CMAKE_COMMAND}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch01
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch01/expected/first_program.txt
+          --generator "${CMAKE_GENERATOR}"
+          --compiler ${CMAKE_CXX_COMPILER}
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests
+          --config $<CONFIG>)
+add_test(NAME ch01_missing_semicolon_fails_during_compilation
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_compile_failure.py
+          --compiler ${CMAKE_CXX_COMPILER}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch01/failures/missing_semicolon.cpp
+          --output ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch01_missing_semicolon.obj
+          --diagnostic "expected.*;|missing.*;")
+add_test(NAME ch01_missing_definition_fails_during_linking
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_link_failure.py
+          --compiler ${CMAKE_CXX_COMPILER}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch01/failures/missing_definition.cpp
+          --work-dir ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch01-link
+          --diagnostic "undefined reference|unresolved external symbol")
+add_test(NAME ch01_startup_failure_is_observed_at_runtime
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_runtime_failure.py
+          --compiler ${CMAKE_CXX_COMPILER}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch01/failures/startup_failure.cpp
+          --work-dir ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch01-runtime
+          --expected-exit 2
+          --diagnostic "startup-error: market-data path is required")
 add_test(NAME ch02_objects_and_literals_show_independent_values
   COMMAND ch02_objects_and_literals)
 set_tests_properties(ch02_objects_and_literals_show_independent_values PROPERTIES

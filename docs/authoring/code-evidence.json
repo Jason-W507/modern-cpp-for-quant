@@ -1,7 +1,8 @@
 {
   "schema_version": 1,
   "complete_listings": [
-    {"tex": "chapters/ch01.tex", "source": "code/ch01/compilation_model.cpp", "target": "ch01_compilation_model"},
+    {"tex": "chapters/ch01.tex", "source": "code/ch01/first_program.cpp", "target": "ch01_first_program"},
+    {"tex": "chapters/ch01.tex", "source": "code/ch01/CMakeLists.txt", "target": "ch01_first_program"},
     {"tex": "chapters/ch02.tex", "source": "code/ch02/objects_and_literals.cpp", "target": "ch02_objects_and_literals"},
     {"tex": "chapters/ch02.tex", "source": "code/ch02/expressions.cpp", "target": "ch02_expressions"},
     {"tex": "chapters/ch02.tex", "source": "code/ch02/branches.cpp", "target": "ch02_branches"},
@@ -26,6 +27,21 @@
   ],
   "intentional_failures": [
     {
+      "source": "code/ch01/failures/missing_semicolon.cpp",
+      "stage": "compile",
+      "diagnostic_category": "compiler reports an expected semicolon"
+    },
+    {
+      "source": "code/ch01/failures/missing_definition.cpp",
+      "stage": "link",
+      "diagnostic_category": "linker reports an undefined reference"
+    },
+    {
+      "source": "code/ch01/failures/startup_failure.cpp",
+      "stage": "runtime",
+      "diagnostic_category": "program reports startup-error and exits with status 2"
+    },
+    {
       "source": "code/ch02/failures/narrowing.cpp",
       "stage": "compile",
       "diagnostic_category": "list initialization rejects a narrowing conversion"
@@ -36,5 +52,10 @@
       "diagnostic_category": "AddressSanitizer reports heap-use-after-free"
     }
   ],
-  "chapter_snapshots": []
+  "chapter_snapshots": [
+    {
+      "path": "code/ch01",
+      "entry_target": "ch01_first_program"
+    }
+  ]
 }

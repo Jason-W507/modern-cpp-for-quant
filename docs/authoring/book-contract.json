@@ -17,6 +17,7 @@
     "comments",
     "compile-link-run",
     "diagnostics",
+    "output-string-literal",
     "variable-declaration",
     "initialization",
     "narrowing",

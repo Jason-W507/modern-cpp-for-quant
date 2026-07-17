@@ -1,7 +1,52 @@
 {
   "schema_version": 1,
   "chapters": [
-    {"number": 1, "state": "planned"},
+    {
+      "number": 1,
+      "state": "accepted",
+      "evidence": {
+        "tex": "chapters/ch01.tex",
+        "examples": [
+          "code/ch01/first_program.cpp",
+          "code/ch01/CMakeLists.txt"
+        ],
+        "failure_experiment": {
+          "source": "code/ch01/failures/missing_semicolon.cpp",
+          "diagnostic_category": "compiler reports an expected semicolon"
+        },
+        "additional_failure_experiments": [
+          {
+            "source": "code/ch01/failures/missing_definition.cpp",
+            "stage": "link",
+            "diagnostic_category": "linker reports an undefined reference"
+          },
+          {
+            "source": "code/ch01/failures/startup_failure.cpp",
+            "stage": "runtime",
+            "diagnostic_category": "program reports startup-error and exits with status 2"
+          }
+        ],
+        "output_task": "From an empty directory, build first_program.cpp directly with GCC and through a clean CMake build directory; both runs print exactly quant-cpp-ready and exit 0.",
+        "self_checks": 7,
+        "feedback": "appendices/solutions.tex",
+        "project_connection": "code/ch01 is an independently configurable minimal CMake project verified from a clean build directory.",
+        "checklist_markers": [
+          "prerequisites",
+          "learning-output",
+          "scenario",
+          "syntax-rule",
+          "runnable-example",
+          "guided-explanation",
+          "python-boundary",
+          "failure-diagnosis",
+          "immediate-practice",
+          "code-evidence",
+          "feedback",
+          "project-connection",
+          "publication"
+        ]
+      }
+    },
     {
       "number": 2,
       "state": "accepted",

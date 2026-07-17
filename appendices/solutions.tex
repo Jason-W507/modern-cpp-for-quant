@@ -3,11 +3,22 @@
 本附录给出检查点而非唯一实现。编码题应以可编译代码、行为测试和复杂度说明为最终答案。
 
 \section{第 1 章}
+\subsection*{自测答案}
 \begin{enumerate}
-  \item 头文件放声明，\texttt{.cpp} 放定义；删除定义后编译单元仍合法，链接器报告 unresolved symbol。
-  \item ASan 应定位越界位置；普通 Release 的任何表现都不能作为保证，恢复后需重跑测试。
-  \item 例：重载解析、模板约束、基础类型转换；Python 多在运行时确定对象操作。
-  \item 假设应包含输入规模、编译选项与指标，例如“同一过滤工作负载的中位耗时降低”，并保留 checksum。
+  \item \texttt{\#include} 在预处理阶段处理，不是以分号结束的 C++ 语句；它让当前翻译单元看见 \texttt{iostream} 中的声明。
+  \item \texttt{main} 是程序入口名，空圆括号表示本版本不接收参数，花括号包围函数体；状态 0 表示成功，非零表示失败。
+  \item \texttt{std::} 指定标准库命名空间，\texttt{<<} 把右侧文本送入输出流，双引号界定字符串字面量，\texttt{\textbackslash n} 换行，分号结束语句。
+  \item 流水线是预处理、编译、链接和运行；\texttt{-c} 在目标文件处停止，因此能证明编译通过，却不能证明链接成功。
+  \item 缺分号是编译失败；只有声明没有定义是链接失败；打印启动错误并返回 2 是运行期失败。修复分别恢复语法、加入定义、补齐启动条件。
+  \item CMake 用 \texttt{-S} 指源目录、\texttt{-B} 指构建目录。删除旧构建树后从不存在的 \path{build/} 成功配置、构建和运行，才是干净构建证据。
+  \item Windows 可执行文件带 \texttt{.exe}，路径分隔和编译器警告选项不同，多配置生成器还包含配置目录；预处理、编译、链接、运行的阶段模型不变。
+\end{enumerate}
+
+\subsection*{编码任务反馈}
+\begin{enumerate}
+  \item 完整文件见 \path{code/ch01/first_program.cpp} 与 \path{code/ch01/CMakeLists.txt}。直接 GCC 和干净 CMake 构建都应输出 \texttt{quant-cpp-ready} 并返回 0。
+  \item 三个失败源依次是 \path{missing_semicolon.cpp}、\path{missing_definition.cpp} 与 \path{startup_failure.cpp}，均位于 \path{code/ch01/failures/}；验收类别分别是编译期缺分号、链接期缺定义、运行期消息加状态 2。
+  \item 注释不改变输出；删除分号应使编译失败。恢复后重跑 \texttt{ctest -R ch01\_}，五个第 1 章行为测试应全部通过。
 \end{enumerate}
 
 \section{第 2 章}

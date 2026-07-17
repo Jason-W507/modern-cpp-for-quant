@@ -13,12 +13,13 @@
 | comments | 行注释与块注释 | ch01 | ch01 | ch02, ch12 |
 | compile-link-run | 预处理、编译、链接与运行 | ch01 | ch01 | ch03, ch11 |
 | diagnostics | 编译器诊断的首个根因 | ch01 | ch01 | ch03, ch12 |
+| output-string-literal | 标准输出中的字符串字面量与换行转义 | ch01 | ch01 | ch02, ch10 |
 | variable-declaration | 变量声明、对象与名称 | ch02 | ch02 | ch05, ch06 |
 | initialization | 花括号初始化与默认初始化 | ch02 | ch02 | ch05, ch06 |
 | narrowing | 窄化转换与列表初始化的拒绝规则 | ch02 | ch02 | ch05, ch16 |
 | built-in-types | 整数、浮点、字符与布尔类型 | ch02 | ch02 | ch05, ch16 |
 | fixed-width-integers | 固定宽度整数与范围 | ch02 | ch02 | ch05, ch13 |
-| literals | 整数、浮点、字符和字符串字面量 | ch02 | ch02 | ch04, ch16 |
+| literals | 整数、浮点和字符字面量，以及字符串的类型规则 | ch02 | ch02 | ch04, ch16 |
 | auto | `auto` 类型推导的边界 | ch02 | ch02 | ch07, ch09 |
 | casts | 显式转换与 `static_cast` | ch02 | ch02 | ch13, ch16 |
 | arithmetic-operators | 算术、余数与复合赋值 | ch02 | ch02 | ch14, ch16 |
