@@ -2,7 +2,8 @@
   "schema_version": 1,
   "complete_listings": [
     {"tex": "chapters/ch01.tex", "source": "code/ch01/compilation_model.cpp", "target": "ch01_compilation_model"},
-    {"tex": "chapters/ch02.tex", "source": "code/ch02/value_semantics.cpp", "target": "ch02_value_semantics"},
+    {"tex": "chapters/ch02.tex", "source": "code/ch02/market_filter.cpp", "target": "ch02_market_filter"},
+    {"tex": "chapters/ch02.tex", "source": "code/ch02/exercises/risk_budget_solution.cpp", "target": "ch02_risk_budget_solution"},
     {"tex": "chapters/ch03.tex", "source": "code/ch03/raii_file.cpp", "target": "ch03_raii_file"},
     {"tex": "chapters/ch04.tex", "source": "code/ch04/ranges_pipeline.cpp", "target": "ch04_ranges_pipeline"},
     {"tex": "chapters/ch05.tex", "source": "project/include/quant/types.hpp", "target": "quant_backtest"},
@@ -16,6 +17,12 @@
     {"tex": "chapters/ch12.tex", "source": "code/ch12/pybind11_boundary.cpp", "target": "ch12_pybind_boundary"},
     {"tex": "chapters/ch13.tex", "source": "project/include/quant/statistics.hpp", "target": "test_backtest"}
   ],
-  "intentional_failures": [],
+  "intentional_failures": [
+    {
+      "source": "code/ch02/failures/narrowing.cpp",
+      "stage": "compile",
+      "diagnostic_category": "list initialization rejects a narrowing conversion"
+    }
+  ],
   "chapter_snapshots": []
 }

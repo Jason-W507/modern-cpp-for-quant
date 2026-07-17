@@ -24,7 +24,8 @@ function(quant_project_target target source)
 endfunction()
 
 quant_target(ch01_compilation_model code/ch01/compilation_model.cpp)
-quant_project_target(ch02_value_semantics code/ch02/value_semantics.cpp)
+quant_target(ch02_market_filter code/ch02/market_filter.cpp)
+quant_target(ch02_risk_budget_solution code/ch02/exercises/risk_budget_solution.cpp)
 quant_target(ch03_raii_file code/ch03/raii_file.cpp)
 quant_project_target(ch04_ranges_pipeline code/ch04/ranges_pipeline.cpp)
 
@@ -72,9 +73,23 @@ endif()
 add_test(NAME ch01_compilation_model_runs COMMAND ch01_compilation_model)
 set_tests_properties(ch01_compilation_model_runs PROPERTIES
   PASS_REGULAR_EXPRESSION "notional=125173.50")
-add_test(NAME ch02_value_semantics_runs COMMAND ch02_value_semantics)
-set_tests_properties(ch02_value_semantics_runs PROPERTIES
-  PASS_REGULAR_EXPRESSION "AAPL qty=120 notional=22620")
+add_test(NAME ch02_market_filter_summarizes_valid_buys
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/run_with_input.py
+          --input ${CMAKE_CURRENT_SOURCE_DIR}/code/ch02/data/market_rows.txt
+          --expected "selected=2 rejected=3 buy_notional=1205.00 average=602.50"
+          -- $<TARGET_FILE:ch02_market_filter>)
+add_test(NAME ch02_risk_budget_solution_counts_affordable_trades
+  COMMAND ch02_risk_budget_solution)
+set_tests_properties(ch02_risk_budget_solution_counts_affordable_trades PROPERTIES
+  PASS_REGULAR_EXPRESSION "accepted_trades=4 remaining_budget=200.00")
+add_test(NAME ch02_narrowing_is_rejected_at_compile_time
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_compile_failure.py
+          --compiler ${CMAKE_CXX_COMPILER}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch02/failures/narrowing.cpp
+          --output ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch02_narrowing.obj
+          --diagnostic "narrowing|narrowed|C2397|C4838")
 add_test(NAME ch03_raii_file_runs COMMAND ch03_raii_file)
 set_tests_properties(ch03_raii_file_runs PROPERTIES
   PASS_REGULAR_EXPRESSION "rows=2")
