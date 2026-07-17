@@ -89,6 +89,6 @@ add_test(NAME book_contract
 set_tests_properties(book_contract PROPERTIES
   PASS_REGULAR_EXPRESSION "18 chapters.*150 planned pages")
 
-add_test(NAME book_contract_cli_tests
+add_test(NAME book_contract_rejects_invalid_authoring_evidence
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/test_book_contract.py)

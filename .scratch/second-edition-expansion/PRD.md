@@ -98,5 +98,5 @@ Status: ready-for-agent
 
 - The current 62-page edition is the source inventory, not disposable work: its verified examples, backtest components, testing seams, benchmark and job-oriented framing should be reused where they meet the new teaching standard.
 - The current source has no subsection-level hierarchy in the 14 main chapters and most chapters contain very few complete listings; the rewrite must introduce genuine instructional layers rather than elongating existing paragraphs.
-- The planned 150-page allocation is: 6 pages front matter, 38 pages foundation, 38 pages language and components, 13 pages reliable engineering, 25 pages performance and interoperability, 18 pages project and career, and 12 pages appendices. Chapter budgets remain guardrails rather than word-count targets.
+- The planned 150-page allocation is: 6 pages front matter, 37 pages foundation, 36 pages language and components, 13 pages reliable engineering, 24 pages performance and interoperability, 22 pages project and career, and 12 pages appendices. Chapter 18 receives 12 pages, within the agreed 12–15 page career range. Chapter budgets remain guardrails rather than word-count targets.
 - The specification is ready for an agent once the ticket breakdown is approved.

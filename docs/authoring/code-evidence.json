@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "complete_listings": [
+    {"tex": "chapters/ch01.tex", "source": "code/ch01/compilation_model.cpp", "target": "ch01_compilation_model"},
+    {"tex": "chapters/ch02.tex", "source": "code/ch02/value_semantics.cpp", "target": "ch02_value_semantics"},
+    {"tex": "chapters/ch03.tex", "source": "code/ch03/raii_file.cpp", "target": "ch03_raii_file"},
+    {"tex": "chapters/ch04.tex", "source": "code/ch04/ranges_pipeline.cpp", "target": "ch04_ranges_pipeline"},
+    {"tex": "chapters/ch05.tex", "source": "project/include/quant/types.hpp", "target": "quant_backtest"},
+    {"tex": "chapters/ch05.tex", "source": "project/include/quant/execution.hpp", "target": "test_execution_portfolio"},
+    {"tex": "chapters/ch06.tex", "source": "project/include/quant/backtest.hpp", "target": "test_backtest"},
+    {"tex": "chapters/ch07.tex", "source": "project/include/quant/csv.hpp", "target": "test_csv_reader"},
+    {"tex": "chapters/ch08.tex", "source": "project/src/main.cpp", "target": "quant_backtest"},
+    {"tex": "chapters/ch09.tex", "source": "project/benchmarks/layout_benchmark.cpp", "target": "layout_benchmark"},
+    {"tex": "chapters/ch11.tex", "source": "code/ch11/parallel_sum.cpp", "target": "ch11_parallel_sum"},
+    {"tex": "chapters/ch12.tex", "source": "code/ch12/numerical_stability.cpp", "target": "ch12_numerical_stability"},
+    {"tex": "chapters/ch12.tex", "source": "code/ch12/pybind11_boundary.cpp", "target": "ch12_pybind_boundary"},
+    {"tex": "chapters/ch13.tex", "source": "project/include/quant/statistics.hpp", "target": "test_backtest"}
+  ],
+  "intentional_failures": [],
+  "chapter_snapshots": []
+}

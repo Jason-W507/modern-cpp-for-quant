@@ -8,15 +8,63 @@
     "front_matter": 6,
     "appendices": 12
   },
+  "required_syntax_ids": [
+    "program-entry",
+    "include-directive",
+    "namespace",
+    "statement-block",
+    "comments",
+    "compile-link-run",
+    "diagnostics",
+    "variable-declaration",
+    "initialization",
+    "narrowing",
+    "built-in-types",
+    "fixed-width-integers",
+    "literals",
+    "auto",
+    "casts",
+    "arithmetic-operators",
+    "comparison-boolean",
+    "if-else",
+    "switch",
+    "for-loop",
+    "while-loop",
+    "scope",
+    "function-declaration",
+    "parameters-return",
+    "overloads",
+    "header-source",
+    "include-guard",
+    "pass-by-value",
+    "references",
+    "const",
+    "pointers",
+    "string",
+    "vector",
+    "array",
+    "range-for",
+    "iterators",
+    "algorithms",
+    "lambda",
+    "file-io",
+    "csv-validation",
+    "enum-class",
+    "struct",
+    "class-access",
+    "constructors",
+    "member-functions",
+    "exception-basics"
+  ],
   "parts": [
     {
       "name": "从零写出 C++ 程序",
-      "page_budget": 38,
+      "page_budget": 37,
       "chapters": [
         {
           "number": 1,
           "title": "首次构建与诊断",
-          "page_budget": 7,
+          "page_budget": 6,
           "learning_output": "在 Linux/WSL 与 GCC 主线上从空目录编译、链接、运行程序，并区分三个错误阶段。"
         },
         {
@@ -47,7 +95,7 @@
     },
     {
       "name": "Modern C++ 对象与组件",
-      "page_budget": 38,
+      "page_budget": 36,
       "chapters": [
         {
           "number": 6,
@@ -64,13 +112,13 @@
         {
           "number": 8,
           "title": "接口与值语义",
-          "page_budget": 8,
+          "page_budget": 7,
           "learning_output": "把行情分析代码重构为维护订单、成交和组合不变量的组件。"
         },
         {
           "number": 9,
           "title": "模板、concepts 与多态",
-          "page_budget": 8,
+          "page_budget": 7,
           "learning_output": "从普通实现演化出有约束的泛型策略接口，并解释静态与动态多态取舍。"
         },
         {
@@ -101,7 +149,7 @@
     },
     {
       "name": "量化性能与互操作",
-      "page_budget": 25,
+      "page_budget": 24,
       "chapters": [
         {
           "number": 13,
@@ -118,7 +166,7 @@
         {
           "number": 15,
           "title": "并发、任务与背压",
-          "page_budget": 7,
+          "page_budget": 6,
           "learning_output": "从所有权和 happens-before 推理同步、停止、异常传播和背压协议。"
         },
         {
@@ -131,7 +179,7 @@
     },
     {
       "name": "项目、求职与工作",
-      "page_budget": 18,
+      "page_budget": 22,
       "chapters": [
         {
           "number": 17,
@@ -142,7 +190,7 @@
         {
           "number": 18,
           "title": "量化 C++ 求职与入职",
-          "page_budget": 8,
+          "page_budget": 12,
           "learning_output": "把逐章证据组织成面试回答、作品集叙事和入职前三个月行动计划。"
         }
       ]
