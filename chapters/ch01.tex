@@ -34,7 +34,7 @@ Python 文件可以从第一条顶层语句开始执行。C++ 可执行程序需
 
 \texttt{int main()} 声明程序入口。这里先把 \texttt{int} 理解为“该入口会交回一个整数状态”，\texttt{main} 是标准规定的名称，空圆括号表示本版本暂不接收命令行参数。左花括号 \texttt{\{} 开始函数体，匹配的右花括号 \texttt{\}} 结束函数体；缩进帮助人阅读，但花括号才决定结构。
 
-\texttt{//} 从当前位置开始一行注释，编译器不把注释当作要执行的语句。\texttt{std::cout} 是标准输出流；\texttt{std::} 指明名称属于标准库命名空间，双冒号是作用域解析符。\texttt{<<} 把右侧内容送入输出流，双引号包住要输出的文本，\texttt{\textbackslash n} 表示换行。字符串和数字的正式类型留到第 2 章，本章只要求能正确识读这条输出语句。
+\texttt{//} 从当前位置开始一行注释；\texttt{/*} 与 \texttt{*/} 则界定可以跨行的块注释。编译器不会把注释内容当作要执行的语句，但块注释不能嵌套：遇到第一个 \texttt{*/} 就已经结束，因此不要用它包住一段本身含块注释的代码。\texttt{std::cout} 是标准输出流；\texttt{std::} 指明名称属于标准库命名空间，双冒号是作用域解析符。\texttt{<<} 把右侧内容送入输出流，双引号包住要输出的文本，\texttt{\textbackslash n} 表示换行。字符串和数字的正式类型留到第 2 章，本章只要求能正确识读这条输出语句。
 
 行尾的分号结束一条 C++ 语句。\texttt{return 0;} 把成功状态交回运行环境；在 Linux/WSL 中，状态 0 约定为成功，非零表示失败。分号、圆括号、花括号和引号都是语法的一部分，不能像 Python 中某些可选标点那样随意删去。
 
@@ -44,7 +44,7 @@ Python 的缩进同时承担语法结构，\texttt{print()} 由运行时按名�
 
 \subsection{立即练习}
 
-只把输出文本改为 \texttt{quant-cpp-learning}，预测哪一行会变化，再重新构建运行。若只改文本却出现语法错误，优先检查成对双引号、末尾分号和 \texttt{\textbackslash n} 是否仍在；完成后恢复章首约定输出，确保精确测试重新通过。
+先只把源码中的 \texttt{//} 注释改成单行的 \texttt{/* ... */} 注释，预测输出应逐字符不变，再构建运行；不要嵌套块注释。然后只把输出文本改为 \texttt{quant-cpp-learning}，预测哪一行会变化并再次运行。若只改文本却出现语法错误，优先检查成对双引号、末尾分号和 \texttt{\textbackslash n} 是否仍在；完成后恢复章首约定输出，确保精确测试重新通过。
 
 \section{单文件命令与构建流水线}
 
@@ -154,6 +154,12 @@ cmake --build build --target ch01_first_program
 
 \texttt{-S .} 指定源目录，\texttt{-B build} 指定目录外构建树；源码与生成文件因此不会混在一起。第一次运行前 \path{build/} 不应存在，这叫干净构建。若只删除可执行文件而保留旧缓存，不能证明项目从零可配置。验收完成后可删除整个 \path{build/}，再重复三条命令。
 
+\begin{pythonbridge}
+Python 项目常用 \path{pyproject.toml} 描述包、用虚拟环境隔离依赖，并由解释器直接运行入口；这里的 \path{CMakeLists.txt} 描述原生构建目标。\texttt{cmake -S . -B build} 只读取项目并生成当前平台的构建系统，不会运行程序；\texttt{cmake --build build} 才调用编译器与链接器。CMake 因而更像跨平台的构建描述层，不是 C++ 解释器或包管理器。
+\end{pythonbridge}
+
+做一次只有一个变量的失败练习：在项目副本里只把 \texttt{add\_executable} 中的 \path{first_program.cpp} 改为不存在的 \path{missing.cpp}，并把配置输出写入全新的 \path{build-broken/}。预期 \texttt{cmake -S . -B build-broken} 在配置或生成阶段以非零状态结束，稳定类别是 \texttt{Cannot find source file}，而且不会产生可运行目标。把文件名恢复后删除 \path{build-broken/}，从空构建目录重跑配置、构建和程序；若仍失败，先核对源目录是否同时包含清单中的两个文件，再读第一条 CMake 诊断，而不是改编译器选项。
+
 \subsection{Windows 差异只放在命令边缘}
 
 正文主线使用 Linux/WSL 与 GCC。在 PowerShell 中，CMake 的前两条命令保持不变；单配置生成器的程序通常写作 \path{.\build\ch01_first_program.exe}，Visual Studio 等多配置生成器可能位于 \path{build\Debug}。直接使用 MSVC 时警告选项是 \texttt{/W4 /permissive-}，而不是 GCC 的 \texttt{-Wall -Wextra -Wpedantic}。不要维护两套教学流程：以 \texttt{cmake --build} 屏蔽生成器细节，需要 Linux sanitizer 或书中精确 shell 命令时使用 WSL。
@@ -175,7 +181,7 @@ cmake --build build --target ch01_first_program
 \begin{enumerate}
   \item 从空目录重建两个文件，先用 GCC 单文件命令得到 \texttt{quant-cpp-ready}，再用 CMake 在全新 \path{build/} 中得到同样结果。
   \item 依次运行三个故障实验，为每个实验记录失败命令、阶段、非零状态、稳定诊断类别、根因和恢复步骤。
-  \item 在第一个程序中只增加一行注释，证明输出完全不变；再故意删除输出语句的分号并恢复。
+  \item 在第一个程序中分别增加一行 \texttt{//} 注释和一段不嵌套的 \texttt{/* ... */} 注释，证明输出完全不变；再故意删除输出语句的分号并恢复。
 \end{enumerate}
 
 \begin{interviewcheck}

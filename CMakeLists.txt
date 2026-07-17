@@ -190,3 +190,7 @@ set_tests_properties(book_contract PROPERTIES
 add_test(NAME book_contract_rejects_invalid_authoring_evidence
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/test_book_contract.py)
+
+add_test(NAME output_harness_rejects_whitespace_drift
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/test_output_contract.py)

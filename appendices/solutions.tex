@@ -18,7 +18,7 @@
 \begin{enumerate}
   \item 完整文件见 \path{code/ch01/first_program.cpp} 与 \path{code/ch01/CMakeLists.txt}。直接 GCC 和干净 CMake 构建都应输出 \texttt{quant-cpp-ready} 并返回 0。
   \item 三个失败源依次是 \path{missing_semicolon.cpp}、\path{missing_definition.cpp} 与 \path{startup_failure.cpp}，均位于 \path{code/ch01/failures/}；验收类别分别是编译期缺分号、链接期缺定义、运行期消息加状态 2。
-  \item 注释不改变输出；删除分号应使编译失败。恢复后重跑 \texttt{ctest -R ch01\_}，五个第 1 章行为测试应全部通过。
+  \item \texttt{//} 到行末结束，\texttt{/* ... */} 可以跨行但不能嵌套；两种注释都不应改变输出。删除分号应使编译失败。恢复后重跑 \texttt{ctest -R ch01\_}，五个第 1 章行为测试应全部通过。
 \end{enumerate}
 
 \section{第 2 章}

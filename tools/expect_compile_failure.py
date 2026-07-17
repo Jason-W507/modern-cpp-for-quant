@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from compiler_driver import compile_object_command
+
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Verify an intentional compile failure.")
@@ -16,26 +18,12 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def compile_command(compiler: Path, source: Path, output: Path) -> list[str]:
-    executable = compiler.name.lower()
-    if executable in {"cl", "cl.exe", "clang-cl", "clang-cl.exe"}:
-        return [
-            str(compiler),
-            "/nologo",
-            "/std:c++20",
-            "/c",
-            str(source),
-            f"/Fo{output}",
-        ]
-    return [str(compiler), "-std=c++20", "-c", str(source), "-o", str(output)]
-
-
 def main() -> int:
     args = parse_arguments()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.unlink(missing_ok=True)
     completed = subprocess.run(
-        compile_command(args.compiler, args.source, args.output),
+        compile_object_command(args.compiler, args.source, args.output),
         text=True,
         capture_output=True,
         check=False,

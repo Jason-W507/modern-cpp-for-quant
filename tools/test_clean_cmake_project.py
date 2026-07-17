@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from output_contract import matches_exactly, read_expected
+
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -70,11 +72,11 @@ def main() -> int:
         return 1
 
     completed = run([str(candidates[0])])
-    expected = args.expected.read_text(encoding="utf-8").strip()
-    if completed.returncode != 0 or completed.stdout.strip() != expected:
+    expected = read_expected(args.expected)
+    if completed.returncode != 0 or not matches_exactly(completed.stdout, expected):
         print(
             f"expected exit 0 and output {expected!r}, observed "
-            f"exit {completed.returncode} and {completed.stdout.strip()!r}",
+            f"exit {completed.returncode} and {completed.stdout!r}",
             file=sys.stderr,
         )
         return 1

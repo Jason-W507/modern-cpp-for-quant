@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from output_contract import matches_exactly, read_expected
+
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a program and compare exact output.")
@@ -25,14 +27,14 @@ def main() -> int:
         print(completed.stderr, end="", file=sys.stderr)
         return completed.returncode
 
-    expected = args.expected.read_text(encoding="utf-8").strip()
-    actual = completed.stdout.strip()
-    if actual != expected:
+    expected = read_expected(args.expected)
+    actual = completed.stdout
+    if not matches_exactly(actual, expected):
         print(f"expected: {expected!r}", file=sys.stderr)
         print(f"actual:   {actual!r}", file=sys.stderr)
         return 1
 
-    print(actual)
+    print(actual, end="")
     return 0
 
 

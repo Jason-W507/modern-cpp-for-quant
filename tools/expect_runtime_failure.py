@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from compiler_driver import compile_executable_command
+
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Verify an intentional runtime failure.")
@@ -17,18 +19,6 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def compile_command(compiler: Path, source: Path, executable: Path) -> list[str]:
-    if compiler.name.lower() in {"cl", "cl.exe", "clang-cl", "clang-cl.exe"}:
-        return [
-            str(compiler),
-            "/nologo",
-            "/std:c++20",
-            str(source),
-            f"/Fe{executable}",
-        ]
-    return [str(compiler), "-std=c++20", str(source), "-o", str(executable)]
-
-
 def main() -> int:
     args = parse_arguments()
     args.work_dir.mkdir(parents=True, exist_ok=True)
@@ -38,7 +28,7 @@ def main() -> int:
     executable.unlink(missing_ok=True)
 
     compiled = subprocess.run(
-        compile_command(args.compiler, args.source, executable),
+        compile_executable_command(args.compiler, args.source, executable),
         text=True,
         capture_output=True,
         check=False,

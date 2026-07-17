@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from compiler_driver import compile_object_command, link_executable_command
+
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Verify an intentional link failure.")
@@ -14,29 +16,6 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--diagnostic", required=True)
     return parser.parse_args()
-
-
-def is_msvc(compiler: Path) -> bool:
-    return compiler.name.lower() in {"cl", "cl.exe", "clang-cl", "clang-cl.exe"}
-
-
-def compile_command(compiler: Path, source: Path, object_file: Path) -> list[str]:
-    if is_msvc(compiler):
-        return [
-            str(compiler),
-            "/nologo",
-            "/std:c++20",
-            "/c",
-            str(source),
-            f"/Fo{object_file}",
-        ]
-    return [str(compiler), "-std=c++20", "-c", str(source), "-o", str(object_file)]
-
-
-def link_command(compiler: Path, object_file: Path, executable: Path) -> list[str]:
-    if is_msvc(compiler):
-        return [str(compiler), "/nologo", str(object_file), f"/Fe{executable}"]
-    return [str(compiler), str(object_file), "-o", str(executable)]
 
 
 def run(command: list[str]) -> subprocess.CompletedProcess[str]:
@@ -53,13 +32,13 @@ def main() -> int:
     object_file.unlink(missing_ok=True)
     executable.unlink(missing_ok=True)
 
-    compiled = run(compile_command(args.compiler, args.source, object_file))
+    compiled = run(compile_object_command(args.compiler, args.source, object_file))
     if compiled.returncode != 0 or not object_file.is_file():
         print("source did not pass the compilation stage", file=sys.stderr)
         print(compiled.stdout + compiled.stderr, file=sys.stderr)
         return 1
 
-    linked = run(link_command(args.compiler, object_file, executable))
+    linked = run(link_executable_command(args.compiler, object_file, executable))
     diagnostics = linked.stdout + linked.stderr
     if linked.returncode == 0:
         executable.unlink(missing_ok=True)
