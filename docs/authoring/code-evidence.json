@@ -12,7 +12,10 @@
     {"tex": "chapters/ch04.tex", "source": "code/ch04/ranges_pipeline.cpp", "target": "ch04_ranges_pipeline"},
     {"tex": "chapters/ch05.tex", "source": "project/include/quant/types.hpp", "target": "quant_backtest"},
     {"tex": "chapters/ch05.tex", "source": "project/include/quant/execution.hpp", "target": "test_execution_portfolio"},
-    {"tex": "chapters/ch06.tex", "source": "project/include/quant/backtest.hpp", "target": "test_backtest"},
+    {"tex": "chapters/ch06.tex", "source": "code/ch06/lifetime_trace.cpp", "target": "ch06_lifetime_trace"},
+    {"tex": "chapters/ch06.tex", "source": "code/ch06/borrowing_and_legacy.cpp", "target": "ch06_borrowing_and_legacy"},
+    {"tex": "chapters/ch06.tex", "source": "code/ch06/raii_file.cpp", "target": "ch06_raii_file"},
+    {"tex": "chapters/ch06.tex", "source": "code/ch06/ownership_choices.cpp", "target": "ch06_ownership_choices"},
     {"tex": "chapters/ch07.tex", "source": "project/include/quant/csv.hpp", "target": "test_csv_reader"},
     {"tex": "chapters/ch08.tex", "source": "project/src/main.cpp", "target": "quant_backtest"},
     {"tex": "chapters/ch09.tex", "source": "project/benchmarks/layout_benchmark.cpp", "target": "layout_benchmark"},
@@ -26,6 +29,11 @@
       "source": "code/ch02/failures/narrowing.cpp",
       "stage": "compile",
       "diagnostic_category": "list initialization rejects a narrowing conversion"
+    },
+    {
+      "source": "code/ch06/failures/use_after_free.cpp",
+      "stage": "runtime",
+      "diagnostic_category": "AddressSanitizer reports heap-use-after-free"
     }
   ],
   "chapter_snapshots": []

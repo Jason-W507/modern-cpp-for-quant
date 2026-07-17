@@ -1,61 +1,201 @@
-\chapter{模板、concepts 与编译期契约}
+\chapter{对象生命周期、RAII 与所有权}
 
 \begin{introduction}
-  \item 理解函数模板的实例化与代码生成成本
-  \item 使用 concepts 表达最小、可诊断的能力要求
-  \item 在运行时多态与编译期多态之间做工程选择
-  \item 避免模板元编程成为炫技层
+  \item 从构造、使用到析构，画出自动对象与动态对象的生命周期
+  \item 区分值、引用、裸指针，以及左值、右值和移动后的有效状态
+  \item 识读 C 数组、\texttt{new}/\texttt{delete} 和典型悬空风险，同时坚持现代默认路径
+  \item 用 RAII 和 Rule of Zero 把文件等资源的释放绑定到对象生命周期
+  \item 在直接值与三种智能指针之间做有理由的所有权选择
+  \item 用 AddressSanitizer 取得一次真实的 heap-use-after-free 诊断
 \end{introduction}
 
-\chaptermeta{理解重载、基础模板语法和策略接口。}{concepts 与 Python Protocol 都描述能力，但 concept 参与编译期重载和实例化，不能证明运行时语义。}{模板错误过长时先缩小约束失败点；编译膨胀则检查重复实例化和头文件依赖。}
+\chaptermeta{已完成基础篇，能读写函数、引用、\texttt{const}、\texttt{string}/\texttt{vector}、\texttt{struct}/\texttt{class} 和构造函数；关键语法会在首次实验处复习。}{Python 名称和垃圾回收不等于 C++ 所有权；最接近 RAII 的 Python 心智模型是显式的 \texttt{with} 边界，而不是等待 \texttt{\_\_del\_\_}。}{出现悬空、重复释放或泄漏时，先画“谁创建、谁拥有、谁借用、何时销毁”，再用 sanitizer 取得失败类别。}
 
-\section{泛型不是宏替换}
+\section{本章输出：让所有权状态可以被观察}
 
-模板描述一族函数或类型；当代码以具体类型使用模板时，编译器执行实例化、检查表达式并生成所需代码。与 \python{} 鸭子类型相似之处是“只要求所用能力”，不同之处是错误发生在编译期，类型和调用路径参与优化与二进制生成。
+低延迟系统里，“这个指针应该还活着”不是可靠论证。行情快照、文件句柄、锁和异步任务都要求同一个问题有明确答案：对象从何时存在，到何时销毁，谁有权延长它的寿命？本章最终任务是重写一个所有权选择程序，并得到如下精确输出：
 
-无约束模板的错误常在深层表达式爆发。concepts 把要求放到接口位置：
+\begin{lstlisting}[numbers=none]
+direct=direct copied=copy unique_empty=1 unique_owner=unique shared_owners=1 weak_expired=0 weak_after_reset=1
+\end{lstlisting}
 
-\lstinputlisting[caption={策略 concept 与回测入口},firstline=1,lastline=31]{project/include/quant/backtest.hpp}
+它依次证明五件事：直接值的复制互相独立；唯一所有权可以转移；移动后原智能指针为空；弱观察不增加共享计数；最后一个共享所有者释放后，弱观察变为失效。完成判据不是背出四种工具，而是能从业务寿命关系推出选择，并用输出验证状态转换。
 
-\texttt{StrategyForMarketEvent} 要求只读策略能以事件和组合快照产生 \texttt{optional<OrderIntent>}。它没有要求继承基类、暴露字段或使用某种内部算法，因此约束的是行为形状而非实现。
+\section{对象生命周期、复制与移动}
 
-\section{概念应当有语义}
+\subsection{场景：一次行情缓冲区究竟销毁几次}
 
-编译器只能检查表达式是否合法，无法完全证明语义。一个类型可能具有名为 \texttt{on\_market\_event} 的函数，却违反“无订单时返回空值”或“订单代码与事件一致”等约定。这些语义仍需文档和行为测试。
+函数内的自动对象通常在声明处开始生命周期，在离开其花括号作用域时结束。构造成功才意味着对象存在；析构完成后，其存储即使尚未被别处覆盖，也不能继续作为原对象使用。多个自动对象按构造的逆序析构，这让后创建的资源可以先释放。
 
-好的 concept 名称来自领域能力，如 \texttt{Strategy}、\texttt{PriceFeed}；只把若干语法条件命名为 \texttt{HasFoo} 往往泄漏机制而没有解释用途。
+下面两种初始化分别请求复制构造和移动构造：
 
-\section{静态与动态多态}
+\begin{lstlisting}[numbers=none]
+Trace copied{original};
+Trace moved{std::move(original)};
+\end{lstlisting}
 
-模板适合类型集合在编译时已知、调用位于热路径且希望内联的场景。虚接口适合插件在运行时选择、实现隔离编译、需要稳定 ABI 或控制代码体积的场景。类型擦除可以在非模板边界保存不同实现，同时把具体类型保留在内部。
+前者创建独立对象。\texttt{std::move} 本身不搬运字节，也不销毁对象；它把表达式转换为允许选择移动操作的值类别。移动后的源对象仍必须可析构、可赋值，但除非类型另有保证，其具体值通常未指定。
 
-量化平台常混合使用：配置层根据名称创建运行时策略，策略内部的数值内核使用模板；网络或存储边界保持稳定接口。单一机制不必统治整个系统。
+\subsection{完整实验与逐行轨迹}
 
-\section{编译时间与代码体积}
+下面的程序显式记录构造、复制、移动和析构。它是教学探针，不是业务类型应照抄的设计；真实业务类型优先让成员自己管理资源。
 
-每种模板参数组合可能生成独立实例，导致编译变慢和二进制膨胀。把稳定、非类型相关逻辑移到普通函数；在头文件只保留实例化所需定义；使用显式实例化控制常用组合。优化器的内联合并可能缓解体积，但不能把它当保证。
+\lstinputlisting[caption={复制、移动与逆序析构轨迹}]{code/ch06/lifetime_trace.cpp}
 
-\section{constexpr 的适用边界}
+\texttt{original} 先以标签 \texttt{quote} 构造。内部作用域复制出 \texttt{quote-copy}，随后把 \texttt{original} 的字符串资源移动给 \texttt{moved}；本实验主动把源标签设为 \texttt{moved-from}，所以这一状态可测试。离开内部作用域时，\texttt{moved} 后构造、先析构，然后才是 \texttt{copied}。最外层结束时，源对象仍能安全析构。
 
-\texttt{constexpr} 允许表达式在满足条件时于编译期求值，也可在运行时调用。适合单位转换、查表、固定协议字段和小型数学函数。不要把大规模市场数据计算搬到编译期；这会增加构建成本且失去运行时输入意义。
+够用的值类别工作模型是：左值表达式有可重复识别的身份，例如已命名对象；纯右值常表示临时计算结果；将亡值表示资源可以被转移的对象。值类别属于表达式，不是“对象永久贴着的标签”。\texttt{original} 是对象，而写下它这个表达式时通常是左值；\texttt{std::move(original)} 才得到将亡值表达式。
 
 \begin{pythonbridge}
-\python{} protocol/ABC 可帮助静态检查或运行时约束；C++ concept 直接参与重载选择和模板实例化。二者都应描述调用者真正需要的最小能力。
+Python 的 \texttt{b = a} 通常让两个名称指向同一对象；C++ 的 \texttt{Trace b\{a\}} 调用复制构造并产生独立对象。Python 对象何时回收不应依赖某个实现的引用计数时机；C++ 自动对象离开作用域时按语言规则确定性析构。
 \end{pythonbridge}
 
-\begin{interviewcheck}
-concept 能检查哪些内容、不能证明哪些语义？虚函数与模板的主要权衡是什么？为什么模板可能增加代码体积？\texttt{constexpr} 是否保证编译期执行？
-\end{interviewcheck}
+\subsection{失败诊断与立即练习}
 
-\section{练习}
+常见错误是把“移动后仍有效”误读成“移动后仍保持原值”。标准容器通常保证移动后可析构和可重新赋值，但不保证仍有原内容。诊断时先看类型契约，再检查是否在移动后读取了业务状态。
+
+立即练习：把内部两次声明交换顺序，先预测构造和析构行的顺序，再运行 \texttt{ch06\_lifetime\_trace}。只改这一处，并解释为什么析构顺序随构造顺序反转。
+
+\section{引用、裸指针与底层内存识读}
+
+\subsection{场景：观察价格不等于拥有价格}
+
+引用 \texttt{T\&} 是已有对象的别名，声明时必须绑定；裸指针 \texttt{T*} 保存地址，可以改指向、可以为空。\texttt{\&price} 取得地址，\texttt{*observer} 解引用并访问所指对象，\texttt{nullptr} 明确表示没有对象。二者默认都不拥有对象，也不会自动延长被观察对象的生命周期。
+
+\subsection{完整实验：借用、C 数组与手动释放}
+
+\lstinputlisting[caption={非拥有借用与旧式内存语法识读}]{code/ch06/borrowing_and_legacy.cpp}
+
+\texttt{alias} 与 \texttt{price} 是同一对象的两个名字，因此函数通过可变引用把价格从 100 改到 100.5。\texttt{observer} 只读观察同一地址；置为 \texttt{nullptr} 后，程序先检查再避免解引用。
+
+\texttt{int stack\_quotes[3]} 是含三个元素的 C 数组，下标有效范围为 0、1、2。它在许多表达式和函数参数中会退化为指向首元素的指针，长度信息不随指针传递；越界不会自动抛出 Python 式异常。现代业务代码默认用 \texttt{std::array} 或 \texttt{std::vector} 保留大小与值语义，C 数组主要用于识读接口、协议布局和遗留代码。
+
+\texttt{new int\{10\}} 在动态存储期创建整数并返回拥有它的裸指针；\texttt{delete heap\_quantity} 结束对象生命周期并释放存储。数组形式 \texttt{new T[n]} 必须与 \texttt{delete[]} 配对，混用释放形式属于未定义行为。这里展示手动配对是为了读懂底层代码，不是鼓励把它作为默认方案。
+
+\begin{pythonbridge}
+Python 名称没有直接的“可空地址并手动解引用”语法。切片和容器通常携带长度；C++ 裸指针不携带长度或所有权。Python 的对象引用也可能让对象继续存活，而 C++ 裸引用和裸指针不会延寿。
+\end{pythonbridge}
+
+\subsection{失败诊断与立即练习}
+
+离开被指对象的作用域后继续解引用会悬空；释放后继续读取是 use-after-free；对同一地址再次 \texttt{delete} 是 double-free。把指针设为空只能防止该变量再次误用，不能修复其他别名。根因分析必须回到唯一的拥有者和销毁时刻。
+
+立即练习：把 \texttt{observer = nullptr;} 后面增加条件分支，只在非空时读取；分别用空与非空观察者验证。不要直接写 \texttt{*observer} 来“看看会发生什么”，未定义行为没有可接受的固定输出。
+
+\section{RAII：把释放变成结构性结果}
+
+\subsection{场景：提前返回也必须关闭报告文件}
+
+文件、锁、socket、线程和临时目录都需要成对操作。若每条控制路径都手写关闭或解锁，遗漏概率会随分支增加。RAII（Resource Acquisition Is Initialization）让资源由对象成员持有，并在对象析构时释放；作用域和栈展开替程序选择正确清理路径。
+
+\subsection{完整实验：文件流离开作用域后立即可读}
+
+\lstinputlisting[caption={文件流的确定性关闭}]{code/ch06/raii_file.cpp}
+
+内部第一对花括号创建 \texttt{std::ofstream}。离开作用域时，它的析构函数刷新并关闭文件；下一作用域因此能够立即打开并读取两行数据。输入流也先离开作用域，Windows 才允许后面的 \texttt{std::remove} 删除文件。测试得到 \texttt{inside\_open=1}、\texttt{after\_scope\_rows=2} 与 \texttt{removed=1}。
+
+如果一个类型的 \texttt{string}、\texttt{vector}、文件流和智能指针成员都能自行管理资源，外层类型通常不应手写析构、复制或移动操作，这就是 Rule of Zero。组合可靠值类型，比维护裸句柄、布尔“是否已关闭”标记和多条清理路径更容易验证。
+
+\begin{pythonbridge}
+Python 的 \texttt{with open(path) as f:} 是最接近的资源边界：\texttt{\_\_exit\_\_} 在离开块时运行。垃圾回收解决不可达对象的回收，不是及时关闭外部资源的跨实现契约；\texttt{\_\_del\_\_} 还会受到循环引用、解释器退出和异常处理限制。C++ 自动对象的析构由词法作用域确定，但动态共享对象仍要等最后一个拥有者消失。
+\end{pythonbridge}
+
+\subsection{失败诊断与立即练习}
+
+析构函数不应让异常逃逸；如果栈展开期间又抛出异常，进程会终止。可能失败的提交或关闭应提供显式操作报告错误，析构只做不抛的尽力清理。另一个常见失败是给已经 Rule of Zero 的类型补一个无必要析构，从而意外影响隐式移动操作。
+
+立即练习：在写入作用域中加入一个条件 \texttt{return 0;}，预测文件流是否仍会析构。不要永久保留提前返回；用调试输出或单独实验确认后恢复完整程序。
+
+\section{值、唯一所有权与共享所有权}
+
+\subsection{选择顺序：先问能否直接拥有值}
+
+默认选择顺序是：直接值成员；需要可选堆对象或动态多态时用 \texttt{unique\_ptr}; 只有多个参与者确实共同决定寿命时才用 \texttt{shared\_ptr}; 需要观察共享对象但不延寿时用 \texttt{weak\_ptr}。智能指针不是“更安全的普通指针”，而是把特定所有权规则编码进类型。
+
+\subsection{完整输出任务}
+
+\lstinputlisting[caption={值、唯一、共享与弱观察状态}]{code/ch06/ownership_choices.cpp}
+
+\texttt{Ledger copied\{direct\}} 使用 \texttt{string} 的值语义，修改副本名称不影响原对象。\texttt{make\_unique} 创建唯一所有者；\texttt{std::move(unique)} 把所有权交给 \texttt{transferred}，原指针变空。\texttt{make\_shared} 建立控制块，\texttt{weak\_ptr} 不增加强所有者计数，因此 \texttt{shared\_owners=1}。调用 \texttt{shared.reset()} 后最后一个强所有者消失，\texttt{observer.expired()} 变为真。
+
+读取弱观察时不能先检查 \texttt{expired()} 再稍后解引用，因为并发环境中对象可能在两步之间销毁；应调用 \texttt{lock()} 一次取得临时 \texttt{shared\_ptr}，再判断它是否为空。\texttt{shared\_ptr} 的控制块操作通常是线程安全的，但被管理对象的字段并不会自动获得同步。
+
+\begin{pythonbridge}
+Python 名称共享对象更像隐式共享引用，但没有在类型中区分唯一、共享和弱观察。\texttt{weakref} 与 \texttt{weak\_ptr} 都可观察而不延寿；C++ 则要求接口把所有权意图写得更显式。
+\end{pythonbridge}
+
+\subsection{失败诊断与立即练习}
+
+两个对象互相保存 \texttt{shared\_ptr} 会形成强引用环，计数永远不能归零；把不负责延寿的一侧改为 \texttt{weak\_ptr}。另一个设计味道是所有参数和成员都改成 \texttt{shared\_ptr}：这隐藏了自然所有者、增加原子计数成本，也让对象可能活得远超预期。
+
+立即练习：在输出任务中复制一个 \texttt{shared\_ptr} 到内部作用域，预测作用域内外的 \texttt{use\_count()}，再运行验证。离开作用域后计数应恢复，不要把具体计数当成并发同步机制。
+
+\section{把所有权意图写进函数接口}
+
+所有权判断不应只存在于注释里。函数签名是第一道约束：按值参数取得自己的副本或被移动进来的值；\texttt{const T\&} 表达调用期间只读借用；\texttt{T\&} 表达调用期间可变借用；\texttt{unique\_ptr<T>} 按值传入通常表示接管唯一所有权；\texttt{shared\_ptr<T>} 按值传入则表示函数要成为共同所有者。若函数只在调用期间读取共享对象，仍应优先接收 \texttt{const T\&}，不要为方便而增加引用计数。
+
+\begin{lstlisting}[numbers=none]
+double mark_value(const Quote& quote);       // read-only borrow
+void normalize(Quote& quote);                // mutable borrow
+void enqueue(std::unique_ptr<Order> order);  // ownership transfer
+void retain(std::shared_ptr<Feed> feed);     // shared lifetime
+\end{lstlisting}
+
+返回值也优先表达值语义。现代 C++ 能通过复制消除或移动高效返回对象，调用者得到清楚的所有权。返回裸指针或引用只有在“被返回对象由别处拥有，且寿命明确长于调用者使用期”时才合理；接口文档还必须说明能否为空。切勿返回局部自动对象的指针或引用，因为函数返回时该对象已经析构。
+
+审查一条接口时可以按四问展开：它是否创建对象；谁在调用后拥有对象；借用最长持续到何时；并发任务或回调能否越过该寿命边界。若回答需要“大家小心一点”，类型通常还没有表达真实关系。量化系统里尤其要警惕把栈上行情对象的引用捕获到异步任务：提交函数很快返回，而任务稍后才解引用，形成确定的悬空窗口。
+
+立即练习：给一个“异步保存订单”函数分别写出按值、\texttt{unique\_ptr} 和 \texttt{shared\_ptr} 三个签名。说明哪个版本复制数据，哪个版本转移所有权，哪个版本允许调用者与任务共同延寿；然后选择能满足需求且关系最简单的版本。
+
+\section{失败实验：让 AddressSanitizer 证明悬空}
+
+故意失败源码 \path{code/ch06/failures/use_after_free.cpp} 在 \texttt{delete} 之后再次读取同一地址。它与绿色示例隔离，不能进入默认 \texttt{all} 目标：
+
+\begin{lstlisting}
+int* quantity{new int{10}};
+delete quantity;
+std::cout << *quantity << '\n';  // intentional use-after-free
+\end{lstlisting}
+
+在 Linux/WSL 中运行：
+
+\begin{lstlisting}[language=bash,numbers=none]
+g++ -std=c++20 -O0 -g -fsanitize=address \
+    -fno-omit-frame-pointer \
+    code/ch06/failures/use_after_free.cpp -o use_after_free
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 ./use_after_free
+\end{lstlisting}
+
+验收类别是 \texttt{heap-use-after-free} 和非零退出，不绑定某一版完整堆栈文本。报告中的“freed by”位置说明存储在哪里释放，“read of size”说明悬空访问发生在哪里。恢复步骤是删除非法读取，并把所有权改为直接值或唯一所有者；只把指针置空不足以修复其他别名。若把非法读取换成第二次 \texttt{delete quantity;}，同一所有权错误会表现为 double-free 类别。
+
+本项目的 CTest 在 Windows 上通过 WSL GCC 取得真实 ASan 证据；受限环境无法启动 WSL 时测试以明确的 skip 状态退出，而发布验收必须在可用的 Linux/WSL 环境实际通过。
+
+\section{自测、练习与面试表达}
 
 \begin{enumerate}
-  \item 写一个不满足策略 concept 的类型，比较加约束前后的编译错误。
-  \item 设计卖出策略并让同一回测入口接受它，不修改引擎实现。
-  \item 把一个过度泛型函数拆成模板薄层和普通实现，比较重新编译范围。
-  \item 列出需要运行时加载策略插件时，concept 不能独自解决的三个问题。
+  \item 对象生命周期的开始和结束分别需要什么事件？为什么存储仍有旧比特不等于对象仍存在？
+  \item \texttt{std::move} 实际做什么？移动后的对象保证什么，又通常不保证什么？
+  \item 引用、裸指针、\texttt{unique\_ptr} 和 \texttt{shared\_ptr} 分别表达何种所有权？
+  \item C 数组退化后丢失什么信息？\texttt{new[]} 为什么必须与 \texttt{delete[]} 配对？
+  \item RAII 如何覆盖异常和提前返回？Rule of Zero 为什么通常比手写析构更稳健？
+  \item \texttt{weak\_ptr} 如何打破共享环？为什么“shared”不代表对象字段线程安全？
+  \item sanitizer 报告 use-after-free 时，如何从分配、释放和非法访问三处恢复生命周期图？
 \end{enumerate}
+
+编码练习：
+
+\begin{enumerate}
+  \item 从空文件重建复制/移动轨迹，先写出完整预期输出再运行；答案见 \path{code/ch06/lifetime_trace.cpp} 与对应 expected 文件。
+  \item 为可空价格观察写出引用版本和指针版本，说明为什么引用版本不能表达“没有价格”；答案见 \path{code/ch06/borrowing_and_legacy.cpp}。
+  \item 用文件流作用域写入并读取两行报告，确认资源在第二次打开前已经关闭；答案见 \path{code/ch06/raii_file.cpp}。
+  \item 重写本章所有权输出任务并达到章首精确字符串；答案见 \path{code/ch06/ownership_choices.cpp}。
+  \item 单独运行 ASan 失败实验，记录非零退出和稳定诊断类别，不把未定义输出当作答案。
+\end{enumerate}
+
+\begin{interviewcheck}
+给定“策略异步保存一条行情供稍后读取”，先问谁拥有行情、异步任务最长活多久、能否按值复制，再决定值、唯一所有权或共享所有权。回答必须包含一个悬空失败路径、一个 RAII 清理边界和拒绝滥用 \texttt{shared\_ptr} 的理由。
+\end{interviewcheck}
 
 \section{本章小结}
 
-模板提供编译期多态，concepts 把能力要求放在接口边界。它们的价值是清晰契约与可优化代码，而非复杂语法；运行时多态仍是稳定边界和插件系统的重要工具。
+生命周期是所有权推理的时间轴：构造建立对象，作用域与拥有者决定析构，引用和裸指针只表达借用。直接值和 Rule of Zero 是默认路径，RAII 把资源释放变成结构性结果；\texttt{unique\_ptr} 表达可转移的唯一所有权，\texttt{shared\_ptr} 只用于真实共同寿命，\texttt{weak\_ptr} 提供不延寿的观察。C 数组与手动分配必须会读、会诊断，但不应取代现代值类型。最后，sanitizer 给出的不是“修复方案”，而是重建错误生命周期图的运行证据。

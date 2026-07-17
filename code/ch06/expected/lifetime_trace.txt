@@ -1,0 +1,8 @@
+construct=quote
+copy=quote->quote-copy
+move=quote
+states=moved-from,quote-copy,quote
+destroy=quote
+destroy=quote-copy
+after-inner=moved-from
+destroy=moved-from

@@ -1,0 +1,1 @@
+price=100.5 alias=100.5 observed=100.5 missing=1 stack_last=102 heap_quantity=10 released=1

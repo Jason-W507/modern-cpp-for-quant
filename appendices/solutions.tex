@@ -45,10 +45,11 @@
 
 \section{第 6 章}
 \begin{enumerate}
-  \item 缺少正确返回类型时 concept 在调用边界失败；无约束模板通常在引擎内部产生长错误。
-  \item 新策略只需满足同一 \texttt{on\_market\_event} 契约，引擎不变。
-  \item 模板薄层提取类型相关值，再调用普通函数，可减少实例化体积。
-  \item 动态加载、ABI、生命周期和版本协商仍需稳定运行时接口。
+  \item 构造成功开始对象生命周期，析构结束生命周期；自动对象按逆构造顺序销毁。复制/移动轨迹的完整答案及逐行预期见 \path{code/ch06/lifetime_trace.cpp} 与 \path{code/ch06/expected/lifetime_trace.txt}。
+  \item 引用必须绑定且不能表达空，裸指针可空但默认不拥有；两者都不延长所指对象寿命。C 数组退化后不再携带长度，\texttt{new[]} 必须与 \texttt{delete[]} 配对。可运行答案见 \path{code/ch06/borrowing_and_legacy.cpp}。
+  \item RAII 文件答案见 \path{code/ch06/raii_file.cpp}：输出流作用域结束后确定性关闭，随后输入流读到两行；输入流再析构后文件才能在 Windows 删除。Python 应用 \texttt{with} 表达同类边界，不依赖垃圾回收及时释放外部资源。
+  \item 所有权选择答案见 \path{code/ch06/ownership_choices.cpp}：直接值优先；唯一所有权可移动不可复制；共享所有权需要共同寿命理由；弱观察不增加强计数并在最后一个所有者消失后失效。
+  \item 失败实验位于目录 \path{code/ch06/failures/} 的 \path{use_after_free.cpp}。用 ASan 编译运行应非零退出并报告 \texttt{heap-use-after-free}；修复是恢复唯一清楚的拥有者与有效借用期，而不是假定旧地址仍可读。
 \end{enumerate}
 
 \section{第 7 章}

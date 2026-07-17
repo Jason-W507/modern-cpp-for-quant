@@ -32,6 +32,10 @@ quant_target(ch02_market_filter code/ch02/market_filter.cpp)
 quant_target(ch02_risk_budget_solution code/ch02/exercises/risk_budget_solution.cpp)
 quant_target(ch03_raii_file code/ch03/raii_file.cpp)
 quant_project_target(ch04_ranges_pipeline code/ch04/ranges_pipeline.cpp)
+quant_target(ch06_lifetime_trace code/ch06/lifetime_trace.cpp)
+quant_target(ch06_borrowing_and_legacy code/ch06/borrowing_and_legacy.cpp)
+quant_target(ch06_raii_file code/ch06/raii_file.cpp)
+quant_target(ch06_ownership_choices code/ch06/ownership_choices.cpp)
 
 quant_project_target(test_strategy project/tests/test_strategy.cpp)
 add_test(NAME strategy_decision_seam COMMAND test_strategy)
@@ -114,6 +118,33 @@ set_tests_properties(ch03_raii_file_runs PROPERTIES
 add_test(NAME ch04_ranges_pipeline_runs COMMAND ch04_ranges_pipeline)
 set_tests_properties(ch04_ranges_pipeline_runs PROPERTIES
   PASS_REGULAR_EXPRESSION "positive-notional=3975")
+add_test(NAME ch06_lifetime_trace_shows_copy_move_and_reverse_destruction
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch06/expected/lifetime_trace.txt
+          -- $<TARGET_FILE:ch06_lifetime_trace>)
+add_test(NAME ch06_borrowing_and_legacy_distinguishes_observation_from_ownership
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch06/expected/borrowing_and_legacy.txt
+          -- $<TARGET_FILE:ch06_borrowing_and_legacy>)
+add_test(NAME ch06_raii_file_closes_at_scope_exit
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch06/expected/raii_file.txt
+          -- $<TARGET_FILE:ch06_raii_file>)
+add_test(NAME ch06_ownership_choices_show_value_unique_shared_and_weak_states
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch06/expected/ownership_choices.txt
+          -- $<TARGET_FILE:ch06_ownership_choices>)
+add_test(NAME ch06_use_after_free_is_reported_by_address_sanitizer
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_asan_failure.py
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch06/failures/use_after_free.cpp
+          --diagnostic "heap-use-after-free")
+set_tests_properties(ch06_use_after_free_is_reported_by_address_sanitizer PROPERTIES
+  SKIP_RETURN_CODE 77)
 
 add_test(NAME book_contract
   COMMAND ${Python3_EXECUTABLE}

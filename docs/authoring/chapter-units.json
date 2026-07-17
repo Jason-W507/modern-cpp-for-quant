@@ -42,7 +42,41 @@
     {"number": 3, "state": "planned"},
     {"number": 4, "state": "planned"},
     {"number": 5, "state": "planned"},
-    {"number": 6, "state": "planned"},
+    {
+      "number": 6,
+      "state": "accepted",
+      "evidence": {
+        "tex": "chapters/ch06.tex",
+        "examples": [
+          "code/ch06/lifetime_trace.cpp",
+          "code/ch06/borrowing_and_legacy.cpp",
+          "code/ch06/raii_file.cpp",
+          "code/ch06/ownership_choices.cpp"
+        ],
+        "failure_experiment": {
+          "source": "code/ch06/failures/use_after_free.cpp",
+          "diagnostic_category": "AddressSanitizer reports heap-use-after-free"
+        },
+        "output_task": "Build the ownership-choice program and print direct=direct copied=copy unique_empty=1 unique_owner=unique shared_owners=1 weak_expired=0 weak_after_reset=1.",
+        "self_checks": 7,
+        "feedback": "appendices/solutions.tex",
+        "checklist_markers": [
+          "prerequisites",
+          "learning-output",
+          "scenario",
+          "syntax-rule",
+          "runnable-example",
+          "guided-explanation",
+          "python-boundary",
+          "failure-diagnosis",
+          "immediate-practice",
+          "code-evidence",
+          "feedback",
+          "project-connection",
+          "publication"
+        ]
+      }
+    },
     {"number": 7, "state": "planned"},
     {"number": 8, "state": "planned"},
     {"number": 9, "state": "planned"},
