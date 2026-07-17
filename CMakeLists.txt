@@ -7,6 +7,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(CTest)
 
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
 function(quant_target target source)
   add_executable(${target} ${source})
   if(MSVC)
@@ -79,3 +81,14 @@ set_tests_properties(ch03_raii_file_runs PROPERTIES
 add_test(NAME ch04_ranges_pipeline_runs COMMAND ch04_ranges_pipeline)
 set_tests_properties(ch04_ranges_pipeline_runs PROPERTIES
   PASS_REGULAR_EXPRESSION "positive-notional=3975")
+
+add_test(NAME book_contract
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_book_contract.py
+          --root ${CMAKE_CURRENT_SOURCE_DIR})
+set_tests_properties(book_contract PROPERTIES
+  PASS_REGULAR_EXPRESSION "18 chapters.*150 planned pages")
+
+add_test(NAME book_contract_cli_tests
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/test_book_contract.py)
