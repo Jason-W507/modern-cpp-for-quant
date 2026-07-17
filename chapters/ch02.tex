@@ -8,11 +8,11 @@
   \item 从标准输入读取固定行情，筛选有效买单并汇总名义金额
 \end{introduction}
 
-\chaptermeta{已完成第 1 章，能在 Linux/WSL 中编译、链接并运行单文件程序；本章不要求会函数、容器、类、引用或指针。}{Python 变量是可重新绑定的名称；C++ 声明会创建具有固定类型和作用域的对象，复制一个基础类型对象会得到独立的值。}{先区分编译诊断与运行结果，再检查初始化、整数除法、隐式转换、分支边界和循环是否终止。}
+\chaptermeta{已完成第 1 章，能在 Linux/WSL 中编译、链接并运行单文件程序；本章不要求会自定义函数、容器、类、引用或指针。}{Python 变量是可重新绑定的名称；C++ 声明会创建具有固定类型和作用域的对象，复制一个基础类型对象会得到独立的值。}{先区分编译诊断与运行结果，再检查初始化、整数除法、隐式转换、分支边界和循环是否终止。}
 
 \section{本章任务：从五行行情得到一个确定答案}
 
-研究原型里，一条筛选可能只是几行 DataFrame 表达式；面试白板题或低延迟数据入口却常要求你明确说明：每个字段是什么类型，坏数据走哪条分支，循环何时停止，累计值如何更新。本章的输出任务只使用基础语法，不借助尚未教学的函数、结构体或容器。
+研究原型里，一条筛选可能只是几行 DataFrame 表达式；面试白板题或低延迟数据入口却常要求你明确说明：每个字段是什么类型，坏数据走哪条分支，循环何时停止，累计值如何更新。本章的输出任务只使用基础语法，不借助尚未教学的自定义函数、结构体或容器。
 
 程序从标准输入读取一个行数和五行数值行情。每行依次是“证券编号、方向代码、价格、数量”；方向 \texttt{1} 表示买，\texttt{2} 表示卖，其他代码无效。程序只选中编号、价格、数量均为正的买单，然后打印选中数、拒绝数、名义金额总和与每条选中记录的平均名义金额。
 
@@ -51,7 +51,7 @@ selected=2 rejected=3 buy_notional=1035.75 average=517.875
 
 字面量本身也有类型。\texttt{1} 通常是 \texttt{int}，\texttt{1.0} 是 \texttt{double}，\texttt{true} 是 \texttt{bool}，单引号中的 \texttt{'X'} 是字符字面量，双引号中的 \texttt{"side="} 是字符串字面量。\texttt{'\textbackslash n'} 表示换行字符，它与包含两个可见字符的 \texttt{"\textbackslash\textbackslash n"} 不同。因此 \texttt{double price\{100\};} 可以精确表示该值，而 \texttt{int price\{100.5\};} 会在编译阶段被拒绝。
 
-程序入口 \texttt{main} 和头文件沿用第 1 章，但这里把输出语法补全：\texttt{std::cout} 是标准输出流，\texttt{<<} 依次把右侧的字符串字面量和对象值送入流。\texttt{std::} 指明标准库名称所在的命名空间。最后一个右花括号结束 \texttt{main}；走到这里等价于成功返回状态 0。
+为了让本章不依赖读者猜测程序外壳，这里逐项说明：\texttt{\#include <cstdint>} 与 \texttt{\#include <iostream>} 让当前源文件看见所需标准库声明；\texttt{int main()} 定义程序入口，\texttt{int} 是返回状态的类型，空圆括号表示这个版本不接收命令行参数，随后的一对花括号包住入口函数体。\texttt{std::cout} 是标准输出流，\texttt{<<} 依次把右侧的字符串字面量和对象值送入流。\texttt{std::} 指明标准库名称所在的命名空间。最后一个右花括号结束 \texttt{main}；走到这里等价于成功返回状态 0。第 3 章才会系统教学如何定义和调用自己的函数。
 
 \subsection{逐步观察：Python 名称不等于 C++ 对象}
 
@@ -82,7 +82,7 @@ int rounded_price{100.5};  // intentional compile failure
 
 用 \texttt{g++ -std=c++20 code/ch02/failures/narrowing.cpp} 单独触发它。预期的是“列表初始化拒绝窄化转换”这一诊断类别，而不是某一版 GCC 的完整英文措辞。根因是从 \texttt{double} 字面量到 \texttt{int} 会丢掉小数；修复不是换成圆括号躲开检查，而是先决定业务舍入规则，再显式转换。
 
-立即练习：把 \texttt{int quantity\{10\};} 改成 \texttt{int quantity\{10.0\};}，确认可精确表示的常量仍可通过；再改成 \texttt{10.5}，确认编译器拒绝它。解释两次结果，而不是只记“花括号更严格”。
+立即练习：分别编译 \texttt{double price\{10\};} 与 \texttt{int quantity\{10.0\};}。前者的整数常量 10 能被 \texttt{double} 精确表示，可以通过；后者从浮点类型转为整数，即使写成 10.0 也属于列表初始化禁止的窄化，必须被拒绝。再把它改成 10.5，说明同一诊断规则，而不是误记成“没有小数部分就可以”。
 
 \section{表达式、\texttt{auto} 与显式转换}
 
@@ -154,9 +154,9 @@ Python 的 \texttt{if}/\texttt{elif}/\texttt{else} 与 C++ 分支目标相似，
 
 \lstinputlisting[caption={计数循环与块作用域}]{code/ch02/for_scope.cpp}
 
-圆括号内由三个分号分隔的部分依次是：只执行一次的初始化 \texttt{int row\{\}}；每轮开始前检查的条件 \texttt{row < row\_count}；每轮末尾执行的更新 \texttt{++row}。当条件变假，循环结束。若 \texttt{row\_count} 为 5，\texttt{row} 依次为 0、1、2、3、4，共五轮；写成 \texttt{<=} 会多处理一轮。
+圆括号内由两个分号分隔的三个部分依次是：只执行一次的初始化 \texttt{int row\{\}}；每轮开始前检查的条件 \texttt{row < 5}；每轮末尾执行的更新 \texttt{++row}。\texttt{row} 因而依次为 0、1、2、3、4，共五轮；若误写成 \texttt{row <= 5} 就会多处理一轮。
 
-花括号还建立作用域。循环体内声明的 \texttt{price} 每轮重新创建，离开该轮后销毁；循环外的 \texttt{selected} 则跨轮保存累计值。循环结束后不能访问 \texttt{row} 或某一轮的 \texttt{price}。把对象声明在“足够用的最小作用域”能减少误用，也让读者更容易追踪状态。
+每轮先用 \texttt{row \% 2} 计算余数，并创建本轮的 \texttt{remainder}。余数为零时，\texttt{if} 分支把循环外的 \texttt{selected} 加一，因此第 0、2、4 轮共更新三次并输出 \texttt{selected=3}。花括号还建立作用域：\texttt{remainder} 每轮重新创建并在该轮末尾销毁，\texttt{selected} 则跨轮保存累计值；循环结束后也不能访问初始化部分声明的 \texttt{row}。把对象放在“足够用的最小作用域”能减少误用，也让读者更容易追踪状态。
 
 \subsection{条件循环的完整练习答案}
 
