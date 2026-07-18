@@ -1,0 +1,1 @@
+error=usage: ch05_market_analyzer <market.csv> <symbol>

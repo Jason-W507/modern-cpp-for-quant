@@ -1,0 +1,1 @@
+valid=AAPL@100 rejected=price must be finite and positive mismatch=symbol does not match analyzer

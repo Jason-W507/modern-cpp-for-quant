@@ -50,6 +50,19 @@ quant_target(ch04_symbol_summary_solution
   code/ch04/exercises/symbol_summary_solution.cpp)
 target_sources(ch04_symbol_summary_solution PRIVATE code/ch04/src/csv_stats.cpp)
 target_include_directories(ch04_symbol_summary_solution PRIVATE code/ch04/include)
+quant_target(ch05_market_analyzer code/ch05/src/main.cpp)
+target_sources(ch05_market_analyzer PRIVATE
+  code/ch05/src/csv_reader.cpp
+  code/ch05/src/market.cpp)
+target_include_directories(ch05_market_analyzer PRIVATE code/ch05/include)
+quant_target(ch05_records code/ch05/records.cpp)
+quant_target(ch05_class_invariants code/ch05/class_invariants.cpp)
+target_sources(ch05_class_invariants PRIVATE code/ch05/src/market.cpp)
+target_include_directories(ch05_class_invariants PRIVATE code/ch05/include)
+quant_target(ch05_price_range_solution
+  code/ch05/exercises/price_range_solution.cpp)
+target_sources(ch05_price_range_solution PRIVATE code/ch05/src/market.cpp)
+target_include_directories(ch05_price_range_solution PRIVATE code/ch05/include)
 quant_target(ch06_lifetime_trace code/ch06/lifetime_trace.cpp)
 quant_target(ch06_borrowing_and_legacy code/ch06/borrowing_and_legacy.cpp)
 quant_target(ch06_raii_file code/ch06/raii_file.cpp)
@@ -292,6 +305,127 @@ add_test(NAME ch04_symbol_summary_solution_filters_one_symbol
           -- $<TARGET_FILE:ch04_symbol_summary_solution>
              ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/data/market_rows.csv
              AAPL)
+add_test(NAME ch05_market_analyzer_summarizes_one_symbol
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 0
+          --expected-stdout ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/expected/market_analyzer.txt
+          -- $<TARGET_FILE:ch05_market_analyzer>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/data/market_rows.csv
+             AAPL)
+add_test(NAME ch05_market_analyzer_rejects_an_invalid_quote
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/expected/invalid_price_error.txt
+          -- $<TARGET_FILE:ch05_market_analyzer>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/data/invalid_price.csv
+             AAPL)
+add_test(NAME ch05_market_analyzer_rejects_an_empty_symbol
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/expected/empty_symbol_error.txt
+          -- $<TARGET_FILE:ch05_market_analyzer>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/data/empty_symbol.csv
+             AAPL)
+add_test(NAME ch05_market_analyzer_rejects_a_nonpositive_quantity
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/expected/invalid_quantity_error.txt
+          -- $<TARGET_FILE:ch05_market_analyzer>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/data/invalid_quantity.csv
+             AAPL)
+add_test(NAME ch05_market_analyzer_rejects_a_symbol_without_rows
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/expected/missing_symbol_error.txt
+          -- $<TARGET_FILE:ch05_market_analyzer>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/data/market_rows.csv
+             TSLA)
+add_test(NAME ch05_market_analyzer_preserves_numeric_error_context
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/expected/invalid_number_error.txt
+          -- $<TARGET_FILE:ch05_market_analyzer>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/data/invalid_number.csv
+             AAPL)
+add_test(NAME ch05_market_analyzer_rejects_a_nonnumeric_quantity
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/expected/invalid_quantity_text_error.txt
+          -- $<TARGET_FILE:ch05_market_analyzer>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/data/invalid_quantity_text.csv
+             AAPL)
+add_test(NAME ch05_market_analyzer_rejects_the_wrong_header
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/expected/wrong_header_error.txt
+          -- $<TARGET_FILE:ch05_market_analyzer>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/data/wrong_header.csv
+             AAPL)
+add_test(NAME ch05_market_analyzer_rejects_the_wrong_column_count
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/expected/wrong_columns_error.txt
+          -- $<TARGET_FILE:ch05_market_analyzer>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/data/wrong_columns.csv
+             AAPL)
+add_test(NAME ch05_market_analyzer_reports_usage_errors
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/expected/usage_error.txt
+          -- $<TARGET_FILE:ch05_market_analyzer>)
+add_test(NAME ch05_market_analyzer_reports_file_open_errors
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/expected/open_error.txt
+          -- $<TARGET_FILE:ch05_market_analyzer>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/data/does-not-exist.csv
+             AAPL)
+add_test(NAME ch05_public_record_exposes_aggregate_state
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/expected/records.txt
+          -- $<TARGET_FILE:ch05_records>)
+add_test(NAME ch05_class_constructor_preserves_quote_invariants
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/expected/class_invariants.txt
+          -- $<TARGET_FILE:ch05_class_invariants>)
+add_test(NAME ch05_private_state_is_rejected_at_compile_time
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_compile_failure.py
+          --compiler ${CMAKE_CXX_COMPILER}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/failures/private_access.cpp
+          --output ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch05_private_access.obj
+          --diagnostic "private|inaccessible")
+add_test(NAME ch05_price_range_solution_reuses_the_analyzer
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/expected/price_range_solution.txt
+          -- $<TARGET_FILE:ch05_price_range_solution>)
+add_test(NAME ch05_clean_market_analyzer_configures_builds_and_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
+          --cmake ${CMAKE_COMMAND}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/expected/market_analyzer.txt
+          --target ch05_market_analyzer
+          --argument ${CMAKE_CURRENT_SOURCE_DIR}/code/ch05/data/market_rows.csv
+          --argument AAPL
+          --generator "${CMAKE_GENERATOR}"
+          --compiler ${CMAKE_CXX_COMPILER}
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests
+          --config $<CONFIG>)
 add_test(NAME ch06_lifetime_trace_shows_copy_move_and_reverse_destruction
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py

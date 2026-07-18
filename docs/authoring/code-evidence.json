@@ -21,8 +21,13 @@
     {"tex": "chapters/ch04.tex", "source": "code/ch04/src/main.cpp", "target": "ch04_csv_stats"},
     {"tex": "appendices/solutions.tex", "source": "code/ch04/src/csv_stats.cpp", "target": "ch04_csv_stats"},
     {"tex": "appendices/solutions.tex", "source": "code/ch04/exercises/symbol_summary_solution.cpp", "target": "ch04_symbol_summary_solution"},
-    {"tex": "chapters/ch05.tex", "source": "project/include/quant/types.hpp", "target": "quant_backtest"},
-    {"tex": "chapters/ch05.tex", "source": "project/include/quant/execution.hpp", "target": "test_execution_portfolio"},
+    {"tex": "chapters/ch05.tex", "source": "code/ch05/records.cpp", "target": "ch05_records"},
+    {"tex": "chapters/ch05.tex", "source": "code/ch05/class_invariants.cpp", "target": "ch05_class_invariants"},
+    {"tex": "chapters/ch05.tex", "source": "code/ch05/include/quant/ch05/market.hpp", "target": "ch05_market_analyzer"},
+    {"tex": "chapters/ch05.tex", "source": "code/ch05/src/main.cpp", "target": "ch05_market_analyzer"},
+    {"tex": "appendices/solutions.tex", "source": "code/ch05/src/market.cpp", "target": "ch05_market_analyzer"},
+    {"tex": "appendices/solutions.tex", "source": "code/ch05/src/csv_reader.cpp", "target": "ch05_market_analyzer"},
+    {"tex": "appendices/solutions.tex", "source": "code/ch05/exercises/price_range_solution.cpp", "target": "ch05_price_range_solution"},
     {"tex": "chapters/ch06.tex", "source": "code/ch06/lifetime_trace.cpp", "target": "ch06_lifetime_trace"},
     {"tex": "chapters/ch06.tex", "source": "code/ch06/borrowing_and_legacy.cpp", "target": "ch06_borrowing_and_legacy"},
     {"tex": "chapters/ch06.tex", "source": "code/ch06/raii_file.cpp", "target": "ch06_raii_file"},
@@ -82,6 +87,11 @@
       "diagnostic_category": "AddressSanitizer reports heap-use-after-free after vector reallocation"
     },
     {
+      "source": "code/ch05/failures/private_access.cpp",
+      "stage": "compile",
+      "diagnostic_category": "compiler rejects access to a private data member"
+    },
+    {
       "source": "code/ch06/failures/use_after_free.cpp",
       "stage": "runtime",
       "diagnostic_category": "AddressSanitizer reports heap-use-after-free"
@@ -99,6 +109,10 @@
     {
       "path": "code/ch04",
       "entry_target": "ch04_csv_stats"
+    },
+    {
+      "path": "code/ch05",
+      "entry_target": "ch05_market_analyzer"
     }
   ]
 }

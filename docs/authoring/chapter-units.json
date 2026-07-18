@@ -175,7 +175,47 @@
         ]
       }
     },
-    {"number": 5, "state": "planned"},
+    {
+      "number": 5,
+      "state": "accepted",
+      "evidence": {
+        "tex": "chapters/ch05.tex",
+        "examples": [
+          "code/ch05/records.cpp",
+          "code/ch05/class_invariants.cpp",
+          "code/ch05/include/quant/ch05/market.hpp",
+          "code/ch05/include/quant/ch05/csv_reader.hpp",
+          "code/ch05/src/market.cpp",
+          "code/ch05/src/csv_reader.cpp",
+          "code/ch05/src/main.cpp",
+          "code/ch05/CMakeLists.txt",
+          "code/ch05/exercises/price_range_solution.cpp"
+        ],
+        "failure_experiment": {
+          "source": "code/ch05/failures/private_access.cpp",
+          "diagnostic_category": "compiler rejects access to a private data member"
+        },
+        "output_task": "Configure code/ch05 from a clean build directory, read market_rows.csv for AAPL, and print exactly symbol=AAPL rows=2 first=100.00 last=101.00 return=1.00% low=100.00 high=101.00 trend=up quantity=15; invalid input exits 2 with exact contextual diagnostics.",
+        "self_checks": 8,
+        "feedback": "appendices/solutions.tex",
+        "project_connection": "code/ch05 is the independent foundation-stage market analyzer snapshot; it turns Chapter 4 CSV fields into validated objects without depending on the later project directory.",
+        "checklist_markers": [
+          "prerequisites",
+          "learning-output",
+          "scenario",
+          "syntax-rule",
+          "runnable-example",
+          "guided-explanation",
+          "python-boundary",
+          "failure-diagnosis",
+          "immediate-practice",
+          "code-evidence",
+          "feedback",
+          "project-connection",
+          "publication"
+        ]
+      }
+    },
     {
       "number": 6,
       "state": "accepted",

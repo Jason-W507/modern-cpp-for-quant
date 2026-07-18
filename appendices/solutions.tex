@@ -73,12 +73,29 @@ CSV 读取与统计函数的完整实现如下；它只接受本章定义的三�
 空代码、非法价格和错误列数的固定输入与预期错误分别位于 \path{code/ch04/data/} 和 \path{code/ch04/expected/}。故意失效迭代器只通过 ASan 验收 \texttt{heap-use-after-free} 类别，不读取未定义的数值结果。
 
 \section{第 5 章}
+\subsection*{自测答案}
 \begin{enumerate}
-  \item ID 若决定订单身份应是值字段；追踪批次等上下文可放外部 envelope。
-  \item 返回成交与剩余量，且任何成交量不超过订单和事件可用量。
-  \item 快照接收价格映射和估值时刻，并返回完整性状态；禁止静默把缺价当零。
-  \item 按不变量拆分，例如订单生命周期与风险检查，不按“工具方法”随意切。
+  \item \texttt{struct} 默认公开，\texttt{class} 默认私有；两者都能声明访问标签、构造函数和成员函数，不是两套对象模型。选择应表达“透明记录”还是“维护不变量的抽象”。
+  \item 作用域枚举把枚举项保留在类型作用域并阻止静默整数转换，因此写 \texttt{Trend::up}。分支直接 \texttt{return} 或 \texttt{throw} 时不需 \texttt{break}；仍要继续执行函数时，\texttt{break} 防止贯穿下一标签。
+  \item 构造函数建立对象，没有单独返回值。成员初始化列表在进入函数体前构造成员；函数体随后检查字段组合，不满足时抛出且对象不交付。
+  \item \texttt{price() const} 的尾随 \texttt{const} 约束当前对象不被成员函数修改；\texttt{const std::string\&} 约束调用者通过返回引用只读观察字符串，并要求借用不超过对象寿命。
+  \item \texttt{this} 是当前对象的指针；\texttt{this->prices\_} 通过指针访问当前对象成员，\texttt{quote.price()} 用点号从已有对象调用成员。无歧义时成员函数内可省略 \texttt{this->}。
+  \item \texttt{MarketQuote} 的空代码、非法价格和非正数量会破坏所有后续统计，适合在构造边界拒绝。\texttt{MarketSummary} 是已经计算完成、无需继续维护跨字段状态的透明结果，适合公开字段。
+  \item 异常传播会按逆序销毁已完成构造的自动对象；未完成构造的目标对象不存在。CLI 有能力决定 stderr 与退出码，因此在那里记录一次，内层只补充字段和行号上下文。
+  \item 读取 \texttt{quantity\_} 违反访问控制，在编译期得到 private/inaccessible 类别；负价格语法有效但违反领域不变量，在运行期抛出并转成状态 2。恢复分别是调用公开观察函数、修正输入或在构造边界拒绝。
 \end{enumerate}
+
+\subsection*{编码任务反馈}
+行情对象和分析器的完整实现如下；\texttt{add} 拒绝代码不一致，\texttt{summary} 拒绝空序列：
+\lstinputlisting{code/ch05/src/market.cpp}
+
+CSV 读取层保留表头、列数、数字字段和构造异常的行号上下文：
+\lstinputlisting{code/ch05/src/csv_reader.cpp}
+
+价格区间题的完整答案如下，输出应为 \texttt{symbol=AAPL range=1.00 trend=up}：
+\lstinputlisting{code/ch05/exercises/price_range_solution.cpp}
+
+独立快照入口为 \path{code/ch05/CMakeLists.txt}。私有访问实验只验收编译器的 private/inaccessible 类别；非法 CSV 固定输入和精确 stderr 位于 \path{code/ch05/data/} 与 \path{code/ch05/expected/}。
 
 \section{第 6 章}
 \subsection*{自测答案}

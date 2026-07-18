@@ -1,0 +1,1 @@
+symbol=AAPL rows=2 first=100.00 last=101.00 return=1.00% low=100.00 high=101.00 trend=up quantity=15

@@ -1,0 +1,1 @@
+symbol=AAPL range=1.00 trend=up
