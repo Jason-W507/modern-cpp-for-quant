@@ -1,0 +1,1 @@
+rate=0.0015 basis_points=15

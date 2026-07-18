@@ -94,6 +94,7 @@
           "code/ch03/src/market_math.cpp",
           "code/ch03/src/main.cpp",
           "code/ch03/parameter_modes.cpp",
+          "code/ch03/exercises/basis_points_solution.cpp",
           "code/ch03/CMakeLists.txt"
         ],
         "failure_experiment": {

@@ -6,7 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from compiler_driver import compile_object_with_warnings_command
+from compiler_driver import compile_object_command
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -25,7 +25,9 @@ def main() -> int:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.unlink(missing_ok=True)
     completed = subprocess.run(
-        compile_object_with_warnings_command(args.compiler, args.source, args.output),
+        compile_object_command(
+            args.compiler, args.source, args.output, warnings=True
+        ),
         text=True,
         capture_output=True,
         check=False,

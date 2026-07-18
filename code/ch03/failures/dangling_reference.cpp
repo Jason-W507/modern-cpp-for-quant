@@ -4,5 +4,8 @@ const double& price_reference() {
 }
 
 int main() {
-  return price_reference() > 0.0 ? 0 : 1;
+  if (price_reference() > 0.0) {
+    return 0;
+  }
+  return 1;
 }

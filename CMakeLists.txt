@@ -34,6 +34,8 @@ quant_target(ch03_market_tool code/ch03/src/main.cpp)
 target_sources(ch03_market_tool PRIVATE code/ch03/src/market_math.cpp)
 target_include_directories(ch03_market_tool PRIVATE code/ch03/include)
 quant_target(ch03_parameter_modes code/ch03/parameter_modes.cpp)
+quant_target(ch03_basis_points_solution
+  code/ch03/exercises/basis_points_solution.cpp)
 quant_project_target(ch04_ranges_pipeline code/ch04/ranges_pipeline.cpp)
 quant_target(ch06_lifetime_trace code/ch06/lifetime_trace.cpp)
 quant_target(ch06_borrowing_and_legacy code/ch06/borrowing_and_legacy.cpp)
@@ -172,6 +174,11 @@ add_test(NAME ch03_parameter_modes_preserve_or_modify_callers_as_declared
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
           --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch03/expected/parameter_modes.txt
           -- $<TARGET_FILE:ch03_parameter_modes>)
+add_test(NAME ch03_basis_points_solution_converts_rate_without_mutation
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch03/expected/basis_points_solution.txt
+          -- $<TARGET_FILE:ch03_basis_points_solution>)
 add_test(NAME ch03_missing_definition_fails_during_linking
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_link_failure.py
@@ -193,7 +200,7 @@ add_test(NAME ch03_dangling_reference_emits_compile_diagnostic
           --compiler ${CMAKE_CXX_COMPILER}
           --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch03/failures/dangling_reference.cpp
           --output ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch03_dangling.obj
-          --diagnostic "reference to local variable|reference to local temporary|C4172")
+          --diagnostic "reference to local variable|reference to local temporary|reference to stack memory|C4172")
 add_test(NAME ch04_ranges_pipeline_runs COMMAND ch04_ranges_pipeline)
 set_tests_properties(ch04_ranges_pipeline_runs PROPERTIES
   PASS_REGULAR_EXPRESSION "positive-notional=3975")

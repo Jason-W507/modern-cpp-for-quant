@@ -13,6 +13,7 @@
     {"tex": "chapters/ch03.tex", "source": "code/ch03/src/market_math.cpp", "target": "ch03_market_tool"},
     {"tex": "chapters/ch03.tex", "source": "code/ch03/src/main.cpp", "target": "ch03_market_tool"},
     {"tex": "chapters/ch03.tex", "source": "code/ch03/parameter_modes.cpp", "target": "ch03_parameter_modes"},
+    {"tex": "appendices/solutions.tex", "source": "code/ch03/exercises/basis_points_solution.cpp", "target": "ch03_basis_points_solution"},
     {"tex": "chapters/ch04.tex", "source": "code/ch04/ranges_pipeline.cpp", "target": "ch04_ranges_pipeline"},
     {"tex": "chapters/ch05.tex", "source": "project/include/quant/types.hpp", "target": "quant_backtest"},
     {"tex": "chapters/ch05.tex", "source": "project/include/quant/execution.hpp", "target": "test_execution_portfolio"},

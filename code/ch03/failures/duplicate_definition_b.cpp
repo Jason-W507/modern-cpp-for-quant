@@ -3,5 +3,8 @@ double fee_rate() {
 }
 
 int main() {
-  return fee_rate() > 0.0 ? 0 : 1;
+  if (fee_rate() > 0.0) {
+    return 0;
+  }
+  return 1;
 }

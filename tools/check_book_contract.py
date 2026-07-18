@@ -357,7 +357,11 @@ def validate_code_evidence(
         snapshots = []
 
     tex_sources: set[str] = set()
-    for tex_path in sorted((root / "chapters").glob("ch*.tex")):
+    tex_paths = [
+        *sorted((root / "chapters").glob("ch*.tex")),
+        *sorted((root / "appendices").glob("*.tex")),
+    ]
+    for tex_path in tex_paths:
         tex_sources.update(LISTING_REFERENCE.findall(read_text(tex_path, errors)))
 
     registered_sources = {

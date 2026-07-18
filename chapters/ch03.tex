@@ -2,13 +2,13 @@
 
 \begin{introduction}
   \item 从重复计算中提取函数，读懂声明、定义、调用、参数和返回值
-  \item 比较按值、只读引用和可变引用对调用者对象的可观察影响
+  \item 比较按值、引用和可空指针对调用者对象与寿命的可观察影响
   \item 用重载表达同一概念的不同参数形式，并辨认候选选择边界
   \item 用头文件、实现文件、include guard 和命名空间组织多个翻译单元
   \item 诊断缺失定义、重复定义和返回局部对象引用三类故障
 \end{introduction}
 
-\chaptermeta{已完成第 1、2 章，能构建程序，并会声明基础类型对象、使用表达式、分支、循环、作用域和标准输入输出；不要求会容器、类或指针。}{Python 函数参数仍是名称绑定；C++ 参数声明同时规定类型以及按值复制、只读借用或可变借用，多个源文件还要分别编译再链接。}{先确认调用点能否看见声明，再分别检查每个翻译单元是否编译、链接器是否找到唯一定义，以及函数是否返回了仍然存活的对象。}
+\chaptermeta{已完成第 1、2 章，能构建程序，并会声明基础类型对象、使用表达式、分支、循环、作用域和标准输入输出；不要求会容器或类。}{Python 函数参数仍是名称绑定；C++ 参数声明同时规定类型以及按值复制、引用借用或指针观察，多个源文件还要分别编译再链接。}{先确认调用点能否看见声明，再分别检查每个翻译单元是否编译、链接器是否找到唯一定义，以及引用或指针指向的对象是否仍然存活。}
 
 \section{本章任务：把循环中的计算拆成多文件工具}
 
@@ -42,6 +42,10 @@ return_type function_name(parameter_declarations);
 
 这一行是\emph{声明}：分号表示这里只有函数接口，没有函数体。调用点只要先看见声明，就能检查实参数量与类型。\emph{定义}重复相同的返回类型、名称和参数列表，随后用花括号给出函数体；定义末尾不再加分号。调用写作函数名、圆括号和实参，例如 \texttt{trade\_notional(price, quantity)}。
 
+\subsection{重构路线：一次只移动一个边界}
+
+重构从第 2 章循环内的 \texttt{total\_notional += price * quantity;} 开始，而不是直接重写最终项目。第一步把清单 3.2 的 \texttt{trade\_notional} 定义放在单文件 \texttt{main} 之前，只把右侧表达式替换为函数调用，输出必须不变。第二步把声明放在 \texttt{main} 前、把同一定义移到 \texttt{main} 后，证明调用点只需先看见声明。第三步才把声明移入清单 3.1 的头文件、定义移入实现文件；最后让 CMake 同时编译入口和实现。每一步都用章首输入复跑，任何输出变化都说明移动边界时顺带改变了行为。
+
 本章接口的真实头文件如下；其余多文件结构稍后逐项解释：
 
 \lstinputlisting[caption={行情计算函数声明与 include guard}]{code/ch03/include/quant/ch03/market_math.hpp}
@@ -66,7 +70,7 @@ return_type function_name(parameter_declarations);
 
 立即练习：只把 \texttt{volume\_weighted\_price} 的零数量返回值从 \texttt{0.0} 改为 \texttt{-1.0}，用空输入运行工具，结果中的 VWAP 应从 \texttt{0.00} 变为 \texttt{-1.00}；随后恢复原协议。
 
-\section{按值、只读引用与可变引用}
+\section{按值、引用与可空指针}
 
 \subsection{场景：函数是否可以改动调用者}
 
@@ -89,6 +93,26 @@ Python 的实参传递不是“所有东西按引用”：参数名称绑定到�
 失败诊断：把字面量 \texttt{100.0} 传给 \texttt{double\&} 会在编译阶段失败，因为可变左值引用需要一个可修改、寿命明确的调用者对象；改成 \texttt{double cash\{100.0\}; charge\_fee(cash, 5.0);}。若只读函数意外要求可变引用，\texttt{const} 对象也无法调用它；正确修复是收窄函数权限为 \texttt{const double\&} 或按值，而不是删除调用者的 \texttt{const}。
 
 立即练习：只把 \texttt{charge\_fee} 的第一个参数改成按值，保持函数体和调用点不变。预测局部参数仍会减去 5，但最终 \texttt{cash} 应从 995 变回 1000；运行验证后恢复可变引用。
+
+\subsection{指针：允许“没有观察对象”}
+
+引用必须绑定对象且不能改绑；指针对象保存地址，也可以保存空指针值。清单 3.3 中的三行摘录为：
+
+\begin{lstlisting}
+const double* price_view{&original};
+const double pointed{*price_view};
+const double* missing{nullptr};
+\end{lstlisting}
+
+第一行用取地址运算符 \texttt{\&} 得到 \texttt{original} 的地址；类型中的 \texttt{*} 声明“指向只读 \texttt{double} 的指针”。第二行的 \texttt{*price\_view} 解引用地址并读取 100。相同符号依上下文承担声明符或运算符职责，不能只按字符背诵。
+
+\texttt{const double* missing\{nullptr\};} 明确表示当前没有对象；程序用 \texttt{missing == nullptr} 得到 1。指针可以为空，所以每次解引用前都必须由接口契约或条件证明非空。这里的裸指针只是非拥有观察，不负责销毁对象；\texttt{price\_view} 也不能比 \texttt{original} 活得更久。所有权与数组指针在第 6 章继续展开。
+
+\begin{pythonbridge}
+Python 常用 \texttt{None} 表示没有对象；C++ 裸指针用 \texttt{nullptr} 表示没有地址。但 Python 名称会自动保持对象引用，非拥有 C++ 指针不会延长被观察对象的生命周期。引用适合必有对象，指针适合“可能没有”的观察接口。
+\end{pythonbridge}
+
+失败诊断：直接计算 \texttt{*missing} 是未定义行为，不能把某次崩溃当成契约；修复是在解引用前检查非空，并让被指向对象覆盖整个使用期。立即练习：只把 \texttt{price\_view} 初始化为 \texttt{nullptr}，用 \texttt{if (price\_view != nullptr)} 保护读取；预期程序跳过读取而不崩溃，随后恢复指向 \texttt{original}。
 
 \section{重载：同名操作的不同参数表}
 
@@ -113,6 +137,8 @@ Python 后定义的同名函数通常替换前一个绑定，常用默认参数�
 \texttt{\#include "quant/ch03/market\_math.hpp"} 使用双引号查找项目头文件；标准库头文件继续使用尖括号。预处理器把头文件内容带入当前翻译单元。头文件可能经不同路径被重复包含，因此清单使用 include guard：\texttt{\#ifndef} 检查宏尚未定义，\texttt{\#define} 建立标记，末尾 \texttt{\#endif} 关闭条件区域。同一翻译单元第二次读到它时，声明区域会被跳过。
 
 \texttt{namespace quant::chapter3 \{ ... \}} 把名称放进项目自己的命名空间，降低与其他库同名函数冲突的风险。调用点写全限定名 \texttt{quant::chapter3::add\_trade}；头文件不写 \texttt{using namespace}，避免把选择强加给每个包含者。
+
+include guard 立即练习：只在入口中连续写两次同一个项目头文件，然后运行预处理命令 \texttt{g++ -E -P -I code/ch03/include code/ch03/src/main.cpp}。输出中两个 \texttt{trade\_notional} 重载声明应各出现一次，而不是各出现两次；这就是 guard 跳过第二次展开的可观察证据。删除重复的 include 后再继续构建。
 
 入口文件只负责读取、调用和输出：
 
@@ -156,17 +182,19 @@ Python 的 \texttt{import} 通常加载模块对象并在运行时绑定名称�
 cmake -S code/ch03 -B build/ch03
 cmake --build build/ch03 --target ch03_market_tool
 ./build/ch03/ch03_market_tool < code/ch03/data/market_rows.txt
+cmake -S . -B build-mingw -G "MinGW Makefiles"
+cmake --build build-mingw --target ch03_market_tool
 ctest --test-dir build-mingw -R ch03_ --output-on-failure
 \end{lstlisting}
 
-前两条命令证明章节快照不依赖后续项目源码；第三条必须得到章首精确输出。Windows 多配置生成器可能把可执行文件放在 \path{build\ch03\Debug} 并加 \texttt{.exe}，但源文件边界、声明/定义规则与测试预期不变。
+前三条命令证明章节快照不依赖后续项目源码并得到精确输出；后三条从仓库根项目建立测试构建树，再运行全部第 3 章证据。Windows 多配置生成器可能把可执行文件放在 \path{build\ch03\Debug} 并加 \texttt{.exe}，但源文件边界、声明/定义规则与测试预期不变。
 
 \section{自测、编码任务与面试表达}
 
 \begin{enumerate}
   \item 函数声明、定义和调用分别提供什么信息？分号与花括号出现在何处？
   \item 参数对象和返回值的生命周期边界是什么？早返回怎样改变控制流？
-  \item 按值、\texttt{const T\&} 与 \texttt{T\&} 分别允许函数观察或修改什么？
+  \item 按值、\texttt{const T\&}、\texttt{T\&} 与 \texttt{const T*} 分别允许观察或修改什么？哪个可以为 \texttt{nullptr}？
   \item 重载候选靠什么区分？为什么只改变返回类型不能形成可用重载？
   \item \texttt{.cpp}、头文件、翻译单元、目标文件和可执行文件怎样连接？
   \item include guard 防止什么？为什么项目头文件通常使用双引号和命名空间？
@@ -177,7 +205,7 @@ ctest --test-dir build-mingw -R ch03_ --output-on-failure
 
 \begin{enumerate}
   \item 从空目录重建 \path{code/ch03} 的头文件、实现文件和入口，使用固定输入得到章首精确输出，并从全新构建树复现。
-  \item 为行情工具增加只读函数 \texttt{double basis\_points(const double\& rate)}，返回 \texttt{rate * 10000.0}；用 0.0015 验收结果 15，并证明调用者值不变。
+  \item 为行情工具增加只读函数 \texttt{double basis\_points(const double\& rate)}，返回 \texttt{rate * 10000.0}；用 0.0015 验收结果 15，并证明调用者值不变。完整答案见 \path{code/ch03/exercises/basis_points_solution.cpp}。
   \item 运行三个故障实验，记录每个翻译单元的编译状态、链接状态、稳定类别、根因和最小恢复步骤；不要运行悬空引用程序来“看看会怎样”。
 \end{enumerate}
 
@@ -187,4 +215,4 @@ ctest --test-dir build-mingw -R ch03_ --output-on-failure
 
 \section{本章小结}
 
-函数声明让调用点在编译期检查接口，定义提供唯一实现，调用创建参数对象并取得返回结果。按值表达独立副本，\texttt{const\&} 表达只读借用，\texttt{\&} 表达可变借用；重载则让同名领域动作拥有可区分的参数表。头文件共享声明，include guard 控制同一翻译单元中的重复包含，命名空间管理名称，多个 \texttt{.cpp} 分别编译后由链接器组合。面对故障时，先问每个翻译单元是否编译，再问最终程序是否拥有所需且唯一的定义，最后确认返回的引用是否仍指向存活对象。
+函数声明让调用点在编译期检查接口，定义提供唯一实现，调用创建参数对象并取得返回结果。按值表达独立副本，\texttt{const\&} 表达只读借用，\texttt{\&} 表达可变借用，指针还可用 \texttt{nullptr} 表示没有观察对象；重载让同名动作拥有可区分的参数表。头文件共享声明，include guard 控制重复包含，命名空间管理名称，多个 \texttt{.cpp} 分别编译后由链接器组合。诊断时先问每个翻译单元是否编译，再问程序是否拥有所需且唯一的定义，最后确认引用或指针仍指向存活对象。

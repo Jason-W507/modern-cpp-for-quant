@@ -8,44 +8,25 @@ def is_msvc(compiler: Path) -> bool:
 
 
 def compile_object_command(
-    compiler: Path, source: Path, object_file: Path
+    compiler: Path, source: Path, object_file: Path, *, warnings: bool = False
 ) -> list[str]:
     if is_msvc(compiler):
-        return [
+        command = [
             str(compiler),
             "/nologo",
             "/std:c++20",
-            "/c",
-            str(source),
-            f"/Fo{object_file}",
         ]
-    return [str(compiler), "-std=c++20", "-c", str(source), "-o", str(object_file)]
+        if warnings:
+            command.append("/W4")
+        return [*command, "/c", str(source), f"/Fo{object_file}"]
 
-
-def compile_object_with_warnings_command(
-    compiler: Path, source: Path, object_file: Path
-) -> list[str]:
-    if is_msvc(compiler):
-        return [
-            str(compiler),
-            "/nologo",
-            "/std:c++20",
-            "/W4",
-            "/c",
-            str(source),
-            f"/Fo{object_file}",
-        ]
-    return [
+    command = [
         str(compiler),
         "-std=c++20",
-        "-Wall",
-        "-Wextra",
-        "-Wpedantic",
-        "-c",
-        str(source),
-        "-o",
-        str(object_file),
     ]
+    if warnings:
+        command.extend(["-Wall", "-Wextra", "-Wpedantic"])
+    return [*command, "-c", str(source), "-o", str(object_file)]
 
 
 def link_executable_command(

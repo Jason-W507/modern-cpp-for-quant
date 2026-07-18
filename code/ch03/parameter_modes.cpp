@@ -21,7 +21,13 @@ int main() {
   double cash{1000.0};
   charge_fee(cash, 5.0);
 
+  const double* price_view{&original};
+  const double pointed{*price_view};
+  const double* missing{nullptr};
+
   std::cout << "original=" << original << " copied_result=" << copied_result
-            << " observed=" << observed << " cash=" << cash << '\n';
+            << " observed=" << observed << " cash=" << cash
+            << " pointed=" << pointed << " null=" << (missing == nullptr)
+            << '\n';
   return 0;
 }
