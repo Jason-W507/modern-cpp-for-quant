@@ -76,7 +76,7 @@ return_type function_name(parameter_declarations);
 
 接口不仅说明“接收一个 \texttt{double}”，还要说明函数获得独立副本还是借用调用者对象。下面的完整实验由 CTest 逐字符检查：
 
-\lstinputlisting[caption={三种参数模式的可观察差异}]{code/ch03/parameter_modes.cpp}
+\lstinputlisting[caption={四种参数模式的可观察差异}]{code/ch03/parameter_modes.cpp}
 
 \texttt{double price} 是按值参数。\texttt{add\_tick} 修改自己的参数对象并返回 101，但调用者的 \texttt{original} 仍为 100。对基础数值类型，按值通常最直接。
 
@@ -182,12 +182,12 @@ Python 的 \texttt{import} 通常加载模块对象并在运行时绑定名称�
 cmake -S code/ch03 -B build/ch03
 cmake --build build/ch03 --target ch03_market_tool
 ./build/ch03/ch03_market_tool < code/ch03/data/market_rows.txt
-cmake -S . -B build-mingw -G "MinGW Makefiles"
-cmake --build build-mingw --target ch03_market_tool
-ctest --test-dir build-mingw -R ch03_ --output-on-failure
+cmake -S . -B build-linux
+cmake --build build-linux --target ch03_market_tool
+ctest --test-dir build-linux -R ch03_ --output-on-failure
 \end{lstlisting}
 
-前三条命令证明章节快照不依赖后续项目源码并得到精确输出；后三条从仓库根项目建立测试构建树，再运行全部第 3 章证据。Windows 多配置生成器可能把可执行文件放在 \path{build\ch03\Debug} 并加 \texttt{.exe}，但源文件边界、声明/定义规则与测试预期不变。
+前三条命令证明章节快照不依赖后续项目源码并得到精确输出；后三条从仓库根项目建立 Linux/WSL 测试构建树，再运行全部第 3 章证据。Windows 可改用 \texttt{cmake -S . -B build-mingw -G "MinGW Makefiles"}；多配置生成器还可能把可执行文件放在 \path{build\ch03\Debug} 并加 \texttt{.exe}，但源文件边界、声明/定义规则与测试预期不变。
 
 \section{自测、编码任务与面试表达}
 

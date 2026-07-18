@@ -32,9 +32,7 @@ def compile_object_command(
 def link_executable_command(
     compiler: Path, object_file: Path, executable: Path
 ) -> list[str]:
-    if is_msvc(compiler):
-        return [str(compiler), "/nologo", str(object_file), f"/Fe{executable}"]
-    return [str(compiler), str(object_file), "-o", str(executable)]
+    return link_objects_command(compiler, [object_file], executable)
 
 
 def link_objects_command(

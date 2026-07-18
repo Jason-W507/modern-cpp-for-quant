@@ -36,7 +36,7 @@
 | include-guard | include guard 与重复包含 | ch03 | ch03 | ch11 |
 | pass-by-value | 按值参数与独立对象 | ch03 | ch03 | ch06, ch08 |
 | references | 左值引用与借用 | ch03 | ch03 | ch06, ch08 |
-| const | 常量对象、只读引用与成员 `const` | ch03 | ch03 | ch06, ch08 |
+| const | 常量对象、只读引用与指向常量的指针 | ch03 | ch03 | ch06, ch08 |
 | pointers | 地址、空指针与非拥有观察 | ch03 | ch03 | ch06, ch15 |
 | string | `std::string` 的拥有语义 | ch04 | ch04 | ch05, ch10 |
 | vector | `std::vector`、大小与容量 | ch04 | ch04 | ch07, ch13 |
@@ -50,7 +50,7 @@
 | enum-class | 作用域枚举与穷举分支 | ch05 | ch05 | ch08, ch10 |
 | struct | 聚合数据记录 | ch05 | ch05 | ch08, ch13 |
 | class-access | `class`、访问控制与公开接口 | ch05 | ch05 | ch08, ch09 |
-| constructors | 构造函数与构造后有效 | ch05 | ch05 | ch06, ch08 |
+| constructors | 构造函数、成员函数尾随 `const` 与构造后有效 | ch05 | ch05 | ch06, ch08 |
 | member-functions | 成员访问、成员函数与 `this` | ch05 | ch05 | ch08, ch09 |
 | exception-basics | 抛出、捕获与栈展开概览 | ch05 | ch05 | ch06, ch10 |
 
