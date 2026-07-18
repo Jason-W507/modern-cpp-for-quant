@@ -9,7 +9,10 @@
     {"tex": "chapters/ch02.tex", "source": "code/ch02/for_scope.cpp", "target": "ch02_for_scope"},
     {"tex": "chapters/ch02.tex", "source": "code/ch02/market_filter.cpp", "target": "ch02_market_filter"},
     {"tex": "chapters/ch02.tex", "source": "code/ch02/exercises/risk_budget_solution.cpp", "target": "ch02_risk_budget_solution"},
-    {"tex": "chapters/ch03.tex", "source": "code/ch03/raii_file.cpp", "target": "ch03_raii_file"},
+    {"tex": "chapters/ch03.tex", "source": "code/ch03/include/quant/ch03/market_math.hpp", "target": "ch03_market_tool"},
+    {"tex": "chapters/ch03.tex", "source": "code/ch03/src/market_math.cpp", "target": "ch03_market_tool"},
+    {"tex": "chapters/ch03.tex", "source": "code/ch03/src/main.cpp", "target": "ch03_market_tool"},
+    {"tex": "chapters/ch03.tex", "source": "code/ch03/parameter_modes.cpp", "target": "ch03_parameter_modes"},
     {"tex": "chapters/ch04.tex", "source": "code/ch04/ranges_pipeline.cpp", "target": "ch04_ranges_pipeline"},
     {"tex": "chapters/ch05.tex", "source": "project/include/quant/types.hpp", "target": "quant_backtest"},
     {"tex": "chapters/ch05.tex", "source": "project/include/quant/execution.hpp", "target": "test_execution_portfolio"},
@@ -47,6 +50,26 @@
       "diagnostic_category": "list initialization rejects a narrowing conversion"
     },
     {
+      "source": "code/ch03/failures/missing_definition.cpp",
+      "stage": "link",
+      "diagnostic_category": "linker reports an undefined reference"
+    },
+    {
+      "source": "code/ch03/failures/duplicate_definition_a.cpp",
+      "stage": "link",
+      "diagnostic_category": "linking both duplicate definition sources reports a multiple definition"
+    },
+    {
+      "source": "code/ch03/failures/duplicate_definition_b.cpp",
+      "stage": "link",
+      "diagnostic_category": "linking both duplicate definition sources reports a multiple definition"
+    },
+    {
+      "source": "code/ch03/failures/dangling_reference.cpp",
+      "stage": "compile",
+      "diagnostic_category": "compiler warns that a reference to a local object is returned"
+    },
+    {
       "source": "code/ch06/failures/use_after_free.cpp",
       "stage": "runtime",
       "diagnostic_category": "AddressSanitizer reports heap-use-after-free"
@@ -56,6 +79,10 @@
     {
       "path": "code/ch01",
       "entry_target": "ch01_first_program"
+    },
+    {
+      "path": "code/ch03",
+      "entry_target": "ch03_market_tool"
     }
   ]
 }

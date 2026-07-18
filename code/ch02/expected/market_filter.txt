@@ -1,0 +1,1 @@
+selected=2 rejected=3 buy_notional=1035.75 average=517.875

@@ -1,0 +1,1 @@
+notional=4010.00 quantity=40 vwap=100.25

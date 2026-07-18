@@ -30,7 +30,10 @@ quant_target(ch02_branches code/ch02/branches.cpp)
 quant_target(ch02_for_scope code/ch02/for_scope.cpp)
 quant_target(ch02_market_filter code/ch02/market_filter.cpp)
 quant_target(ch02_risk_budget_solution code/ch02/exercises/risk_budget_solution.cpp)
-quant_target(ch03_raii_file code/ch03/raii_file.cpp)
+quant_target(ch03_market_tool code/ch03/src/main.cpp)
+target_sources(ch03_market_tool PRIVATE code/ch03/src/market_math.cpp)
+target_include_directories(ch03_market_tool PRIVATE code/ch03/include)
+quant_target(ch03_parameter_modes code/ch03/parameter_modes.cpp)
 quant_project_target(ch04_ranges_pipeline code/ch04/ranges_pipeline.cpp)
 quant_target(ch06_lifetime_trace code/ch06/lifetime_trace.cpp)
 quant_target(ch06_borrowing_and_legacy code/ch06/borrowing_and_legacy.cpp)
@@ -133,7 +136,7 @@ add_test(NAME ch02_market_filter_summarizes_valid_buys
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/run_with_input.py
           --input ${CMAKE_CURRENT_SOURCE_DIR}/code/ch02/data/market_rows.txt
-          --expected "selected=2 rejected=3 buy_notional=1035.75 average=517.875"
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch02/expected/market_filter.txt
           -- $<TARGET_FILE:ch02_market_filter>)
 add_test(NAME ch02_risk_budget_solution_counts_affordable_trades
   COMMAND ch02_risk_budget_solution)
@@ -146,9 +149,51 @@ add_test(NAME ch02_narrowing_is_rejected_at_compile_time
           --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch02/failures/narrowing.cpp
           --output ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch02_narrowing.obj
           --diagnostic "narrowing|narrowed")
-add_test(NAME ch03_raii_file_runs COMMAND ch03_raii_file)
-set_tests_properties(ch03_raii_file_runs PROPERTIES
-  PASS_REGULAR_EXPRESSION "rows=2")
+add_test(NAME ch03_market_tool_summarizes_fixed_rows
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/run_with_input.py
+          --input ${CMAKE_CURRENT_SOURCE_DIR}/code/ch03/data/market_rows.txt
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch03/expected/market_tool.txt
+          -- $<TARGET_FILE:ch03_market_tool>)
+add_test(NAME ch03_clean_multifile_project_configures_builds_and_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
+          --cmake ${CMAKE_COMMAND}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch03
+          --input ${CMAKE_CURRENT_SOURCE_DIR}/code/ch03/data/market_rows.txt
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch03/expected/market_tool.txt
+          --target ch03_market_tool
+          --generator "${CMAKE_GENERATOR}"
+          --compiler ${CMAKE_CXX_COMPILER}
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests
+          --config $<CONFIG>)
+add_test(NAME ch03_parameter_modes_preserve_or_modify_callers_as_declared
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch03/expected/parameter_modes.txt
+          -- $<TARGET_FILE:ch03_parameter_modes>)
+add_test(NAME ch03_missing_definition_fails_during_linking
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_link_failure.py
+          --compiler ${CMAKE_CXX_COMPILER}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch03/failures/missing_definition.cpp
+          --work-dir ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch03-missing
+          --diagnostic "undefined reference|unresolved external symbol")
+add_test(NAME ch03_duplicate_definition_fails_during_linking
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_multi_source_link_failure.py
+          --compiler ${CMAKE_CXX_COMPILER}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch03/failures/duplicate_definition_a.cpp
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch03/failures/duplicate_definition_b.cpp
+          --work-dir ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch03-duplicate
+          --diagnostic "multiple definition|already defined")
+add_test(NAME ch03_dangling_reference_emits_compile_diagnostic
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_compile_diagnostic.py
+          --compiler ${CMAKE_CXX_COMPILER}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch03/failures/dangling_reference.cpp
+          --output ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch03_dangling.obj
+          --diagnostic "reference to local variable|reference to local temporary|C4172")
 add_test(NAME ch04_ranges_pipeline_runs COMMAND ch04_ranges_pipeline)
 set_tests_properties(ch04_ranges_pipeline_runs PROPERTIES
   PASS_REGULAR_EXPRESSION "positive-notional=3975")

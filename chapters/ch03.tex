@@ -1,63 +1,190 @@
-\chapter{RAII、智能指针与所有权}
+\chapter{函数、引用、\texttt{const} 与多文件组织}
 
 \begin{introduction}
-  \item 用 RAII 将资源释放绑定到对象生命周期
-  \item 区分唯一所有权、共享所有权和非拥有观察
-  \item 遵循 Rule of Zero，避免手写脆弱的资源管理
-  \item 为文件、锁和线程建立异常安全边界
+  \item 从重复计算中提取函数，读懂声明、定义、调用、参数和返回值
+  \item 比较按值、只读引用和可变引用对调用者对象的可观察影响
+  \item 用重载表达同一概念的不同参数形式，并辨认候选选择边界
+  \item 用头文件、实现文件、include guard 和命名空间组织多个翻译单元
+  \item 诊断缺失定义、重复定义和返回局部对象引用三类故障
 \end{introduction}
 
-\chaptermeta{理解作用域、异常和 Python 上下文管理器。}{RAII 类似 \texttt{with} 的资源边界，但适用于所有自动对象并由确定性析构驱动。}{双重释放、泄漏或析构异常通常来自所有权不明；先改用值成员和 Rule of Zero。}
+\chaptermeta{已完成第 1、2 章，能构建程序，并会声明基础类型对象、使用表达式、分支、循环、作用域和标准输入输出；不要求会容器、类或指针。}{Python 函数参数仍是名称绑定；C++ 参数声明同时规定类型以及按值复制、只读借用或可变借用，多个源文件还要分别编译再链接。}{先确认调用点能否看见声明，再分别检查每个翻译单元是否编译、链接器是否找到唯一定义，以及函数是否返回了仍然存活的对象。}
 
-\section{资源不只是内存}
+\section{本章任务：把循环中的计算拆成多文件工具}
 
-文件句柄、互斥锁、socket、线程和临时文件都需要成对操作。如果打开之后的任何一步可能抛出异常，手写“最后记得关闭”会迅速形成多条泄漏路径。RAII（Resource Acquisition Is Initialization）把资源取得放进构造，把释放放进析构；栈展开会自动调用已构造对象的析构函数。
+第 2 章的行情筛选器把读取、计算和输出全部写在 \texttt{main} 中。程序继续增长时，重复的名义金额公式很容易在不同分支产生不同版本，也无法单独说明哪些函数只读取数据、哪些函数会修改累计状态。本章把计算拆成一个真实的多文件工具：入口从标准输入读取任意多行“价格 数量”，实现文件负责累计总名义金额和总数量，最后输出成交量加权平均价（VWAP）。
 
-\lstinputlisting[caption={文件流本身就是 RAII 对象}]{code/ch03/raii_file.cpp}
+给定：
 
-输出流离开内部作用域时自动刷新并关闭，输入对象离开作用域时自动关闭。没有 \texttt{finally}，也没有依赖垃圾回收何时运行。
+\begin{lstlisting}[numbers=none]
+100.00 10
+101.00 20
+99.00 10
+\end{lstlisting}
+
+必须逐字符得到：
+
+\begin{lstlisting}[numbers=none]
+notional=4010.00 quantity=40 vwap=100.25
+\end{lstlisting}
+
+这组结果可独立手算：总数量为 $10+20+10=40$，总名义金额为 $100\times10+101\times20+99\times10=4010$，所以 VWAP 为 $4010/40=100.25$。完成判据还包括：项目能从全新构建目录配置；参数实验能预测调用者是否改变；三个故障实验能按编译诊断或链接诊断分类。
+
+\section{从表达式到函数}
+
+\subsection{场景：同一公式需要一个名字和边界}
+
+若每次累计都直接写 \texttt{price * quantity}，公式的含义、输入和结果只能靠上下文猜。函数把一段计算命名，并建立局部作用域。最小规则可以读作：
+
+\begin{lstlisting}
+return_type function_name(parameter_declarations);
+\end{lstlisting}
+
+这一行是\emph{声明}：分号表示这里只有函数接口，没有函数体。调用点只要先看见声明，就能检查实参数量与类型。\emph{定义}重复相同的返回类型、名称和参数列表，随后用花括号给出函数体；定义末尾不再加分号。调用写作函数名、圆括号和实参，例如 \texttt{trade\_notional(price, quantity)}。
+
+本章接口的真实头文件如下；其余多文件结构稍后逐项解释：
+
+\lstinputlisting[caption={行情计算函数声明与 include guard}]{code/ch03/include/quant/ch03/market_math.hpp}
+
+\subsection{定义、参数、返回与局部作用域}
+
+实现文件给出这些声明的定义：
+
+\lstinputlisting[caption={行情计算函数定义}]{code/ch03/src/market_math.cpp}
+
+以第一个函数为例，\texttt{double} 是返回类型；圆括号内依次声明两个参数对象。调用发生时，\texttt{price} 和 \texttt{quantity} 在函数作用域中创建，\texttt{return price * quantity;} 先计算表达式，再把结果交回调用点，同时结束本次调用。两个参数以及函数体内创建的其他局部对象都在离开右花括号时结束生命周期。
+
+\texttt{volume\_weighted\_price} 先检查分母。\texttt{return 0.0;} 是早返回：条件成立时函数立即结束，不再执行后面的除法。这里用零表示“没有成交量”的简化教学协议；生产接口往往需要显式表达“无结果”，第 10 章再比较可选值和错误机制。
+
+声明中的参数名可以省略，但教学与审阅代码保留有意义的名称。定义必须让每个名称对应函数体中的对象。返回类型不是注释：声明承诺返回 \texttt{double}，调用表达式也因此具有 \texttt{double} 类型。
 
 \begin{pythonbridge}
-\python{} 的 \texttt{with open(...)} 是非常接近的心智模型：上下文管理器明确资源边界。区别在于 \cpp{} 析构与普通自动对象生命周期直接绑定，适用于任何作用域退出路径。
+两种语言都用函数名和圆括号调用，也都有局部作用域与早返回。Python 在运行时把实参对象绑定给参数名称；这里的 C++ 声明在编译时固定参数和返回类型，并决定后续是复制还是引用。Python 函数可在不同路径返回不同种类对象，C++ 每条返回路径必须满足同一声明的返回类型。
 \end{pythonbridge}
 
-\section{Rule of Zero}
+失败诊断：若调用写在声明之前，编译器会报告名称未声明；若声明写作 \texttt{double trade\_notional(double, int);}，定义却交换参数类型，二者就是不同函数，原调用可能在链接阶段找不到定义。修复时同时对照声明、定义和调用，不要只改其中一处。
 
-如果成员都能正确管理自身资源，外层类型通常不需要自定义析构、复制或移动操作，这就是 Rule of Zero。\texttt{std::vector}、\texttt{std::string}、文件流和智能指针应成为资源成员，而不是裸句柄加手写清理逻辑。
+立即练习：只把 \texttt{volume\_weighted\_price} 的零数量返回值从 \texttt{0.0} 改为 \texttt{-1.0}，用空输入运行工具，结果中的 VWAP 应从 \texttt{0.00} 变为 \texttt{-1.00}；随后恢复原协议。
 
-一旦类型手写析构函数，就应重新审视复制语义：默认浅复制是否会导致两次释放？移动后源对象是否仍可析构？多数业务类型的最好答案，是组合标准 RAII 类型并让编译器生成特殊成员。
+\section{按值、只读引用与可变引用}
 
-\section{智能指针不是默认容器}
+\subsection{场景：函数是否可以改动调用者}
 
-\texttt{std::unique\_ptr<T>} 表示唯一所有权，可移动不可复制；\texttt{std::shared\_ptr<T>} 表示引用计数共享所有权；\texttt{std::weak\_ptr<T>} 打破共享环并提供可失效观察。选择顺序应是：先尝试直接成员和值语义；确实需要动态多态或可选堆对象时用 \texttt{unique\_ptr}；只有生命周期真正共同且没有自然所有者时才用 \texttt{shared\_ptr}。
+接口不仅说明“接收一个 \texttt{double}”，还要说明函数获得独立副本还是借用调用者对象。下面的完整实验由 CTest 逐字符检查：
 
-共享指针会增加控制块、原子引用计数和隐含的架构耦合。它解决“何时销毁”，并不自动解决对象内部的并发访问。
+\lstinputlisting[caption={三种参数模式的可观察差异}]{code/ch03/parameter_modes.cpp}
 
-\section{借用不等于所有权}
+\texttt{double price} 是按值参数。\texttt{add\_tick} 修改自己的参数对象并返回 101，但调用者的 \texttt{original} 仍为 100。对基础数值类型，按值通常最直接。
 
-裸指针和引用可以是清楚的非拥有接口。风险不在“裸”，而在所有权约定不可见。一个函数接收 \texttt{const MarketEvent\&} 并在调用期间读取它，是合理借用；把该地址保存到异步队列中，则必须证明事件在消费完成前存活。
+\texttt{const double\& price} 是只读左值引用。\texttt{\&} 表示参数引用调用者已有对象，不创建独立的业务值；前面的 \texttt{const} 禁止函数通过该名称赋值。\texttt{observe\_price} 因而能读取 \texttt{original}，却不能写 \texttt{price += 1.0;}。对一个 \texttt{double}，只读引用通常没有性能优势；这里用小类型把语义显示清楚，后续较大的标准库和领域对象才更常用 \texttt{const T\&}。
 
-在事件驱动回测中，最简单的初始设计是事件按值存储在拥有容器中，事件循环按常量引用短暂分发。只有 profiler 证明复制或布局是瓶颈后，才改变表示。
+\texttt{double\& cash} 是可变左值引用。\texttt{charge\_fee} 对 \texttt{cash} 的赋值直接改变调用者对象，所以输出为 995。可变引用适合“函数职责就是修改这个对象”的接口；若函数主要产生一个新值，返回值通常更易组合和测试。调用语法不会额外显示 \texttt{\&}，因此名称和文档应让副作用容易发现。
 
-\section{异常安全等级}
+\texttt{const double original\{100.0\};} 还演示只读对象：初始化之后不能再赋值。\texttt{const} 约束的是通过该名称允许的操作，不表示数值被放到某种神秘的永久存储中。
 
-基本保证意味着失败后对象仍有效且不泄漏；强保证意味着操作要么成功，要么可观察状态不变；不抛保证常用于析构、交换和部分移动操作。交易状态更新常需要强保证：先在局部计算新状态并验证，再一次提交，避免现金已变而持仓未变。
+\begin{pythonbridge}
+Python 的实参传递不是“所有东西按引用”：参数名称绑定到同一对象，但对名称重新赋值不会改调用者，而修改共享的可变对象可能会。C++ 把三种意图写进函数签名：按值得到独立对象，\texttt{const\&} 只读借用，\texttt{\&} 可变借用。二者不能只靠表面调用语法互相类推。
+\end{pythonbridge}
 
-析构函数不应让异常逃逸，因为栈展开中再次抛出会终止进程。关闭资源若可能失败，应提供显式 \texttt{close()} 报告错误，同时让析构执行尽力清理。
+失败诊断：把字面量 \texttt{100.0} 传给 \texttt{double\&} 会在编译阶段失败，因为可变左值引用需要一个可修改、寿命明确的调用者对象；改成 \texttt{double cash\{100.0\}; charge\_fee(cash, 5.0);}。若只读函数意外要求可变引用，\texttt{const} 对象也无法调用它；正确修复是收窄函数权限为 \texttt{const double\&} 或按值，而不是删除调用者的 \texttt{const}。
 
-\begin{interviewcheck}
-为什么 RAII 比“在函数末尾释放”可靠？\texttt{unique\_ptr} 和直接成员各适用于什么情形？\texttt{shared\_ptr} 为什么不等于线程安全？什么是强异常保证？
-\end{interviewcheck}
+立即练习：只把 \texttt{charge\_fee} 的第一个参数改成按值，保持函数体和调用点不变。预测局部参数仍会减去 5，但最终 \texttt{cash} 应从 995 变回 1000；运行验证后恢复可变引用。
 
-\section{练习}
+\section{重载：同名操作的不同参数表}
+
+同一领域动作有时存在不同的输入形式。本章头文件声明了两个 \texttt{trade\_notional}：第一个接收价格和数量；第二个额外接收乘数。它们名称相同，参数数量不同，这叫函数重载。调用 \texttt{trade\_notional(price, quantity)} 只有两个实参，编译器选择二参数候选；三实参调用选择另一个定义。三参数版本复用二参数版本，再乘以 multiplier，避免复制基础公式。
+
+重载的签名必须在参数数量或参数类型上可区分；只改变返回类型不够，因为调用点不能总从接收结果的上下文唯一决定候选。默认实参也可能让两个候选同时可用，从而产生“调用有歧义”类别的编译错误。本书优先让重载表达同一概念；完全不同的业务动作应使用不同名称。
+
+\begin{pythonbridge}
+Python 后定义的同名函数通常替换前一个绑定，常用默认参数或 \texttt{*args} 手工分派。C++ 会在编译期建立同名候选集，根据实参数量、类型和所需转换选择唯一最佳匹配；没有可行候选或最佳候选不唯一都会编译失败。
+\end{pythonbridge}
+
+失败诊断：新增 \texttt{double trade\_notional(double price, int quantity, double multiplier = 1.0);} 后，二实参调用可能同时匹配原二参数版本和带默认实参的版本。根因是接口集合有歧义；修复为移除默认值、移除重复能力，或使用含义不同的名称。
+
+立即练习：只把 \texttt{add\_trade} 内部的二实参调用改为 \texttt{trade\_notional(price, quantity, 1.0)}。结果应逐字符不变，因为乘数为 1；然后把乘数改为 0.5，预期总名义金额与 VWAP 都减半，而总数量仍为 40。
+
+\section{头文件、实现文件与翻译单元}
+
+\subsection{场景：让不同源文件共享同一接口}
+
+每个 \texttt{.cpp} 会先经过预处理，再独立编译成一个翻译单元的目标文件。入口 \path{main.cpp} 需要看见函数声明，实现文件 \path{market_math.cpp} 负责给出定义。最后，链接器把两个目标文件组合成程序。头文件是共享声明的位置，不是“自动参与构建”的魔法文件。
+
+\texttt{\#include "quant/ch03/market\_math.hpp"} 使用双引号查找项目头文件；标准库头文件继续使用尖括号。预处理器把头文件内容带入当前翻译单元。头文件可能经不同路径被重复包含，因此清单使用 include guard：\texttt{\#ifndef} 检查宏尚未定义，\texttt{\#define} 建立标记，末尾 \texttt{\#endif} 关闭条件区域。同一翻译单元第二次读到它时，声明区域会被跳过。
+
+\texttt{namespace quant::chapter3 \{ ... \}} 把名称放进项目自己的命名空间，降低与其他库同名函数冲突的风险。调用点写全限定名 \texttt{quant::chapter3::add\_trade}；头文件不写 \texttt{using namespace}，避免把选择强加给每个包含者。
+
+入口文件只负责读取、调用和输出：
+
+\lstinputlisting[caption={多文件行情工具入口}]{code/ch03/src/main.cpp}
+
+\texttt{std::cin >> price >> quantity} 每轮创建一组输入值；\texttt{add\_trade} 通过两个可变引用更新循环外的累计对象。输入因文件结束而停止是正常路径；若因为无法转换的文本停止，程序向 \texttt{std::cerr} 写出稳定类别并返回 2。\texttt{const double vwap\{...\}} 表示结果初始化后只读。输出用 \texttt{std::fixed} 和 \texttt{std::setprecision(2)} 固定两位小数；它们改变后续流格式，不改变内部 \texttt{double} 值。
+
+独立快照的 \path{code/ch03/CMakeLists.txt} 同时列出两个 \texttt{.cpp}，并用 \texttt{target\_include\_directories} 把 \path{include/} 加入该目标的头文件搜索路径。头文件本身不需要列为编译源；真正分别产生目标文件的是两个实现源文件。
+
+\begin{pythonbridge}
+Python 的 \texttt{import} 通常加载模块对象并在运行时绑定名称；C++ 的 \texttt{\#include} 是预处理期文本包含，每个 \texttt{.cpp} 仍独立编译。头文件提供共同声明，定义则必须在最终链接中恰好满足需要。把 include guard 理解成模块加载缓存会得到错误心智模型。
+\end{pythonbridge}
+
+失败诊断：若编译器报告找不到头文件，先检查 include 拼写和目标的 include 目录；若只有 \texttt{main.cpp} 进入目标，编译能通过但链接器会找不到 \texttt{market\_math.cpp} 中的定义。修复是让正确实现文件参与同一目标，而不是把 \texttt{.cpp} 直接 include 进入入口文件。
+
+立即练习：只从 \texttt{add\_executable} 中删除 \path{src/market_math.cpp}，从全新构建目录编译。预期两个源文件不再同时参与目标，链接阶段报告缺失定义；恢复该文件后重新干净构建，输出应回到章首结果。
+
+\section{三个诊断实验：定义数量与对象寿命}
+
+故意失败文件位于 \path{code/ch03/failures/}，不进入默认绿色目标。测试只匹配稳定诊断类别，不绑定完整英文文本。
+
+\subsection{缺失定义}
+
+\path{missing_definition.cpp} 声明并调用 \texttt{fee\_rate}，却没有函数体。源文件能编译成目标文件，链接时报告 \texttt{undefined reference} 或 \texttt{unresolved external symbol} 类别。根因不是“头文件没被执行”，而是最终链接集合没有定义。修复是提供签名一致的唯一定义并让对应目标文件参与链接。
+
+\subsection{重复定义}
+
+\path{duplicate_definition_a.cpp} 与 \path{duplicate_definition_b.cpp} 各自都能编译，却都定义了同一个 \texttt{fee\_rate()}。把两个目标文件一起链接时应报告 \texttt{multiple definition} 或 \texttt{already defined} 类别。这是“一份声明可以被许多翻译单元看见，但非内联普通函数在程序中需要一个定义”的直接证据。修复是把声明留在头文件、定义只留在一个实现文件。
+
+\subsection{悬空引用}
+
+\path{dangling_reference.cpp} 返回局部 \texttt{double} 对象的引用。局部对象在函数返回时已经结束生命周期，调用者拿到的引用随即悬空。高警告级别编译应报告“返回局部对象引用”类别；本实验不运行生成的程序，因为读取悬空引用是未定义行为，不能把某次崩溃或数值当成稳定结果。修复是按值返回这个小对象，或引用一个已证明比调用者活得更久的对象。
+
+立即练习：为三条实验各记录“两个编译是否成功、链接是否成功、是否允许运行”。答案依次是：单一源编译成功但链接失败；两个源分别编译成功但合并链接失败；编译产生寿命警告且禁止把运行结果当证据。
+
+\section{从干净目录复现与章节验收}
+
+在 Linux/WSL 中运行：
+
+\begin{lstlisting}[language=bash,numbers=none]
+cmake -S code/ch03 -B build/ch03
+cmake --build build/ch03 --target ch03_market_tool
+./build/ch03/ch03_market_tool < code/ch03/data/market_rows.txt
+ctest --test-dir build-mingw -R ch03_ --output-on-failure
+\end{lstlisting}
+
+前两条命令证明章节快照不依赖后续项目源码；第三条必须得到章首精确输出。Windows 多配置生成器可能把可执行文件放在 \path{build\ch03\Debug} 并加 \texttt{.exe}，但源文件边界、声明/定义规则与测试预期不变。
+
+\section{自测、编码任务与面试表达}
 
 \begin{enumerate}
-  \item 写一个计时器 RAII 类型，在作用域结束时记录耗时；说明析构中日志失败如何处理。
-  \item 把一个拥有裸文件句柄的类型改写为 Rule of Zero 或单一自定义 deleter 的 \texttt{unique\_ptr}。
-  \item 画出策略、事件循环、组合和行情事件的所有权图，标出每条借用边的最长寿命。
-  \item 构造一个 \texttt{shared\_ptr} 环并用 \texttt{weak\_ptr} 修复，解释为什么原环不会释放。
+  \item 函数声明、定义和调用分别提供什么信息？分号与花括号出现在何处？
+  \item 参数对象和返回值的生命周期边界是什么？早返回怎样改变控制流？
+  \item 按值、\texttt{const T\&} 与 \texttt{T\&} 分别允许函数观察或修改什么？
+  \item 重载候选靠什么区分？为什么只改变返回类型不能形成可用重载？
+  \item \texttt{.cpp}、头文件、翻译单元、目标文件和可执行文件怎样连接？
+  \item include guard 防止什么？为什么项目头文件通常使用双引号和命名空间？
+  \item 缺失定义、重复定义和悬空引用分别在哪一阶段得到什么证据？
 \end{enumerate}
+
+编码任务：
+
+\begin{enumerate}
+  \item 从空目录重建 \path{code/ch03} 的头文件、实现文件和入口，使用固定输入得到章首精确输出，并从全新构建树复现。
+  \item 为行情工具增加只读函数 \texttt{double basis\_points(const double\& rate)}，返回 \texttt{rate * 10000.0}；用 0.0015 验收结果 15，并证明调用者值不变。
+  \item 运行三个故障实验，记录每个翻译单元的编译状态、链接状态、稳定类别、根因和最小恢复步骤；不要运行悬空引用程序来“看看会怎样”。
+\end{enumerate}
+
+\begin{interviewcheck}
+用 90 秒回答：“如何把一个单文件行情程序拆成可链接的多文件 C++ 程序？”回答需包含声明与定义、按值和引用、include guard、命名空间、独立翻译单元以及一个缺失或重复定义的可观察诊断。
+\end{interviewcheck}
 
 \section{本章小结}
 
-RAII 把资源正确性变成对象生命周期的结构性结果。值成员和唯一所有权应是默认，共享所有权需要架构理由；异常安全则要求每次状态改变都有清楚的提交边界。
+函数声明让调用点在编译期检查接口，定义提供唯一实现，调用创建参数对象并取得返回结果。按值表达独立副本，\texttt{const\&} 表达只读借用，\texttt{\&} 表达可变借用；重载则让同名领域动作拥有可区分的参数表。头文件共享声明，include guard 控制同一翻译单元中的重复包含，命名空间管理名称，多个 \texttt{.cpp} 分别编译后由链接器组合。面对故障时，先问每个翻译单元是否编译，再问最终程序是否拥有所需且唯一的定义，最后确认返回的引用是否仍指向存活对象。

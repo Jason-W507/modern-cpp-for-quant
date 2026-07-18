@@ -84,7 +84,55 @@
         ]
       }
     },
-    {"number": 3, "state": "planned"},
+    {
+      "number": 3,
+      "state": "accepted",
+      "evidence": {
+        "tex": "chapters/ch03.tex",
+        "examples": [
+          "code/ch03/include/quant/ch03/market_math.hpp",
+          "code/ch03/src/market_math.cpp",
+          "code/ch03/src/main.cpp",
+          "code/ch03/parameter_modes.cpp",
+          "code/ch03/CMakeLists.txt"
+        ],
+        "failure_experiment": {
+          "source": "code/ch03/failures/missing_definition.cpp",
+          "diagnostic_category": "linker reports an undefined reference for a declared but undefined function"
+        },
+        "additional_failure_experiments": [
+          {
+            "source": "code/ch03/failures/duplicate_definition_a.cpp",
+            "stage": "link",
+            "diagnostic_category": "linking with duplicate_definition_b.cpp reports a multiple definition"
+          },
+          {
+            "source": "code/ch03/failures/dangling_reference.cpp",
+            "stage": "compile",
+            "diagnostic_category": "compiler warns that a reference to a local object is returned"
+          }
+        ],
+        "output_task": "Build the independent multi-file market tool, read three fixed price and quantity rows from standard input, and print exactly notional=4010.00 quantity=40 vwap=100.25.",
+        "self_checks": 7,
+        "feedback": "appendices/solutions.tex",
+        "project_connection": "code/ch03 is an independently configurable multi-translation-unit market calculation snapshot verified from a clean build directory.",
+        "checklist_markers": [
+          "prerequisites",
+          "learning-output",
+          "scenario",
+          "syntax-rule",
+          "runnable-example",
+          "guided-explanation",
+          "python-boundary",
+          "failure-diagnosis",
+          "immediate-practice",
+          "code-evidence",
+          "feedback",
+          "project-connection",
+          "publication"
+        ]
+      }
+    },
     {"number": 4, "state": "planned"},
     {"number": 5, "state": "planned"},
     {

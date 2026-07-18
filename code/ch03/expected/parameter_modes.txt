@@ -1,0 +1,1 @@
+original=100 copied_result=101 observed=100 cash=995

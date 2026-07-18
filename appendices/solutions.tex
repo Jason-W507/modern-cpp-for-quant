@@ -31,11 +31,28 @@
 \end{enumerate}
 
 \section{第 3 章}
+\subsection*{自测答案}
 \begin{enumerate}
-  \item 计时器保存起点，析构计算耗时；日志失败不得从析构逃逸，可写 noexcept sink 或计数器。
-  \item 优先标准流或带 deleter 的唯一所有权，复制禁用、移动转移句柄。
-  \item 事件容器拥有值，循环短借用；异步保存必须转移所有权或延长拥有对象寿命。
-  \item 双向 shared pointer 形成环；一侧改 weak pointer，让强引用计数能归零。
+  \item 声明给出返回类型、名称和参数表并以分号结束；定义给出匹配接口与函数体；调用用实参创建参数对象并取得结果。定义的右花括号后不加函数声明式分号。
+  \item 按值或引用参数在调用期间有效，局部对象在离开函数时销毁；返回值交回调用者。早返回在满足条件时立即结束本次调用，跳过后续语句。
+  \item 按值允许修改独立参数而不影响调用者；\texttt{const T\&} 借用并禁止通过该名称修改；\texttt{T\&} 可直接修改调用者对象，因而应只用于明确副作用。
+  \item 重载靠参数数量或类型区分，并要求调用时存在唯一最佳候选。只改变返回类型无法总由实参确定选择，因此不能形成可调用的重载集合。
+  \item 每个 \texttt{.cpp} 连同包含的声明形成独立翻译单元并编译为目标文件；链接器把目标文件与库组合为可执行文件。头文件自身不会自动提供实现。
+  \item include guard 让同一头文件在一个翻译单元重复包含时只展开一次。项目头文件用双引号配合目标 include 路径；命名空间降低项目名称与其他库冲突的风险。
+  \item 缺失定义与重复定义都在各翻译单元编译后由链接器报告；返回局部对象引用可由高警告级别在编译时指出，其后读取是未定义行为，不运行来验收结果。
+\end{enumerate}
+
+\subsection*{编码任务反馈}
+\begin{enumerate}
+  \item 完整多文件答案位于 \path{code/ch03/include/quant/ch03/market_math.hpp}、\path{code/ch03/src/market_math.cpp} 与 \path{code/ch03/src/main.cpp}；独立 \path{CMakeLists.txt} 应从空构建树得到 \texttt{notional=4010.00 quantity=40 vwap=100.25}。
+  \item 可写：
+\begin{lstlisting}
+double basis_points(const double& rate) {
+  return rate * 10000.0;
+}
+\end{lstlisting}
+用 \texttt{const double rate\{0.0015\};} 调用后结果为 15，\texttt{rate} 仍为 0.0015；若函数尝试赋值给 \texttt{rate}，应编译失败。
+  \item 三个故障源码位于 \path{code/ch03/failures/}。缺失与重复定义分别匹配链接器的 undefined 与 multiple-definition 类别；悬空引用匹配返回局部对象引用的编译诊断。恢复方式分别是补上唯一定义、删除额外定义、改为按值返回或证明被引用对象寿命足够长。
 \end{enumerate}
 
 \section{第 4 章}
