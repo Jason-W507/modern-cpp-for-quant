@@ -27,6 +27,12 @@ bool split_row(const std::string& row, std::array<std::string, 3>& fields) {
   return true;
 }
 
+void remove_trailing_carriage_return(std::string& row) {
+  if (!row.empty() && row.back() == '\r') {
+    row.pop_back();
+  }
+}
+
 std::size_t column_count(const std::string& row) {
   std::size_t columns{1};
   for (const char character : row) {
@@ -75,7 +81,13 @@ bool read_market_csv(std::istream& input, std::vector<std::string>& symbols,
   error.clear();
 
   std::string row;
-  if (!std::getline(input, row) || row != "symbol,price,quantity") {
+  if (!std::getline(input, row)) {
+    reject(symbols, prices, quantities, error, 1,
+           "expected symbol,price,quantity");
+    return false;
+  }
+  remove_trailing_carriage_return(row);
+  if (row != "symbol,price,quantity") {
     reject(symbols, prices, quantities, error, 1,
            "expected symbol,price,quantity");
     return false;
@@ -84,6 +96,7 @@ bool read_market_csv(std::istream& input, std::vector<std::string>& symbols,
   std::size_t line{1};
   while (std::getline(input, row)) {
     ++line;
+    remove_trailing_carriage_return(row);
     std::array<std::string, 3> fields{};
     if (!split_row(row, fields)) {
       reject(symbols, prices, quantities, error, line,
@@ -114,6 +127,11 @@ bool read_market_csv(std::istream& input, std::vector<std::string>& symbols,
     prices.push_back(price);
     quantities.push_back(quantity);
   }
+  if (input.bad()) {
+    reject(symbols, prices, quantities, error, line + 1,
+           "input read failure");
+    return false;
+  }
   return true;
 }
 
@@ -125,13 +143,16 @@ int total_quantity(const std::vector<int>& quantities) {
   return total;
 }
 
-double total_notional(const std::vector<double>& prices,
-                      const std::vector<int>& quantities) {
-  double total{0.0};
+bool total_notional(const std::vector<double>& prices,
+                    const std::vector<int>& quantities, double& total) {
+  total = 0.0;
+  if (prices.size() != quantities.size()) {
+    return false;
+  }
   for (std::size_t index{0}; index < prices.size(); ++index) {
     total += prices[index] * quantities[index];
   }
-  return total;
+  return true;
 }
 
 }  // namespace quant::ch04

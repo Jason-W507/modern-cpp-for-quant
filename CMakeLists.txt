@@ -43,6 +43,9 @@ quant_target(ch04_iterator_invalidation code/ch04/iterator_invalidation.cpp)
 quant_target(ch04_csv_stats code/ch04/src/main.cpp)
 target_sources(ch04_csv_stats PRIVATE code/ch04/src/csv_stats.cpp)
 target_include_directories(ch04_csv_stats PRIVATE code/ch04/include)
+quant_target(ch04_csv_stats_contracts code/ch04/csv_stats_contracts.cpp)
+target_sources(ch04_csv_stats_contracts PRIVATE code/ch04/src/csv_stats.cpp)
+target_include_directories(ch04_csv_stats_contracts PRIVATE code/ch04/include)
 quant_target(ch04_symbol_summary_solution
   code/ch04/exercises/symbol_summary_solution.cpp)
 target_sources(ch04_symbol_summary_solution PRIVATE code/ch04/src/csv_stats.cpp)
@@ -238,10 +241,17 @@ set_tests_properties(ch04_stale_iterator_is_reported_by_address_sanitizer
   PROPERTIES SKIP_RETURN_CODE 77)
 add_test(NAME ch04_csv_stats_summarizes_valid_market_rows
   COMMAND ${Python3_EXECUTABLE}
-          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
-          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/expected/csv_stats.txt
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 0
+          --expected-stdout ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/expected/csv_stats.txt
           -- $<TARGET_FILE:ch04_csv_stats>
              ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/data/market_rows.csv)
+add_test(NAME ch04_csv_stats_handles_stream_and_shape_boundaries
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 0
+          --expected-stdout ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/expected/csv_stats_contracts.txt
+          -- $<TARGET_FILE:ch04_csv_stats_contracts>)
 add_test(NAME ch04_clean_csv_project_configures_builds_and_runs
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py

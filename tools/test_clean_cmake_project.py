@@ -15,6 +15,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--cmake", type=Path, required=True)
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--expected", type=Path, required=True)
+    parser.add_argument("--expected-stderr", type=Path)
     parser.add_argument("--input", type=Path)
     parser.add_argument("--argument", action="append", default=[])
     parser.add_argument("--target", default="ch01_first_program")
@@ -85,10 +86,20 @@ def main() -> int:
         check=False,
     )
     expected = read_expected(args.expected)
-    if completed.returncode != 0 or not matches_exactly(completed.stdout, expected):
+    expected_stderr = (
+        read_expected(args.expected_stderr)
+        if args.expected_stderr is not None
+        else ""
+    )
+    if (
+        completed.returncode != 0
+        or not matches_exactly(completed.stdout, expected)
+        or not matches_exactly(completed.stderr, expected_stderr)
+    ):
         print(
-            f"expected exit 0 and output {expected!r}, observed "
-            f"exit {completed.returncode} and {completed.stdout!r}",
+            f"expected exit 0, stdout {expected!r}, stderr {expected_stderr!r}; "
+            f"observed exit {completed.returncode}, stdout {completed.stdout!r}, "
+            f"stderr {completed.stderr!r}",
             file=sys.stderr,
         )
         return 1

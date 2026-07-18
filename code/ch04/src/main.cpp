@@ -29,7 +29,11 @@ int main(const int argc, char* argv[]) {
   }
 
   const int quantity{quant::ch04::total_quantity(quantities)};
-  const double notional{quant::ch04::total_notional(prices, quantities)};
+  double notional{0.0};
+  if (!quant::ch04::total_notional(prices, quantities, notional)) {
+    std::cerr << "error=internal column length mismatch\n";
+    return 2;
+  }
   double vwap{0.0};
   if (quantity != 0) {
     vwap = notional / quantity;

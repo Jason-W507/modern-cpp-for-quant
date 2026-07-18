@@ -13,8 +13,8 @@ bool read_market_csv(std::istream& input, std::vector<std::string>& symbols,
 
 int total_quantity(const std::vector<int>& quantities);
 
-double total_notional(const std::vector<double>& prices,
-                      const std::vector<int>& quantities);
+bool total_notional(const std::vector<double>& prices,
+                    const std::vector<int>& quantities, double& total);
 
 }  // namespace quant::ch04
 

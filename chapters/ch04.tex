@@ -43,6 +43,8 @@ Python 字符串和列表也有 \texttt{len} 与零起点索引，但 Python 越
 
 立即练习：把 \texttt{reserve(8)} 改为 \texttt{resize(8)}，预测 \texttt{push\_back} 后 \texttt{prices\_size} 变为 9，而总和仍为 400.5，因为新增元素值初始化为零。运行验证后恢复 \texttt{reserve}，说明“容量”和“元素数”为什么不能互换。
 
+再只改固定数组：把 \texttt{header} 的第三项从 \texttt{"quantity"} 改为 \texttt{"volume"}，先预测精确输出中的 \texttt{header\_last}，再编译运行，确认它变为 \texttt{header\_last=volume}，而 \texttt{header.size()} 仍为 3。恢复原值，并说明修改元素与修改 \texttt{std::array} 的编译期长度是两件不同的事。
+
 \section{迭代器是半开区间中的位置}
 
 \subsection{场景：算法不应依赖具体容器写法}
@@ -119,9 +121,9 @@ Python 常写 \texttt{with open(path) as input}；C++ 文件流对象也拥有�
 
 逐行切分、数值转换、拒绝与统计的完整实现位于 \path{code/ch04/src/csv_stats.cpp}，并在附录 C 原样列出。它与本章接口、入口共同参与 C++20 构建，不是只存在于正文的伪代码。
 
-\texttt{std::getline(input, row)} 每次读取一行且移除换行符。\texttt{split\_row} 用固定长度 \texttt{array} 接收三列；\texttt{find} 查找逗号，\texttt{substr} 复制当前字段。数值转换使用 \texttt{istringstream}：先读取目标数值，再尝试读取额外文本；存在 \texttt{100abc} 这样的尾随内容就拒绝。\texttt{isfinite} 另外拒绝无穷和 NaN。
+\texttt{std::getline(input, row)} 每次读取一行且移除换行符；实现还移除 Windows CRLF 留下的单个 \texttt{'\textbackslash r'}，因此同一文件可由 Windows 程序或 WSL 程序读取。\texttt{split\_row} 用固定长度 \texttt{array} 接收三列；\texttt{find} 查找逗号，\texttt{substr} 复制当前字段。数值转换使用 \texttt{istringstream}：先读取目标数值，再尝试读取额外文本；存在 \texttt{100abc} 这样的尾随内容就拒绝。\texttt{isfinite} 另外拒绝无穷和 NaN。
 
-在第 5 章引入行情记录类型前，\texttt{symbols}、\texttt{prices}、\texttt{quantities} 是三个平行 \texttt{vector}。解析函数只在一行完全有效后同时 \texttt{push\_back}，因此三者长度相等。任何失败都会清空三列并写入 \texttt{line N: reason}；调用者不会误用半份文件。
+在第 5 章引入行情记录类型前，\texttt{symbols}、\texttt{prices}、\texttt{quantities} 是三个平行 \texttt{vector}。解析函数只在一行完全有效后同时 \texttt{push\_back}，因此三者长度相等；\texttt{total\_notional} 仍检查价格与数量列是否等长。格式错误或非 EOF 读取故障都会清空三列并写入 \texttt{line N: reason}；调用者不会误用半份文件。
 
 自动测试固定四种公开行为：
 
@@ -131,6 +133,8 @@ Python 常写 \texttt{with open(path) as input}；C++ 文件流对象也拥有�
   \item 第 3 行非法价格输出 \texttt{error=line 3: invalid number: price}；
   \item 两列数据输出 \texttt{error=line 2: expected 3 columns, observed 2}。
 \end{enumerate}
+
+边界回归还使用内存流验证 CRLF 输入、读取中途故障和不等长统计参数；三者不依赖“恰好在当前机器上没出错”。成功路径同时断言状态为 0、标准输出逐字匹配且标准错误为空。
 
 \begin{pythonbridge}
 Python 的 \texttt{csv} 模块能处理引号和转义，本章的手写切分器不能；这不是语言能力差异，而是当前接口刻意缩小了输入协议。两种实现都必须在把字符串转成业务对象前检查列数、空字段、数值范围和来源行号。

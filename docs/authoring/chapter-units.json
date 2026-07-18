@@ -146,6 +146,7 @@
           "code/ch04/include/quant/ch04/csv_stats.hpp",
           "code/ch04/src/csv_stats.cpp",
           "code/ch04/src/main.cpp",
+          "code/ch04/csv_stats_contracts.cpp",
           "code/ch04/CMakeLists.txt",
           "code/ch04/exercises/symbol_summary_solution.cpp"
         ],
@@ -156,7 +157,7 @@
         "output_task": "Configure code/ch04 from a clean build directory, read market_rows.csv, and print exactly rows=3 total_quantity=25 total_notional=2005.00 vwap=80.20; malformed files exit 2 with exact line-numbered diagnostics.",
         "self_checks": 8,
         "feedback": "appendices/solutions.tex",
-        "project_connection": "code/ch04 is an independently configurable CSV statistics snapshot whose parsing and statistics functions are reused by the runnable symbol-filter exercise and prepare the Chapter 5 analyzer model.",
+        "project_connection": "code/ch04 is an independently configurable CSV statistics snapshot whose parser is reused by the runnable symbol-filter exercise and whose validated columns prepare the Chapter 5 analyzer model.",
         "checklist_markers": [
           "prerequisites",
           "learning-output",
