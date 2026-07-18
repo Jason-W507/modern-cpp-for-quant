@@ -32,6 +32,27 @@ class ExactOutputCliTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("expected:", result.stderr)
 
+    def test_unexpected_standard_error_is_rejected(self) -> None:
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(EXPECT_OUTPUT),
+                "--expected",
+                str(EXPECTED),
+                "--",
+                sys.executable,
+                "-c",
+                "import sys; sys.stdout.write('ready\\n'); "
+                "sys.stderr.write('warning\\n')",
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("unexpected stderr", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

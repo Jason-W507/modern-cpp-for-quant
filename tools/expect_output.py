@@ -26,6 +26,9 @@ def main() -> int:
     if completed.returncode != 0:
         print(completed.stderr, end="", file=sys.stderr)
         return completed.returncode
+    if completed.stderr:
+        print(f"unexpected stderr: {completed.stderr!r}", file=sys.stderr)
+        return 1
 
     expected = read_expected(args.expected)
     actual = completed.stdout
