@@ -4,9 +4,9 @@
 #include "quant/ch05/market.hpp"
 
 int main() {
-  const quant::ch05::MarketQuote valid{"AAPL", 100.0, 10};
-  std::cout << "valid=" << valid.symbol() << '@' << valid.price();
   try {
+    const quant::ch05::MarketQuote valid{"AAPL", 100.0, 10};
+    std::cout << "valid=" << valid.symbol() << '@' << valid.price();
     const quant::ch05::MarketQuote invalid{"AAPL", -1.0, 10};
     std::cout << " unexpected=" << invalid.price();
   } catch (const std::exception& error) {

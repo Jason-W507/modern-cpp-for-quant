@@ -45,6 +45,16 @@ Python 的 \texttt{dataclass} 与 C++ 聚合都适合透明记录，但 Python �
 
 若每个调用者都要记住“代码非空、价格有限且为正、数量为正”，检查迟早会遗漏。\texttt{MarketQuote} 把字段设为私有，只允许构造函数创建对象，并通过只读成员函数观察值。
 
+先看真实头文件中的类声明；这里明确省略头文件保护、\texttt{include} 和命名空间上下文，只保留正在学习的类型定义：
+
+\lstinputlisting[firstline=24,lastline=36,firstnumber=24,caption={MarketQuote 类声明（省略文件上下文）}]{code/ch05/include/quant/ch05/market.hpp}
+
+构造函数与只读成员函数的真实实现如下；这里同样省略文件开头与命名空间上下文，完整文件收入附录：
+
+\lstinputlisting[firstline=9,lastline=27,firstnumber=9,caption={构造边界与只读访问（省略文件上下文）}]{code/ch05/src/market.cpp}
+
+下面的可执行程序创建一个有效对象，再验证非法价格确实在构造边界被拒绝：
+
 \lstinputlisting[caption={有效行情与被拒绝行情}]{code/ch05/class_invariants.cpp}
 
 \texttt{class} 的成员默认私有。类声明中的 \texttt{public:} 与 \texttt{private:} 是访问标签，冒号后直到下一个标签的声明共享该权限。构造函数与类同名、没有返回类型；\texttt{MarketQuote(std::string symbol, double price, int quantity)} 在函数体运行前通过成员初始化列表建立字段。

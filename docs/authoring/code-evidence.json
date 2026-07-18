@@ -24,6 +24,7 @@
     {"tex": "chapters/ch05.tex", "source": "code/ch05/records.cpp", "target": "ch05_records"},
     {"tex": "chapters/ch05.tex", "source": "code/ch05/class_invariants.cpp", "target": "ch05_class_invariants"},
     {"tex": "chapters/ch05.tex", "source": "code/ch05/include/quant/ch05/market.hpp", "target": "ch05_market_analyzer"},
+    {"tex": "chapters/ch05.tex", "source": "code/ch05/src/market.cpp", "target": "ch05_market_analyzer"},
     {"tex": "chapters/ch05.tex", "source": "code/ch05/src/main.cpp", "target": "ch05_market_analyzer"},
     {"tex": "appendices/solutions.tex", "source": "code/ch05/src/market.cpp", "target": "ch05_market_analyzer"},
     {"tex": "appendices/solutions.tex", "source": "code/ch05/src/csv_reader.cpp", "target": "ch05_market_analyzer"},

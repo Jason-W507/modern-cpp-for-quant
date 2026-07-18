@@ -76,7 +76,7 @@ std::vector<MarketQuote> read_market_csv(std::istream& input) {
     }
     try {
       quotes.emplace_back(fields[0], price, quantity);
-    } catch (const std::exception& error) {
+    } catch (const std::invalid_argument& error) {
       throw std::runtime_error{"line " + std::to_string(line) + ": " +
                                error.what()};
     }
