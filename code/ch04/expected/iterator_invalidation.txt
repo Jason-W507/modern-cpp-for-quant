@@ -1,0 +1,1 @@
+reallocated=1 reacquired=7 has_multiple=1

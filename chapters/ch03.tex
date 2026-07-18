@@ -183,7 +183,7 @@ cmake -S code/ch03 -B build/ch03
 cmake --build build/ch03 --target ch03_market_tool
 ./build/ch03/ch03_market_tool < code/ch03/data/market_rows.txt
 cmake -S . -B build-linux
-cmake --build build-linux --target ch03_market_tool
+cmake --build build-linux
 ctest --test-dir build-linux -R ch03_ --output-on-failure
 \end{lstlisting}
 

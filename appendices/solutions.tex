@@ -51,12 +51,26 @@
 \end{enumerate}
 
 \section{第 4 章}
+\subsection*{自测答案}
 \begin{enumerate}
-  \item filter 代码和 side 后循环累计 \(price\times quantity\)，分母累计 quantity。
-  \item 小规模连续扫描可能胜出；报告交叉点、构建成本和查询次数。
-  \item 扩容后旧引用悬空；预留容量或用索引并在操作后重新取元素。
-  \item 使用容差或稳定归约；若要求逐位确定，应固定顺序并避免不受控并行归约。
+  \item \texttt{string} 保存拥有的字符序列；\texttt{vector<double>} 保存动态数量的同类型连续元素；\texttt{array<string, 3>} 的长度 3 属于类型。三者都不能像 Python list 一样随意混放无关类型。
+  \item \texttt{size} 是已存在元素数，\texttt{capacity} 是当前分配可容纳数。\texttt{reserve} 只提高容量下界，\texttt{resize} 改变大小并构造或销毁元素。
+  \item 半开区间包含 \texttt{first} 而不包含 \texttt{last}；空区间可由 \texttt{first == last} 表示，因此尾后迭代器只用于比较，不能解引用。
+  \item vector 重新分配会使全部旧位置失效；插入或删除还可能使操作点及其后位置失效。可预留足够容量，或修改后重新取得迭代器、引用和指针。
+  \item lambda 的 \texttt{[]} 是捕获列表，\texttt{()} 是参数表，\texttt{\{\}} 是函数体；空捕获不读取周围局部对象。\texttt{[minimum]} 按值捕获阈值。
+  \item 操作正好是查找、计数、复制、排序、转换或归约时，算法直接表达意图；多状态、早停或逐行诊断常由普通循环更清楚。两者都必须满足范围、输出空间和迭代器有效性前置条件。
+  \item 打开失败属于文件边界；列数与数值错误属于带行号的数据边界。三者均返回 2，但诊断分别为 cannot open、expected columns 与 invalid number。
+  \item 三个平行 vector 的同一索引共同表示一行，因此长度必须相等。第 5 章用一个行情记录类型把 symbol、price、quantity 组合成单个元素，消除同步修改三列的脆弱约束。
 \end{enumerate}
+
+\subsection*{编码任务反馈}
+CSV 读取与统计函数的完整实现如下；它只接受本章定义的三列方言，任何失败都会清空平行列并保留行号：
+\lstinputlisting{code/ch04/src/csv_stats.cpp}
+
+完整答案如下；使用 \path{code/ch04/data/market_rows.csv} 与参数 \texttt{AAPL} 时，应输出 \texttt{symbol=AAPL rows=2 quantity=15 notional=1505.00}：
+\lstinputlisting{code/ch04/exercises/symbol_summary_solution.cpp}
+
+空代码、非法价格和错误列数的固定输入与预期错误分别位于 \path{code/ch04/data/} 和 \path{code/ch04/expected/}。故意失效迭代器只通过 ASan 验收 \texttt{heap-use-after-free} 类别，不读取未定义的数值结果。
 
 \section{第 5 章}
 \begin{enumerate}

@@ -14,7 +14,13 @@
     {"tex": "chapters/ch03.tex", "source": "code/ch03/src/main.cpp", "target": "ch03_market_tool"},
     {"tex": "chapters/ch03.tex", "source": "code/ch03/parameter_modes.cpp", "target": "ch03_parameter_modes"},
     {"tex": "appendices/solutions.tex", "source": "code/ch03/exercises/basis_points_solution.cpp", "target": "ch03_basis_points_solution"},
-    {"tex": "chapters/ch04.tex", "source": "code/ch04/ranges_pipeline.cpp", "target": "ch04_ranges_pipeline"},
+    {"tex": "chapters/ch04.tex", "source": "code/ch04/containers.cpp", "target": "ch04_containers"},
+    {"tex": "chapters/ch04.tex", "source": "code/ch04/iterator_invalidation.cpp", "target": "ch04_iterator_invalidation"},
+    {"tex": "chapters/ch04.tex", "source": "code/ch04/algorithms.cpp", "target": "ch04_algorithms"},
+    {"tex": "chapters/ch04.tex", "source": "code/ch04/include/quant/ch04/csv_stats.hpp", "target": "ch04_csv_stats"},
+    {"tex": "chapters/ch04.tex", "source": "code/ch04/src/main.cpp", "target": "ch04_csv_stats"},
+    {"tex": "appendices/solutions.tex", "source": "code/ch04/src/csv_stats.cpp", "target": "ch04_csv_stats"},
+    {"tex": "appendices/solutions.tex", "source": "code/ch04/exercises/symbol_summary_solution.cpp", "target": "ch04_symbol_summary_solution"},
     {"tex": "chapters/ch05.tex", "source": "project/include/quant/types.hpp", "target": "quant_backtest"},
     {"tex": "chapters/ch05.tex", "source": "project/include/quant/execution.hpp", "target": "test_execution_portfolio"},
     {"tex": "chapters/ch06.tex", "source": "code/ch06/lifetime_trace.cpp", "target": "ch06_lifetime_trace"},
@@ -71,6 +77,11 @@
       "diagnostic_category": "compiler warns that a reference to a local object is returned"
     },
     {
+      "source": "code/ch04/failures/stale_iterator.cpp",
+      "stage": "runtime",
+      "diagnostic_category": "AddressSanitizer reports heap-use-after-free after vector reallocation"
+    },
+    {
       "source": "code/ch06/failures/use_after_free.cpp",
       "stage": "runtime",
       "diagnostic_category": "AddressSanitizer reports heap-use-after-free"
@@ -84,6 +95,10 @@
     {
       "path": "code/ch03",
       "entry_target": "ch03_market_tool"
+    },
+    {
+      "path": "code/ch04",
+      "entry_target": "ch04_csv_stats"
     }
   ]
 }

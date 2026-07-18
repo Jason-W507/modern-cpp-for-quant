@@ -1,0 +1,1 @@
+symbol=AAPL symbol_size=4 prices_size=4 capacity_at_least_8=1 header_last=quantity total=400.5

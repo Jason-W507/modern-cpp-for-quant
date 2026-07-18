@@ -1,0 +1,1 @@
+symbol=AAPL rows=2 quantity=15 notional=1505.00

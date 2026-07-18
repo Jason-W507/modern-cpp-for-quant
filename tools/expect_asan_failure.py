@@ -51,7 +51,7 @@ def run_in_wsl(source: Path, pattern: str) -> int:
     relative_parts = resolved.parts[1:]
     source_path = f"/mnt/{drive}/" + "/".join(relative_parts)
 
-    temporary = run(["wsl.exe", "--", "mktemp", "/tmp/ch06-asan-XXXXXX"])
+    temporary = run(["wsl.exe", "--", "mktemp", "/tmp/cpp-asan-XXXXXX"])
     if temporary.returncode != 0:
         print("asan-failure: SKIP: WSL temporary directory is unavailable")
         return SKIP
@@ -91,7 +91,7 @@ def run_in_wsl(source: Path, pattern: str) -> int:
 
 
 def run_natively(source: Path, pattern: str) -> int:
-    with tempfile.TemporaryDirectory(prefix="ch06-asan-") as directory:
+    with tempfile.TemporaryDirectory(prefix="cpp-asan-") as directory:
         binary = Path(directory) / "failure"
         compiled = run(
             [

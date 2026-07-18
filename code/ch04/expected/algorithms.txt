@@ -1,0 +1,1 @@
+manual_valid=3 named_valid=3 lambda_valid=3 first=99 total_notional=3000

@@ -16,6 +16,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--expected", type=Path, required=True)
     parser.add_argument("--input", type=Path)
+    parser.add_argument("--argument", action="append", default=[])
     parser.add_argument("--target", default="ch01_first_program")
     parser.add_argument("--generator", required=True)
     parser.add_argument("--compiler", type=Path, required=True)
@@ -77,7 +78,7 @@ def main() -> int:
         args.input.read_text(encoding="utf-8") if args.input is not None else None
     )
     completed = subprocess.run(
-        [str(candidates[0])],
+        [str(candidates[0]), *args.argument],
         input=standard_input,
         text=True,
         capture_output=True,

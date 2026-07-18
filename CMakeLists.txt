@@ -36,7 +36,17 @@ target_include_directories(ch03_market_tool PRIVATE code/ch03/include)
 quant_target(ch03_parameter_modes code/ch03/parameter_modes.cpp)
 quant_target(ch03_basis_points_solution
   code/ch03/exercises/basis_points_solution.cpp)
-quant_project_target(ch04_ranges_pipeline code/ch04/ranges_pipeline.cpp)
+quant_project_target(ch07_ranges_pipeline code/ch07/ranges_pipeline.cpp)
+quant_target(ch04_containers code/ch04/containers.cpp)
+quant_target(ch04_algorithms code/ch04/algorithms.cpp)
+quant_target(ch04_iterator_invalidation code/ch04/iterator_invalidation.cpp)
+quant_target(ch04_csv_stats code/ch04/src/main.cpp)
+target_sources(ch04_csv_stats PRIVATE code/ch04/src/csv_stats.cpp)
+target_include_directories(ch04_csv_stats PRIVATE code/ch04/include)
+quant_target(ch04_symbol_summary_solution
+  code/ch04/exercises/symbol_summary_solution.cpp)
+target_sources(ch04_symbol_summary_solution PRIVATE code/ch04/src/csv_stats.cpp)
+target_include_directories(ch04_symbol_summary_solution PRIVATE code/ch04/include)
 quant_target(ch06_lifetime_trace code/ch06/lifetime_trace.cpp)
 quant_target(ch06_borrowing_and_legacy code/ch06/borrowing_and_legacy.cpp)
 quant_target(ch06_raii_file code/ch06/raii_file.cpp)
@@ -201,9 +211,77 @@ add_test(NAME ch03_dangling_reference_emits_compile_diagnostic
           --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch03/failures/dangling_reference.cpp
           --output ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch03_dangling.obj
           --diagnostic "reference to local variable|reference to local temporary|reference to stack memory|C4172")
-add_test(NAME ch04_ranges_pipeline_runs COMMAND ch04_ranges_pipeline)
-set_tests_properties(ch04_ranges_pipeline_runs PROPERTIES
+add_test(NAME ch07_ranges_pipeline_runs COMMAND ch07_ranges_pipeline)
+set_tests_properties(ch07_ranges_pipeline_runs PROPERTIES
   PASS_REGULAR_EXPRESSION "positive-notional=3975")
+add_test(NAME ch04_containers_expose_sizes_and_values
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/expected/containers.txt
+          -- $<TARGET_FILE:ch04_containers>)
+add_test(NAME ch04_algorithms_match_the_manual_loop
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/expected/algorithms.txt
+          -- $<TARGET_FILE:ch04_algorithms>)
+add_test(NAME ch04_iterators_are_reacquired_after_reallocation
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/expected/iterator_invalidation.txt
+          -- $<TARGET_FILE:ch04_iterator_invalidation>)
+add_test(NAME ch04_stale_iterator_is_reported_by_address_sanitizer
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_asan_failure.py
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/failures/stale_iterator.cpp
+          --diagnostic "heap-use-after-free")
+set_tests_properties(ch04_stale_iterator_is_reported_by_address_sanitizer
+  PROPERTIES SKIP_RETURN_CODE 77)
+add_test(NAME ch04_csv_stats_summarizes_valid_market_rows
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/expected/csv_stats.txt
+          -- $<TARGET_FILE:ch04_csv_stats>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/data/market_rows.csv)
+add_test(NAME ch04_clean_csv_project_configures_builds_and_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
+          --cmake ${CMAKE_COMMAND}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/expected/csv_stats.txt
+          --target ch04_csv_stats
+          --argument ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/data/market_rows.csv
+          --generator "${CMAKE_GENERATOR}"
+          --compiler ${CMAKE_CXX_COMPILER}
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests
+          --config $<CONFIG>)
+add_test(NAME ch04_csv_stats_rejects_an_empty_symbol
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/expected/empty_symbol_error.txt
+          -- $<TARGET_FILE:ch04_csv_stats>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/data/empty_symbol.csv)
+add_test(NAME ch04_csv_stats_rejects_an_invalid_number
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/expected/invalid_price_error.txt
+          -- $<TARGET_FILE:ch04_csv_stats>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/data/invalid_price.csv)
+add_test(NAME ch04_csv_stats_rejects_the_wrong_column_count
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/expected/wrong_columns_error.txt
+          -- $<TARGET_FILE:ch04_csv_stats>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/data/wrong_columns.csv)
+add_test(NAME ch04_symbol_summary_solution_filters_one_symbol
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/expected/symbol_summary_solution.txt
+          -- $<TARGET_FILE:ch04_symbol_summary_solution>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch04/data/market_rows.csv
+             AAPL)
 add_test(NAME ch06_lifetime_trace_shows_copy_move_and_reverse_destruction
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py

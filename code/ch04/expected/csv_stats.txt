@@ -1,0 +1,1 @@
+rows=3 total_quantity=25 total_notional=2005.00 vwap=80.20

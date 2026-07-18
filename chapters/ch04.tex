@@ -1,71 +1,184 @@
-\chapter{STL、迭代器、算法与 ranges}
+\chapter{标准数据工具、算法与 CSV}
 
 \begin{introduction}
-  \item 根据访问模式选择连续、节点式和关联容器
-  \item 用迭代器理解算法与数据表示的解耦
-  \item 使用 ranges 构造惰性、可组合的数据视图
-  \item 识别复杂度、分配与迭代器失效成本
+  \item 使用 \texttt{string}、\texttt{vector} 与 \texttt{array} 保存文本和行情列
+  \item 用范围 \texttt{for}、迭代器与标准算法遍历数据
+  \item 从普通函数逐步改写出可读的 lambda 谓词
+  \item 从文件读取并校验 CSV，产生带行号的稳定错误
 \end{introduction}
 
-\chaptermeta{会使用 Python 列表、字典、生成器与推导式。}{ranges 视图类似惰性生成器，但受静态类型、借用范围和迭代器失效约束。}{结果异常时先检查视图底层对象寿命、迭代器失效、谓词副作用和浮点归约顺序。}
+\chaptermeta{已完成第 3 章，会定义函数、使用引用和指针，并能构建多文件程序。}{Python 的列表同时承担多种职责；C++ 容器把元素类型、存储方式和失效规则写入接口。}{先检查文件是否打开，再检查表头、列数、空字段和数值转换；容器异常则检查索引范围、大小/容量与迭代器是否失效。}
 
-\section{先从 vector 开始}
+量化工作中的第一批 C++ 数据通常来自文本文件：代码列是字符串，价格和数量是数值列，最终还要排序、筛选和汇总。本章不提前使用第 5 章才教学的 \texttt{struct}；先用三个等长 \texttt{vector} 保存三列，亲手看清容器、迭代和校验边界。章末交付物 \texttt{ch04\_csv\_stats} 从文件读取固定 CSV，并精确输出：
 
-\texttt{std::vector<T>} 的连续存储对缓存和预取友好，通常应成为序列容器默认选择。只有测量和操作需求证明频繁中间插入、稳定地址或双端增长重要时，才考虑其他结构。链表虽然单次已定位插入是常数时间，但遍历中的指针追逐和分配成本常使它输给移动一段连续内存。
+\begin{lstlisting}
+rows=3 total_quantity=25 total_notional=2005.00 vwap=80.20
+\end{lstlisting}
 
-\texttt{reserve} 预留容量但不改变元素数量；\texttt{resize} 改变大小并构造元素。扩容可能使所有指针、引用和迭代器失效，这是常见生命周期错误来源。
+空代码、非法价格和错误列数必须以状态 2 退出，并把行号与原因写到标准错误；不能用部分解析结果继续统计。
 
-\section{算法表达意图}
+\section{从一列行情认识 string、vector 与 array}
 
-\texttt{std::sort}、\texttt{std::transform}、\texttt{std::accumulate} 和查找算法比手写循环更直接表达操作类别，也让复杂度预期清楚。算法不是为了消灭所有循环；涉及多状态推进、早停或需要精细诊断的业务逻辑，命名良好的普通循环可能更可读。
+\subsection{场景：长度会变的数据列}
 
-迭代器把“元素位置”抽象为协议。随机访问算法要求更强迭代器能力，concepts 会在编译期拒绝不满足要求的范围。不要默认每个迭代器都支持加整数或常数时间距离。
+Python 的 \texttt{list} 可以混放不同种类对象；行情列通常不该这样。\texttt{std::vector<double>} 中尖括号里的 \texttt{double} 是元素类型，整个容器只能保存可转换为该类型的对象。
 
-\section{ranges 是视图，不是新容器}
+\texttt{std::string} 是拥有字符序列的标准库类型。\texttt{std::array} 的两个模板实参分别给出元素类型和固定长度，适合 CSV 表头这种固定槽位。
 
-视图通常不拥有元素，而是惰性描述如何遍历底层范围：
+\lstinputlisting[caption={字符串、动态序列、固定数组与范围循环}]{code/ch04/containers.cpp}
 
-\lstinputlisting[caption={筛选买入成交并聚合名义金额}]{code/ch04/ranges_pipeline.cpp}
+\texttt{prices\{100.0, 101.5, 99.0\}} 用列表初始化建立三个元素；\texttt{push\_back} 在尾部增加一个元素。\texttt{size()} 是当前元素数，\texttt{capacity()} 是不重新分配存储时最多能容纳的元素数。\texttt{reserve(8)} 只保证容量至少为 8，不增加虚构行情；\texttt{resize(8)} 则会把大小改为 8，并为新增位置构造零值。
 
-\texttt{filter} 不立即复制买入成交；循环拉取时才执行谓词。优点是组合和避免中间容器，代价是视图生命周期依赖底层范围，重复遍历可能重复计算。视图是否更快必须结合访问次数和编译结果测量。
+范围 \texttt{for} 的冒号可读作“从 prices 中依次取出”。这里的 \texttt{const double price} 按值复制一个小数值且禁止在循环体中修改副本。若要修改容器元素，可写 \texttt{double\& price}；若只读大型元素，常写 \texttt{const T\&}。这些参数模式已经在第 3 章建立。
+
+\texttt{header[2]} 使用从零开始的索引取得第三项。方括号不做边界检查，\texttt{header[3]} 或 \texttt{prices[prices.size()]} 都越过有效范围，随后行为未定义。已知只需逐项访问时，范围 \texttt{for} 比手写索引更不容易越界。
+
+容器的 \texttt{size()} 返回 \texttt{std::size\_t}，这是标准库用来表示对象大小和索引的无符号整数类型。需要与 \texttt{size()} 比较的索引也使用 \texttt{std::size\_t}；业务数量仍使用能表达其业务范围的类型，不要因为“都非负”就混为一列。
 
 \begin{pythonbridge}
-生成器表达式与 ranges 视图都具有惰性，但 \cpp{} 视图的类型编码了适配器组合，并受到借用范围和迭代器失效规则约束。把临时容器接入长期保存的视图前，必须确认所有权。
+Python 字符串和列表也有 \texttt{len} 与零起点索引，但 Python 越界会稳定抛出 \texttt{IndexError}；C++ 的 \texttt{operator[]} 以调用者已经证明范围为前提。Python 列表增长不暴露元素引用失效规则，\texttt{vector} 扩容却可能搬迁整段连续存储。
 \end{pythonbridge}
 
-\section{关联查找与散列}
+失败诊断：把输出中的 \texttt{header[2]} 改为 \texttt{header[3]}，编译器不必拒绝它，运行结果也没有可靠契约。根因是索引没有满足 \(0 \leq index < size\)。修复是使用范围循环，或在索引前显式证明范围；不要把一次“看似正常”的输出当成安全证据。
 
-\texttt{std::map} 提供有序树结构和对数复杂度，\texttt{std::unordered\_map} 提供平均常数查找但有散列、桶和重哈希成本。持仓按代码查找常可从后者开始；若需要有序遍历、范围查询、稳定最坏界或确定性输出，则树结构可能更合适。
+立即练习：把 \texttt{reserve(8)} 改为 \texttt{resize(8)}，预测 \texttt{push\_back} 后 \texttt{prices\_size} 变为 9，而总和仍为 400.5，因为新增元素值初始化为零。运行验证后恢复 \texttt{reserve}，说明“容量”和“元素数”为什么不能互换。
 
-小数据集上，排序向量加二分查找经常优于节点容器，因为连续布局减少间接访问。选择数据结构应同时考虑规模、更新频率、遍历模式和延迟尾部，而不是只背复杂度表。
+\section{迭代器是半开区间中的位置}
 
-\section{数值归约的注意事项}
+\subsection{场景：算法不应依赖具体容器写法}
 
-浮点加法不满足结合律，并行归约或改变遍历顺序可能改变末位结果。绩效统计应规定允许误差、稳定算法和可重复性要求。对于金额，先决定表示和舍入规则；对于收益与方差，考虑补偿求和或在线稳定算法，而不是盲目累加。
+标准算法通常不接收整个容器，而接收 \texttt{begin()} 与 \texttt{end()} 两个迭代器。区间写成 \([first,last)\)：\texttt{first} 指向第一个元素，\texttt{last} 是尾后位置，不指向元素。\texttt{*first} 解引用当前位置，\texttt{++first} 前进到下一位置；只有在 \texttt{first != last} 时才能解引用。
 
-\section{常见错误}
+\lstinputlisting[caption={扩容后重新取得 vector 迭代器}]{code/ch04/iterator_invalidation.cpp}
+
+实验先取得 \texttt{values.begin()}，再持续追加直到容量改变。容量改变意味着发生重新分配，旧迭代器已经失效，因此代码没有比较或解引用它，而是重新调用 \texttt{begin()}。输出 \texttt{reallocated=1 reacquired=7 has\_multiple=1} 是可观察证据。
+
+对 \texttt{vector}，引发重新分配的插入会使全部指针、引用和迭代器失效；未重新分配时，插入点之前的位置可保持有效，但插入点及其后位置仍可能失效。删除也会使删除点及其后位置失效。最稳妥的规则是：改变容器后，除非已逐条证明标准保证，否则重新取得位置。
+
+\begin{pythonbridge}
+Python 常直接迭代对象而不显式暴露 iterator 类型；在迭代列表时修改列表同样容易产生跳项等逻辑错误。C++ 还多一层内存有效性：\texttt{vector} 搬迁后，旧迭代器可能指向已经释放的存储。
+\end{pythonbridge}
+
+故意失败的 \path{code/ch04/failures/stale_iterator.cpp} 保存旧迭代器，强制扩容后再解引用。它不进入绿色目标；AddressSanitizer 应非零退出并报告 \texttt{heap-use-after-free}。根因不是“vector 不可靠”，而是程序违反了失效规则。修复可在取得迭代器前预留足够容量，或在修改后重新取得迭代器。
+
+立即练习：把安全实验改为先 \texttt{reserve(64)}，取得迭代器后只追加一个元素。记录容量是否改变；若没有改变，原迭代器仍指向第一个元素。随后恢复“持续追加直到扩容”的版本，比较两个条件而不是死记某个容量数值。
+
+\section{从普通函数到标准算法与 lambda}
+
+\subsection{场景：循环的意图比循环机械步骤更重要}
+
+“逐项检查并计数”可由普通循环清楚表达；当任务正好是查找、计数、复制、排序、转换或归约时，标准算法直接说出操作类别。算法不会自动更快，也不应消灭所有循环：多状态推进、早停和需要精细错误上下文的解析逻辑，普通循环往往更易读。
+
+\lstinputlisting[caption={手写循环、命名谓词与 lambda 的同结果对照}]{code/ch04/algorithms.cpp}
+
+第一段循环得到独立已知结果 3。\texttt{std::count\_if(first, last, predicate)} 对半开区间中的每个元素调用谓词，并返回为真的次数。先传入普通函数 \texttt{is\_valid\_price}，再把同一规则改写为：
+
+\begin{lstlisting}
+[](const double price) { return price > 0.0; }
+\end{lstlisting}
+
+开头 \texttt{[]} 是捕获列表；空列表表示不读取周围局部对象。圆括号是参数表，花括号是函数体。本例 lambda 与普通函数都接收一个价格并返回布尔结果。需要阈值时可写 \texttt{[minimum](double price)\{ return price >= minimum; \}}，按值捕获当前阈值；捕获生命周期和可变状态在第 7 章深化。
+
+\texttt{copy\_if} 把有效值追加到新 \texttt{vector}，\texttt{sort} 排序，\texttt{transform} 把价格乘以固定数量得到名义金额，\texttt{accumulate} 从 \texttt{0.0} 开始归约。\texttt{notionals} 必须先按输出数量建立大小；把空 \texttt{vector} 的 \texttt{begin()} 交给 \texttt{transform} 写入会越界。算法调用仍需要调用者满足输入、输出和迭代器类别的前置条件。
+
+\begin{pythonbridge}
+Python 的 \texttt{sum}、\texttt{sorted}、\texttt{filter} 和推导式也能表达操作意图。C++ lambda 的参数和返回在编译期形成具体类型，算法通过迭代器工作；输出算法不会像 Python 列表推导式那样自动替你创建足够的目标元素。
+\end{pythonbridge}
+
+失败诊断：删除 \texttt{std::vector<double> notionals(valid\_prices.size())} 中的大小参数，程序仍可能编译，但 \texttt{transform} 写入空范围是未定义行为。根因是输出迭代器没有可写位置。修复是预先 \texttt{resize}，或像 \texttt{copy\_if} 一样使用 \texttt{std::back\_inserter} 明确追加。
+
+立即练习：把有效条件统一改为 \texttt{price >= 100.0}。手写、命名函数和 lambda 的计数都应变为 2；排序后的首项应为 100，十股名义金额合计应为 2010。三个结果不同步说明你只改了一条规则，而没有完成等价重构。
+
+\section{文件边界与命令行参数}
+
+\subsection{场景：统计程序需要真实输入文件}
+
+\texttt{main} 也可接收命令行参数：\texttt{argc} 是参数数量，\texttt{argv} 保存各参数的 C 字符串指针。\texttt{argv[0]} 通常是程序名，本工具要求 \texttt{argv[1]} 为 CSV 路径，所以先检查 \texttt{argc == 2}。\texttt{char* argv[]} 是读取 C 数组参数时常见的写法；数组形参会调整为指针，长度必须由 \texttt{argc} 另行提供。
+
+\lstinputlisting[caption={从文件边界调用可复用 CSV 统计函数}]{code/ch04/src/main.cpp}
+
+\texttt{std::ifstream input\{argv[1]\};} 打开输入文件。流对象可出现在条件中：\texttt{if (!input)} 表示文件未成功打开。程序把启动错误和数据错误写到 \texttt{std::cerr} 并返回 2，把正常统计写到 \texttt{std::cout} 并返回 0；调用脚本因此能分别消费数据和诊断。
+
+\begin{pythonbridge}
+Python 常写 \texttt{with open(path) as input}；C++ 文件流对象也拥有文件句柄，并在对象离开作用域时关闭。第 6 章会把这种确定性清理归纳为 RAII。本章先记住：必须检查打开状态，且不要让解析函数偷偷重新打开另一个路径。
+\end{pythonbridge}
+
+失败诊断：给出不存在的路径时，工具应精确打印 \texttt{error=cannot open input file} 并返回 2。根因属于文件边界，不是 CSV 行内容；修复是检查路径、权限和工作目录，而不是修改解析规则。
+
+立即练习：不带参数运行一次，再传入不存在的文件运行一次。两次状态都应为 2，但诊断分别是 usage 与 cannot open；这证明启动参数错误和外部文件错误没有被混成同一类别。
+
+\section{CSV 校验：先拒绝坏行，再做统计}
+
+\subsection{场景：逗号文本不等于可信行情}
+
+本章刻意定义一个小而明确的 CSV 方言：表头必须精确为 \texttt{symbol,price,quantity}，每个数据行恰有三列，不支持引号、转义逗号或多行字段；代码非空，价格必须是有限正数，数量必须是正整数。生产系统可换成熟 CSV 库，但仍需保留这些领域校验。
+
+\lstinputlisting[caption={第 4 章 CSV 与统计函数接口}]{code/ch04/include/quant/ch04/csv_stats.hpp}
+
+\texttt{namespace quant::ch04} 是嵌套命名空间的简写，等价于先进入 \texttt{quant} 再进入 \texttt{ch04}；它让本章快照的名称不与最终项目接口冲突。头文件只声明读取和统计函数，定义仍由实现文件唯一提供。
+
+逐行切分、数值转换、拒绝与统计的完整实现位于 \path{code/ch04/src/csv_stats.cpp}，并在附录 C 原样列出。它与本章接口、入口共同参与 C++20 构建，不是只存在于正文的伪代码。
+
+\texttt{std::getline(input, row)} 每次读取一行且移除换行符。\texttt{split\_row} 用固定长度 \texttt{array} 接收三列；\texttt{find} 查找逗号，\texttt{substr} 复制当前字段。数值转换使用 \texttt{istringstream}：先读取目标数值，再尝试读取额外文本；存在 \texttt{100abc} 这样的尾随内容就拒绝。\texttt{isfinite} 另外拒绝无穷和 NaN。
+
+在第 5 章引入行情记录类型前，\texttt{symbols}、\texttt{prices}、\texttt{quantities} 是三个平行 \texttt{vector}。解析函数只在一行完全有效后同时 \texttt{push\_back}，因此三者长度相等。任何失败都会清空三列并写入 \texttt{line N: reason}；调用者不会误用半份文件。
+
+自动测试固定四种公开行为：
 
 \begin{enumerate}
-  \item 在遍历 \texttt{vector} 时插入并继续使用旧迭代器。
-  \item 为一次线性扫描建立昂贵的散列表。
-  \item 返回引用临时容器的视图。
-  \item 在谓词中加入不可见副作用，使算法结果依赖调用次数。
-  \item 只比较理论复杂度，不测量真实规模下的缓存和分配成本。
+  \item 正常文件输出 \texttt{rows=3 total\_quantity=25 total\_notional=2005.00 vwap=80.20}；
+  \item 空代码输出 \texttt{error=line 2: empty field: symbol}；
+  \item 第 3 行非法价格输出 \texttt{error=line 3: invalid number: price}；
+  \item 两列数据输出 \texttt{error=line 2: expected 3 columns, observed 2}。
 \end{enumerate}
+
+\begin{pythonbridge}
+Python 的 \texttt{csv} 模块能处理引号和转义，本章的手写切分器不能；这不是语言能力差异，而是当前接口刻意缩小了输入协议。两种实现都必须在把字符串转成业务对象前检查列数、空字段、数值范围和来源行号。
+\end{pythonbridge}
+
+失败诊断：把数量写成 \texttt{10.5} 或 \texttt{ten} 会得到 \texttt{invalid number: quantity}。直接读取为 \texttt{double} 再静默转成整数会隐藏数据错误；修复是按目标字段类型完整消费文本，并拒绝尾随字符与非正数。
+
+立即练习：复制正常文件，把第 3 行数量改成 \texttt{ten}。预期标准输出为空、标准错误为 \texttt{error=line 3: invalid number: quantity}、退出状态为 2。恢复后再把代码改为空，确认错误类别随首个根因改变。
+
+\section{从干净目录复现输出任务}
+
+独立快照位于 \path{code/ch04}，不依赖后续回测项目。在 Linux/WSL 仓库根目录运行：
+
+\begin{lstlisting}
+cmake -S code/ch04 -B build/ch04
+cmake --build build/ch04
+./build/ch04/ch04_csv_stats code/ch04/data/market_rows.csv
+\end{lstlisting}
+
+仓库级行为测试运行：
+
+\begin{lstlisting}
+cmake -S . -B build-linux
+cmake --build build-linux
+ctest --test-dir build-linux -R ch04_ --output-on-failure
+\end{lstlisting}
+
+第一组命令证明章节快照可独立配置、构建并得到章首精确输出；第二组同时运行容器、算法、迭代器、CSV 错误、练习答案与 ASan 证据。Windows 可使用 \texttt{build-mingw} 与 \texttt{-G "MinGW Makefiles"}，可执行文件带 \texttt{.exe}。
+
+\section{自测、编码任务与面试表达}
+
+\begin{enumerate}
+  \item \texttt{string}、\texttt{vector<double>} 与 \texttt{array<string, 3>} 分别表达什么大小和元素类型约束？
+  \item \texttt{size}、\texttt{capacity}、\texttt{reserve} 与 \texttt{resize} 有何区别？
+  \item 为什么 \texttt{[first,last)} 中的 \texttt{last} 不能解引用？
+  \item 哪些 \texttt{vector} 修改会使旧迭代器失效？如何恢复？
+  \item lambda 的捕获列表、参数表和函数体分别位于何处？空捕获意味着什么？
+  \item 手写循环和标准算法各在什么情况下更清楚？算法调用者仍需满足哪些前置条件？
+  \item 文件打开失败、列数错误和非法数值应如何从状态与诊断上区分？
+  \item 为什么本章三个平行 vector 必须等长？第 5 章应如何消除这个脆弱不变量？
+\end{enumerate}
+
+编码任务：按命令行代码汇总正常 CSV。完整答案见 \path{code/ch04/exercises/symbol_summary_solution.cpp}；\texttt{AAPL} 必须精确输出 \texttt{symbol=AAPL rows=2 quantity=15 notional=1505.00}。
 
 \begin{interviewcheck}
-为什么 \texttt{vector} 常比 \texttt{list} 快？\texttt{reserve} 与 \texttt{resize} 有什么区别？ranges 视图拥有什么、不拥有什么？何时有序向量可能胜过哈希表？
+用 90 秒回答：“为什么 vector 是行情序列的合理默认容器，什么时候 push\_back 会让旧迭代器失效？”回答包含连续存储、重新分配、ASan 证据以及 reserve/重新取位置两类修复。
 \end{interviewcheck}
-
-\section{练习}
-
-\begin{enumerate}
-  \item 用 ranges 筛选指定代码的买入成交，并计算加权平均价格。
-  \item 对比 \texttt{vector} 线性扫描、排序后二分查找和 \texttt{unordered\_map} 在不同持仓数量下的成本。
-  \item 构造一次扩容导致引用失效的最小例子，并提出两种修复。
-  \item 解释并行浮点归约为何可能不逐位可重复，定义合理测试断言。
-\end{enumerate}
 
 \section{本章小结}
 
-STL 的核心不是容器清单，而是表示、迭代协议和算法复杂度的组合。连续存储是强默认，ranges 提供非拥有惰性视图，任何性能判断都必须回到真实数据规模和访问模式。
+\texttt{string} 拥有文本，\texttt{vector} 管理可变长连续序列，\texttt{array} 把固定长度放进类型。迭代器形成半开区间；算法和 lambda 只有在范围、输出空间与生命周期前置条件满足时才安全。CSV 是不可信边界，必须校验打开状态、列数、字段和数值并保留行号。下一章会把平行 vector 重构为维护不变量的行情记录类型。

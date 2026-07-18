@@ -134,7 +134,46 @@
         ]
       }
     },
-    {"number": 4, "state": "planned"},
+    {
+      "number": 4,
+      "state": "accepted",
+      "evidence": {
+        "tex": "chapters/ch04.tex",
+        "examples": [
+          "code/ch04/containers.cpp",
+          "code/ch04/algorithms.cpp",
+          "code/ch04/iterator_invalidation.cpp",
+          "code/ch04/include/quant/ch04/csv_stats.hpp",
+          "code/ch04/src/csv_stats.cpp",
+          "code/ch04/src/main.cpp",
+          "code/ch04/CMakeLists.txt",
+          "code/ch04/exercises/symbol_summary_solution.cpp"
+        ],
+        "failure_experiment": {
+          "source": "code/ch04/failures/stale_iterator.cpp",
+          "diagnostic_category": "AddressSanitizer reports heap-use-after-free after vector reallocation"
+        },
+        "output_task": "Configure code/ch04 from a clean build directory, read market_rows.csv, and print exactly rows=3 total_quantity=25 total_notional=2005.00 vwap=80.20; malformed files exit 2 with exact line-numbered diagnostics.",
+        "self_checks": 8,
+        "feedback": "appendices/solutions.tex",
+        "project_connection": "code/ch04 is an independently configurable CSV statistics snapshot whose parsing and statistics functions are reused by the runnable symbol-filter exercise and prepare the Chapter 5 analyzer model.",
+        "checklist_markers": [
+          "prerequisites",
+          "learning-output",
+          "scenario",
+          "syntax-rule",
+          "runnable-example",
+          "guided-explanation",
+          "python-boundary",
+          "failure-diagnosis",
+          "immediate-practice",
+          "code-evidence",
+          "feedback",
+          "project-connection",
+          "publication"
+        ]
+      }
+    },
     {"number": 5, "state": "planned"},
     {
       "number": 6,
