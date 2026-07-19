@@ -1,0 +1,4 @@
+symbol,side,quantity,price
+AAPL,buy,10,100.0
+AAPL,buy,oops,100.0
+AAPL,buy,15,99.0

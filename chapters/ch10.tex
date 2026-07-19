@@ -1,53 +1,178 @@
-\chapter{Benchmark、profiling 与优化方法}
+\chapter{错误处理与可观测性}
 
 \begin{introduction}
-  \item 把性能问题写成可反驳假设
-  \item 区分微基准、端到端基准与 profiler
-  \item 正确处理预热、噪声、优化器和统计摘要
-  \item 用性能预算而不是“越快越好”指导取舍
+  \item 区分正常缺席、可恢复输入错误、外部失败与程序员错误
+  \item 使用 optional、variant、异常与 assert 表达不同契约
+  \item 通过候选状态和提交点提供强异常保证
+  \item 在系统边界只记录一次错误，并保留可聚合指标
 \end{introduction}
 
-\chaptermeta{能运行 Release 构建并理解基本统计摘要。}{Python 的 \texttt{timeit} 与 profiler 体现同一实验原则；跨语言结果都必须定义工作负载和消费输出。}{性能结论冲突时检查预热、顺序、死代码删除、CPU 状态、样本分布和端到端占比。}
+\chaptermeta{已完成第 4、5、8 章，会读取 CSV、使用 optional、构造有效领域对象并观察组合快照。}{Python 的 None、返回错误对象、raise 和 assert 分别有相近角色；C++ 还要求调用方从函数类型看见一部分失败契约，并明确对象在异常后的状态。}{先问失败属于正常分支、输入问题、环境问题还是不可能状态；再检查错误是否保留行号与字段、是否被重复记录、对象状态是否半更新。}
 
-\section{优化循环}
+本章把第 8 章的成交与组合边界扩展为一个可恢复 CSV 管道。三行数据中有两行合法、一行数量字段损坏；程序继续处理后续合法行，并精确输出：
 
-可重复的优化循环是：定义用户可见指标，记录基线，定位热点，提出单一假设，做最小改动，重新测量，并验证正确性没有回归。若结果落在噪声范围内，结论是“证据不足”，不是挑最好的一次宣布成功。
+\begin{lstlisting}
+accepted=2 rejected=1 committed=2 rolled_back=0 quantity=25 cash=7515.00 equity=9990.00
+\end{lstlisting}
 
-吞吐量适合批量历史数据；平均延迟会掩盖尾部；交易系统常关注 \(p_{50}\)、\(p_{99}\)、\(p_{99.9}\) 和最大值，同时记录负载和丢弃策略。任何百分位都必须说明样本量、采样边界和计时器。
+标准错误只出现一条：
 
-\section{微基准的陷阱}
+\begin{lstlisting}
+error line=3 field=quantity message=expected a positive integer
+\end{lstlisting}
 
-优化器可能删除未使用结果，因此基准应消费 checksum；首次运行包含页面映射和缓存冷启动；CPU 动态频率、后台任务和安全软件带来噪声；计时器调用本身也有成本。微基准适合隔离机制，不代表整套系统收益。
+完成判据还包括：缺文件以状态 2 退出并只记录一次；混合代码批次失败后组合快照逐字段不变；错误注入练习必须用行为断言证明回滚，而不是只写“应该安全”。
 
-本书的布局程序刻意同时输出结果一致性、20 次交替顺序测量的中位数和 IQR，并在采样前预热。更严谨的实验还应保存原始样本、固定或记录 CPU 状态、跨进程重复并在固定硬件上运行。Google Benchmark 等框架能处理部分细节，但不能替你定义有意义工作负载。
+\section{先给失败分类，再选择机制}
 
-\section{profiler 回答“时间在哪里”}
+\subsection{场景：四种“不成功”并不是同一件事}
 
-采样 profiler 以较低扰动发现 CPU 热点和调用栈；instrumentation 可提供精确事件但扰动更大；硬件计数器观察周期、指令、分支、缓存未命中。先用低成本方法定位，再针对假设选择证据。
+找不到 MSFT 最新价可能只是当前数据集中没有该代码；坏 CSV 行是调用方需要检查的可恢复结果；文件系统拒绝打开属于环境失败；负持仓则违反组合内部不变量。若全部返回 \texttt{bool}，上下文会丢失；若全部抛异常，正常缺席也会变成昂贵而喧闹的控制流。
 
-如果函数占总时间 \(5\%\)，即使把它变为零，整体最多约提升 \(1/(1-0.05)\approx1.053\) 倍。Amdahl 定律提醒我们不要优化醒目的小函数而忽略真正瓶颈。
+\lstinputlisting[caption={同一程序中的四种错误机制}]{code/ch10/error_choices.cpp}
 
-\section{端到端预算}
+\texttt{std::optional<double>} 表示“有价格或正常缺席”，没有错误消息。解析结果把 Fill 与 ParseError 作为 variant 的两个备选类型，并用较短的 \texttt{FillParseResult} 作为别名。variant 在任一时刻只持有一个备选，返回类型明确要求调用方处理成功或错误。\texttt{holds\_alternative<T>} 可以检查当前类型；\texttt{get\_if<T>} 接收 variant 地址，匹配时返回指向该备选的指针，否则返回空指针。示例先检查指针再读取字段，不会因读取错误备选而抛 \texttt{bad\_variant\_access}。
 
-回测性能可以分解为读取、解析、事件分发、策略、撮合、簿记和统计。实时路径还包括网络、排队、序列化与系统调用。为每段定义预算和观测点，才能判断局部微基准是否移动整体指标。
+文件打不开由 \texttt{runtime\_error} 表达，因为更上层边界可能统一重试、换源或终止。异常从抛出点沿调用栈寻找匹配的 catch，途中已构造的局部对象会析构；catch 通常写 \texttt{const std::exception\&}，既保留动态错误消息，也避免复制。
 
-\section{性能与可维护性}
+\texttt{assert(!symbol.empty())} 只声明开发者必须满足的内部前置条件。Release 构建定义 \texttt{NDEBUG} 时断言通常不执行，所以不能用它检查 CSV、网络消息、命令行参数或资金是否充足。外部数据无论构建类型都可能无效，必须走返回值或异常。
 
-若两种实现差异小于噪声，选择更清楚者。若优化显著但复杂，应记录适用工作负载、基准命令和回退方案，并用回归基准保护。不要把硬件相关技巧扩散到业务层；将其封装在有普通参考实现的深模块里。
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+失败类别 & 首选机制 & 调用方责任 \\
+\midrule
+正常缺席 & optional & 分支处理无值 \\
+可恢复输入错误 & variant 中的 ParseError & 检查并保留上下文 \\
+无法就地处理的外部失败 & exception & 在有策略的边界捕获 \\
+程序员破坏内部不变量 & assert & Debug 期尽早暴露 \\
+\bottomrule
+\end{tabular}
+\end{center}
 
-\begin{interviewcheck}
-为什么 checksum 能阻止部分死代码删除？微基准与端到端基准回答什么不同问题？如何解释 \(p_{99}\)？Amdahl 定律如何改变优化优先级？
-\end{interviewcheck}
+\begin{pythonbridge}
+Python 的 \texttt{None} 接近 optional，\texttt{Union[Fill, ParseError]} 接近 variant，\texttt{raise} 接近异常。Python assert 同样可被优化选项移除，也不适合校验用户输入。区别在于 C++ variant 的备选集合进入静态类型，调用方不能把错误对象当 Fill 使用而不被编译器阻止。
+\end{pythonbridge}
 
-\section{练习}
+失败诊断：如果 optional 无值却不知道原因，说明“正常缺席”可能被误用来承载错误；如果每一层 catch 后只写日志再重新抛出，同一故障会形成重复日志。先重新分类，而不是追加更多字符串。
+
+立即练习：先把最新价查询的代码参数暂时改为空字符串。Debug 构建应在 assert 处终止；再配置独立 Release 构建：
+
+\begin{lstlisting}[language=bash]
+cmake -S code/ch10 -B build/ch10-release -DCMAKE_BUILD_TYPE=Release
+cmake --build build/ch10-release -j
+./build/ch10-release/ch10_error_choices
+\end{lstlisting}
+
+断言可能因 NDEBUG 被移除而继续运行。这正说明 assert 不能校验外部输入。恢复 MSFT 后，输出重新为 \texttt{optional=none}。
+
+\section{显式错误值保留输入上下文}
+
+\subsection{场景：解析器知道字段，边界知道处置策略}
+
+解析器最接近原始文本，最清楚错误发生在哪一行、哪个字段；它却不知道业务应该跳过、停止还是隔离文件。因此 \texttt{ParseError} 保存事实，不在底层输出日志：
+
+\lstinputlisting[caption={成功成交或带上下文错误的显式结果}]{code/ch10/include/quant/ch10/csv_reader.hpp}
+
+\texttt{using FillParseResult = ...} 创建类型别名，不生成新运行时对象。\texttt{ParseError} 拥有行号、字段和消息；调用方移动或保存它时不会依赖输入缓冲区的生命周期。实现位于 \path{code/ch10/src/csv_reader.cpp}，依次验证列数、side、quantity、price，再构造带不变量的 Fill。
+
+测试从公开解析入口验证已知字面量：合法行必须保留 AAPL 与数量 10；损坏数量的错误行号必须为 3，字段必须为 quantity，并带固定消息。预期来自手写场景，不重新实现解析算法。
+
+\begin{pythonbridge}
+Python 常返回 \texttt{(value, error)} 或抛自定义异常。若元组允许两项同时为空或同时有值，就出现无效状态；variant 保证恰有一个备选。Rust 的 Result 更直接表达同一思想，C++20 可用 variant 建立轻量版本。
+\end{pythonbridge}
+
+失败诊断：若错误只写 \texttt{invalid input}，运维无法定位文件；若把整行原文无条件写入日志，又可能泄露敏感字段。保留结构化的行号、字段名和稳定类别，原始值只在数据治理允许时记录。
+
+立即练习：把坏行的 side 改为 \texttt{hold}。测试应得到 \texttt{field=side} 与 \texttt{expected buy or sell}；恢复后重新运行输入 seam。
+
+\section{强异常保证：失败前后公开状态相同}
+
+\subsection{场景：批次第二笔失败，第一笔不能残留}
+
+异常安全讨论的是异常发生后对象仍承诺什么。基本保证要求对象可析构且不变量成立；强保证进一步要求操作像事务一样，要么全部成功，要么公开状态不变；不抛保证则承诺操作不会抛异常。不是每个函数都需要强保证，但组合批次非常适合：半批成交会产生难以解释的仓位。
+
+\lstinputlisting[caption={候选状态、验证与无异常提交点}]{code/ch10/src/portfolio.cpp}
+
+\texttt{apply\_batch} 先复制当前 Portfolio 得到 candidate，逐笔只修改候选对象。任一 \texttt{apply\_one} 抛出时，candidate 在栈展开中销毁，原对象从未改变。全部成功后，\texttt{swap} 交换数值和字符串状态；该成员标为 \texttt{noexcept}，构成清楚的提交点。
+
+提交前还必须排除算术本身破坏不变量：买入数量先与固定宽度整数上限比较，名义金额和下一现金都必须保持 finite。测试先建立接近 \texttt{INT64\_MAX} 的仓位，再注入一股买单；实现必须抛出 \texttt{overflow\_error}，且异常前后的公开快照不变。不能依赖 Debug assert 在溢出后补救，因为有符号溢出本身是未定义行为。
+
+这不是“catch 后手工撤销”。撤销代码也可能漏字段或再次失败；先构造完整新状态再提交，更容易审查。代价是复制时间与内存，因此大型订单簿可改用预验证、写前日志或专门事务结构，但必须由同一公开快照测试保护语义。
+
+\path{code/ch10/tests/test_atomic_portfolio.cpp} 先建立 10 股 AAPL，再注入“买 5 股 AAPL 后买 1 股 MSFT”的批次。测试捕获 \texttt{logic\_error}，并逐字段比较异常前后 quantity、cash、equity。它不检查 candidate 或私有成员，所以实现可替换。
+
+\begin{pythonbridge}
+Python 也可先 \texttt{candidate = copy.deepcopy(state)}，验证后再替换引用；数据库事务则把提交点交给数据库。C++ 的差异在于析构与 noexcept 能把栈展开和提交边界写入类型与实现，资源对象会在异常路径自动清理。
+\end{pythonbridge}
+
+失败诊断：看到异常后现金已扣、仓位未加，说明修改发生在所有可能失败检查之前。列出函数内每个可能抛出的操作，移动到候选状态阶段，最后只保留不会失败的提交动作。
+
+立即练习：把失败批次第二笔改成合法 AAPL 买单。此时不应抛异常，快照应一次增加 6 股；随后恢复错配代码，确认强保证测试重新绿色。
+
+\section{日志、指标与追踪各回答什么}
+
+\subsection{场景：一条坏行只产生一条可行动记录}
+
+日志解释一次具体事件，指标聚合大量事件的数量或分布，追踪把一次请求跨组件的阶段用关联标识连接起来。三者互补：日志不适合每秒扫描求错误率；指标不能告诉你第 3 行哪个字段坏了；没有 trace id 的跨服务日志难以还原一次请求路径。
+
+\lstinputlisting[caption={恢复边界统一记录错误并累计指标}]{code/ch10/src/pipeline.cpp}
+
+解析器不记录，Portfolio 也不记录；\texttt{process\_fill\_csv} 是知道“跳过坏行并继续”策略的边界，所以只在这里调用 \texttt{record\_error}。解析错误增加 rejected；组合异常还增加 rolled back。accepted 与 committed 分开命名，避免未来出现“解析成功但批次回滚”时含义混乱。
+
+热路径每行都拼接字符串会分配内存并放大延迟。这里仅在错误分支格式化日志，成功路径只增加计数器。真实并发系统还要考虑原子计数、采样、异步队列容量和丢弃指标；不能为了观测而让日志阻塞交易线程，也不能静默丢弃而无计数。
+
+异常只在有恢复或终止策略的边界捕获。\path{code/ch10/src/main.cpp} 负责文件打开和进程退出，因此缺文件在那里记录一次 \texttt{fatal context=...} 并返回 2；中间层不会 catch、记录、再抛出同一异常。
+
+\begin{pythonbridge}
+Python logging 的 \texttt{extra} 字段、Prometheus counter 和 OpenTelemetry span 分别对应结构化日志、指标与追踪。关键原则与语言无关：稳定字段便于聚合，关联 ID 贯穿边界，错误归属层只记录一次。
+\end{pythonbridge}
+
+失败诊断：若同一个 trace id 出现三条完全相同堆栈，搜索 catch-and-rethrow；若错误率升高却没有日志，检查采样与队列丢弃指标；若日志量拖慢回测，测量成功路径是否仍格式化消息。
+
+立即练习：在输入末尾加入一行 \texttt{MSFT,buy,1,420.0}。解析会成功，但组合边界应记录 \texttt{field=portfolio}，rejected 与 rolled back 各增加 1；AAPL 状态不变。
+
+\section{独立快照与验收命令}
+
+\lstinputlisting[caption={进程边界捕获外部失败并输出稳定摘要}]{code/ch10/src/main.cpp}
+
+在 WSL 的项目根目录执行：
+
+\begin{lstlisting}[language=bash]
+cmake -S code/ch10 -B build/ch10
+cmake --build build/ch10 -j
+ctest --test-dir build/ch10 --output-on-failure
+./build/ch10/ch10_recovery_pipeline code/ch10/data/fills.csv
+./build/ch10/ch10_recovery_pipeline missing.csv
+\end{lstlisting}
+
+第一条运行命令的标准输出与标准错误必须和章首逐字一致；第二条应只在标准错误打印：
+
+\begin{lstlisting}
+fatal context=missing.csv message=cannot open input file
+\end{lstlisting}
+
+并以状态 2 退出。状态码让 shell、调度器和 Python \texttt{subprocess} 在不解析自然语言时也能判断失败。
+
+\section{自测、编码任务与面试检查点}
 
 \begin{enumerate}
-  \item 为布局基准保存 20 个原始样本，并增加最小值、最大值和跨进程摘要。
-  \item 用 profiler 检查回测样例，提出一个可被数据推翻的瓶颈假设。
-  \item 定义每秒事件数与 \(p_{99}\) 延迟的双重性能预算。
-  \item 分析一个优化如果使代码复杂一倍但只提升 \(2\%\)，需要哪些业务证据才值得保留。
+  \item optional 无值与 ParseError 的语义边界是什么？
+  \item variant 如何避免“value 与 error 同时存在”的无效状态？
+  \item 为什么 assert 不能校验 CSV 或命令行参数？Release 构建有何变化？
+  \item 栈展开期间局部 RAII 对象会发生什么？为什么按 const 引用捕获？
+  \item 基本保证、强保证与不抛保证分别承诺什么？
+  \item candidate 加 noexcept swap 如何形成提交点？代价是什么？
+  \item 日志、指标和追踪分别回答哪类问题？
+  \item 为什么错误应在有处置策略的边界记录一次？
 \end{enumerate}
+
+编码任务：向一个已有 AAPL 持仓注入“两笔组成的失败批次”，第一笔合法，第二笔超卖；捕获异常后必须用公开快照断言 quantity、cash、equity 全部不变，并精确输出 \texttt{injected=1 rolled\_back=1 unchanged=1}。完整答案位于 \path{code/ch10/exercises/error_injection_solution.cpp}。
+
+\begin{interviewcheck}
+回答“交易系统怎么做错误处理”时，不要只说 try/catch。先分类正常缺席、可恢复错误、外部失败和内部 bug；再说明错误上下文、异常安全级别与提交点；最后给出日志只记一次、指标聚合、追踪关联和热路径成本边界。
+\end{interviewcheck}
 
 \section{本章小结}
 
-性能工程是一种实验方法。指标、基线、热点、假设、改动和复测必须形成闭环；微基准提供局部证据，profiler 定位系统成本，端到端预算决定优化是否有价值。
+错误机制表达不同契约：optional 是正常缺席，variant 是显式可恢复结果，异常把无法就地处理的失败传播到策略边界，assert 暴露程序员破坏的不变量。强异常保证通过候选状态与无异常提交点保护组合；日志、指标和追踪在合适边界提供一次、可聚合且成本受控的证据。

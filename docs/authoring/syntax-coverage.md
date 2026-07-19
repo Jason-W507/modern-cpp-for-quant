@@ -62,5 +62,7 @@
 | template-instantiation | 模板实例化、特化实体与定义可见性 | ch09 | ch09 | ch16, ch17 |
 | class-templates | 类模板声明、显式类型实参与值成员 | ch09 | ch09 | ch15, ch17 |
 | concepts-requires | `concept`、`requires` 表达式、复合要求与约束失败 | ch09 | ch09 | ch16, ch17 |
+| variant-result | `std::variant`、备选类型、`holds_alternative` 与 `get` | ch10 | ch10 | ch17 |
+| assertions | `assert`、内部不变量与 `NDEBUG` 边界 | ch10 | ch10 | ch12, ch17 |
 
 维护规则：新增基础语法必须增加一行；若某概念第一次出现的章节提前，必须同时移动首次教学与立即练习，不能只改后续引用。

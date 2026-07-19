@@ -1,0 +1,1 @@
+accepted=2 rejected=1 committed=2 rolled_back=0 quantity=25 cash=7515.00 equity=9990.00

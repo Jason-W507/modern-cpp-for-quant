@@ -50,6 +50,12 @@
     {"tex": "chapters/ch09.tex", "source": "code/ch09/src/main.cpp", "target": "ch09_constrained_pipeline"},
     {"tex": "chapters/ch09.tex", "source": "code/ch09/polymorphism_compare.cpp", "target": "ch09_polymorphism_compare"},
     {"tex": "appendices/solutions.tex", "source": "code/ch09/exercises/maximum_position_solution.cpp", "target": "ch09_maximum_position_solution"},
+    {"tex": "chapters/ch10.tex", "source": "code/ch10/error_choices.cpp", "target": "ch10_error_choices"},
+    {"tex": "chapters/ch10.tex", "source": "code/ch10/include/quant/ch10/csv_reader.hpp", "target": "ch10_recovery_pipeline"},
+    {"tex": "chapters/ch10.tex", "source": "code/ch10/src/portfolio.cpp", "target": "ch10_recovery_pipeline"},
+    {"tex": "chapters/ch10.tex", "source": "code/ch10/src/pipeline.cpp", "target": "ch10_recovery_pipeline"},
+    {"tex": "chapters/ch10.tex", "source": "code/ch10/src/main.cpp", "target": "ch10_recovery_pipeline"},
+    {"tex": "appendices/solutions.tex", "source": "code/ch10/exercises/error_injection_solution.cpp", "target": "ch10_error_injection_solution"},
     {"tex": "chapters/ch11.tex", "source": "code/ch11/parallel_sum.cpp", "target": "ch11_parallel_sum"},
     {"tex": "chapters/ch12.tex", "source": "code/ch12/numerical_stability.cpp", "target": "ch12_numerical_stability"},
     {"tex": "chapters/ch12.tex", "source": "code/ch12/pybind11_boundary.cpp", "target": "ch12_pybind_boundary"},
@@ -130,6 +136,16 @@
       "source": "code/ch09/failures/constrained_strategy.cpp",
       "stage": "compile",
       "diagnostic_category": "compiler reports that the strategy concept constraints are not satisfied"
+    },
+    {
+      "source": "code/ch10/src/main.cpp",
+      "stage": "runtime",
+      "diagnostic_category": "missing input file is logged once with path context and exits with status 2"
+    },
+    {
+      "source": "code/ch10/data/fills.csv",
+      "stage": "runtime",
+      "diagnostic_category": "malformed quantity produces one line-and-field contextual error while processing continues"
     }
   ],
   "chapter_snapshots": [
@@ -160,6 +176,10 @@
     {
       "path": "code/ch09",
       "entry_target": "ch09_constrained_pipeline"
+    },
+    {
+      "path": "code/ch10",
+      "entry_target": "ch10_recovery_pipeline"
     }
   ]
 }

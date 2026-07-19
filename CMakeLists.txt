@@ -190,6 +190,92 @@ add_test(NAME ch09_clean_constrained_pipeline_configures_builds_and_runs
           --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests
           --config $<CONFIG>)
 
+quant_target(ch10_test_atomic_portfolio
+  code/ch10/tests/test_atomic_portfolio.cpp)
+target_sources(ch10_test_atomic_portfolio PRIVATE
+  code/ch10/src/domain.cpp code/ch10/src/portfolio.cpp
+  code/ch10/tests/test_support.cpp)
+target_include_directories(ch10_test_atomic_portfolio PRIVATE
+  code/ch10/include code/ch10/tests)
+add_test(NAME ch10_execution_portfolio_strong_guarantee_seam
+  COMMAND ch10_test_atomic_portfolio)
+
+quant_target(ch10_test_csv_errors code/ch10/tests/test_csv_errors.cpp)
+target_sources(ch10_test_csv_errors PRIVATE
+  code/ch10/src/csv_reader.cpp code/ch10/src/domain.cpp
+  code/ch10/tests/test_support.cpp)
+target_include_directories(ch10_test_csv_errors PRIVATE
+  code/ch10/include code/ch10/tests)
+add_test(NAME ch10_market_input_preserves_error_context_seam
+  COMMAND ch10_test_csv_errors)
+
+quant_target(ch10_test_observability code/ch10/tests/test_observability.cpp)
+target_sources(ch10_test_observability PRIVATE
+  code/ch10/src/csv_reader.cpp code/ch10/src/domain.cpp
+  code/ch10/src/pipeline.cpp code/ch10/src/portfolio.cpp
+  code/ch10/tests/test_support.cpp)
+target_include_directories(ch10_test_observability PRIVATE
+  code/ch10/include code/ch10/tests)
+add_test(NAME ch10_boundary_logs_error_once_seam
+  COMMAND ch10_test_observability)
+
+quant_target(ch10_recovery_pipeline code/ch10/src/main.cpp)
+target_sources(ch10_recovery_pipeline PRIVATE
+  code/ch10/src/csv_reader.cpp code/ch10/src/domain.cpp
+  code/ch10/src/pipeline.cpp code/ch10/src/portfolio.cpp)
+target_include_directories(ch10_recovery_pipeline PRIVATE code/ch10/include)
+
+quant_target(ch10_error_choices code/ch10/error_choices.cpp)
+target_sources(ch10_error_choices PRIVATE
+  code/ch10/src/csv_reader.cpp code/ch10/src/domain.cpp)
+target_include_directories(ch10_error_choices PRIVATE code/ch10/include)
+
+quant_target(ch10_error_injection_solution
+  code/ch10/exercises/error_injection_solution.cpp)
+target_sources(ch10_error_injection_solution PRIVATE
+  code/ch10/src/domain.cpp code/ch10/src/portfolio.cpp)
+target_include_directories(ch10_error_injection_solution PRIVATE
+  code/ch10/include)
+
+add_test(NAME ch10_recovery_pipeline_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 0
+          --expected-stdout ${CMAKE_CURRENT_SOURCE_DIR}/code/ch10/expected/recovery_pipeline.txt
+          --expected-stderr ${CMAKE_CURRENT_SOURCE_DIR}/code/ch10/expected/recovery_pipeline_errors.txt
+          -- $<TARGET_FILE:ch10_recovery_pipeline>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch10/data/fills.csv)
+add_test(NAME ch10_external_failure_is_logged_once
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr ${CMAKE_CURRENT_SOURCE_DIR}/code/ch10/expected/missing_file_error.txt
+          -- $<TARGET_FILE:ch10_recovery_pipeline>
+             missing.csv)
+add_test(NAME ch10_error_choices_run
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch10/expected/error_choices.txt
+          -- $<TARGET_FILE:ch10_error_choices>)
+add_test(NAME ch10_error_injection_solution_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch10/expected/error_injection_solution.txt
+          -- $<TARGET_FILE:ch10_error_injection_solution>)
+add_test(NAME ch10_clean_recovery_pipeline_configures_builds_and_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
+          --cmake ${CMAKE_COMMAND}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch10
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch10/expected/recovery_pipeline.txt
+          --expected-stderr ${CMAKE_CURRENT_SOURCE_DIR}/code/ch10/expected/recovery_pipeline_errors.txt
+          --target ch10_recovery_pipeline
+          --argument ${CMAKE_CURRENT_SOURCE_DIR}/code/ch10/data/fills.csv
+          --generator "${CMAKE_GENERATOR}"
+          --compiler ${CMAKE_CXX_COMPILER}
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests
+          --config $<CONFIG>)
+
 add_test(NAME ch08_domain_pipeline_runs
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py

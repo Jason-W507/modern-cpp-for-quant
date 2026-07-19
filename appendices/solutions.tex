@@ -170,11 +170,19 @@ CSV 读取层保留表头、列数、数字字段和构造异常的行号上下�
 
 \section{第 10 章}
 \begin{enumerate}
-  \item 保存每次耗时，排序取中位数和四分位；同时验证每次 checksum。
-  \item 假设应可反驳，例如“解析占 CPU 样本超过 40\%”；profile 后接受或拒绝。
-  \item 指标必须带负载，如每秒百万事件下 \(p_{99}<X\)，且错误/丢弃为零。
-  \item 需要显著业务容量或成本收益、可维护封装、回归基准和回退路径。
+  \item optional 无值是调用契约允许的正常结果，没有失败原因；ParseError 表示输入不满足契约，必须携带可处置上下文。
+  \item variant 任一时刻只持有一个备选，因此成功值与错误不能同时存在；先用 holds\_alternative 检查，再用 get 读取。
+  \item assert 可在定义 NDEBUG 时移除，外部输入在 Release 中仍可能错误，所以必须使用显式结果或异常。
+  \item 抛出后沿栈寻找匹配 catch，途中局部对象按逆序析构；按 const 引用捕获避免切片和复制，并保留 what()。
+  \item 基本保证维持可析构与不变量；强保证承诺失败时公开状态不变；不抛保证承诺函数不会抛出。
+  \item candidate 隔离所有可能失败的更新，成功后通过 noexcept swap 一次提交；代价是复制时间与额外内存。
+  \item 日志解释具体事件，指标聚合计数或分布，追踪用关联 ID 串起跨组件阶段。
+  \item 底层只返回或传播错误；掌握跳过、重试或终止策略的边界记录一次，避免 catch-and-rethrow 重复日志。
 \end{enumerate}
+
+编码任务完整答案如下：
+
+\lstinputlisting[caption={第 10 章错误注入与强保证练习答案}]{code/ch10/exercises/error_injection_solution.cpp}
 
 \section{第 11 章}
 \begin{enumerate}

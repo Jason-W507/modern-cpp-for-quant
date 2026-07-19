@@ -65,7 +65,9 @@
     "function-templates",
     "template-instantiation",
     "class-templates",
-    "concepts-requires"
+    "concepts-requires",
+    "variant-result",
+    "assertions"
   ],
   "parts": [
     {
