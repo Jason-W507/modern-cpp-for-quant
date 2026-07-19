@@ -466,6 +466,21 @@ add_test(NAME ch15_clean_concurrency_lab_configures_builds_and_runs
           --build-all
           --ctest ${CMAKE_CTEST_COMMAND}
           --run-ctest)
+
+add_test(NAME ch16_clean_numerics_interop_lab_configures_builds_and_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
+          --cmake ${CMAKE_COMMAND}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch16
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch16/expected/stability_report.txt
+          --target ch16_stability_report
+          --generator "${CMAKE_GENERATOR}"
+          --compiler ${CMAKE_CXX_COMPILER}
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests/ch16
+          --config $<CONFIG>
+          --build-all
+          --ctest ${CMAKE_CTEST_COMMAND}
+          --run-ctest)
 add_test(NAME ch15_data_race_is_reported_by_thread_sanitizer
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_sanitizer_failure.py
@@ -543,6 +558,7 @@ add_subdirectory(code/ch12 ch12-snapshot)
 add_subdirectory(code/ch13 ch13-snapshot)
 add_subdirectory(code/ch14 ch14-snapshot)
 add_subdirectory(code/ch15 ch15-snapshot)
+add_subdirectory(code/ch16 ch16-snapshot)
 add_test(NAME layout_benchmark_smoke COMMAND layout_benchmark)
 set_tests_properties(layout_benchmark_smoke PROPERTIES
   PASS_REGULAR_EXPRESSION "checksum-match=true")

@@ -78,7 +78,9 @@
     {"tex": "chapters/ch14.tex", "source": "code/ch14/failures/checksum_mismatch.cpp", "target": "ch14_checksum_mismatch_failure"},
     {"tex": "appendices/solutions.tex", "source": "code/ch14/experiments/amdahl_report.cpp", "target": "ch14_amdahl_report"},
     {"tex": "chapters/ch15.tex", "source": "code/ch15/failures/data_race.cpp", "target": "ch15_data_race_failure"},
-    {"tex": "appendices/solutions.tex", "source": "code/ch15/exercises/drop_newest_solution.cpp", "target": "ch15_drop_newest_solution"}
+    {"tex": "appendices/solutions.tex", "source": "code/ch15/exercises/drop_newest_solution.cpp", "target": "ch15_drop_newest_solution"},
+    {"tex": "chapters/ch16.tex", "source": "code/ch16/experiments/stability_report.cpp", "target": "ch16_stability_report"},
+    {"tex": "appendices/solutions.tex", "source": "code/ch16/exercises/return_statistics_solution.cpp", "target": "ch16_return_statistics_solution"}
   ],
   "intentional_failures": [
     {
@@ -215,6 +217,11 @@
       "source": "code/ch15/failures/data_race.cpp",
       "stage": "runtime",
       "diagnostic_category": "ThreadSanitizer reports a data race between two unsynchronized writers"
+    },
+    {
+      "source": "code/ch16/failures/temporary_buffer_view.cpp",
+      "stage": "runtime",
+      "diagnostic_category": "AddressSanitizer reports heap-use-after-free after a span outlives its temporary vector owner"
     }
   ],
   "chapter_snapshots": [
@@ -269,6 +276,10 @@
     {
       "path": "code/ch15",
       "entry_target": "ch15_pipeline_compare"
+    },
+    {
+      "path": "code/ch16",
+      "entry_target": "ch16_stability_report"
     }
   ]
 }

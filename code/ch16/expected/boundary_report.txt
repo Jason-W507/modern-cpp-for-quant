@@ -1,0 +1,5 @@
+boundary-ok rows=4 scalar-calls=4 bulk-copies=1 zero-copy-borrows=1 checksum=1.000000
+dtype-error expected=float64 actual=float32
+layout-error expected=c-contiguous stride-bytes=16
+ownership-error temporary-view-rejected owner-missing=true
+gil-policy release=cpp-loop reacquire=python-api

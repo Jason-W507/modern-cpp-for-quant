@@ -1,0 +1,1 @@
+return-stats-ok periods=2 mean=0.025000 sample-variance=0.101250

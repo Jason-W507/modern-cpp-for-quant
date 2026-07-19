@@ -263,3 +263,19 @@ CSV 读取层保留表头、列数、数字字段和构造异常的行号上下�
 核心输出任务的 drop-newest 完整答案如下。五个输入必须满足 \texttt{offered=accepted+dropped}，容量 2 时只保留 10 与 20：
 
 \lstinputlisting[caption={第 15 章有界队列 drop-newest 答案}]{code/ch15/exercises/drop_newest_solution.cpp}
+
+\section{第 16 章}
+\begin{enumerate}
+  \item binary64 不能精确表示 0.1 与 0.2，逐步舍入后不必与单独舍入的 0.3 位级相等；整数 cents 在 \texttt{int64\_t} 范围内没有这种表示误差，故可精确比较。
+  \item 绝对容差保护零附近，相对容差随数值量级缩放。容差应来自报价粒度、输入误差、参考实现精度与允许运算误差，不能只选一个让当前测试通过的常量。
+  \item Neumaier 的 correction 收集主和没有容纳的低位；它改变算法误差。放大容差只会让错误更难被测试发现，并不能恢复已经丢失的信息。
+  \item 每个新值先令 count 加一，以与旧 mean 的差更新 mean，再用新旧均值之间的两个差更新平方离差和；样本方差最后除以 $n-1$，少于两个值时拒绝。
+  \item 金额有最小货币单位和舍入规则，收益率是价格比值，方差单位是收益率平方且有 sample/population 分母。名称、类型与口径必须一起保存。
+  \item 批量复制支付分配和复制成本，换得独立寿命与目标布局；零拷贝省去复制，却要求 dtype、stride 和源对象寿命一直满足协议。
+  \item dtype 决定字节解释，shape 决定元素范围，stride 决定逻辑相邻地址，owner 阻止底层缓冲先于视图销毁。任一缺失都可能造成错误值或悬空访问。
+  \item 释放 GIL 允许其他 Python 线程推进；它不保护 C++ 共享对象，也不允许在释放区间调用 Python API。C++ 同步仍需第 15 章的所有权与 happens-before 协议。
+\end{enumerate}
+
+三价格 $100\rightarrow125\rightarrow100$ 的两期 simple return 为 0.25 与 $-0.2$，手算均值为 0.025，样本方差为 0.10125。完整答案如下：
+
+\lstinputlisting[caption={第 16 章收益率与样本方差答案}]{code/ch16/exercises/return_statistics_solution.cpp}
