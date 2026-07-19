@@ -16,16 +16,20 @@ struct ExecutionConfig final {
   double slippage_bps{};
 };
 
+inline void validate_execution_config(const ExecutionConfig& config) {
+  if (!std::isfinite(config.fixed_fee) || config.fixed_fee < 0.0 ||
+      !std::isfinite(config.slippage_bps) || config.slippage_bps < 0.0 ||
+      config.slippage_bps >= 10'000.0) {
+    throw std::invalid_argument{
+        "execution config requires finite nonnegative fee and slippage "
+        "below 10000 bps"};
+  }
+}
+
 class SimulatedExchange final {
  public:
   explicit SimulatedExchange(ExecutionConfig config = {}) : config_(config) {
-    if (!std::isfinite(config_.fixed_fee) || config_.fixed_fee < 0.0 ||
-        !std::isfinite(config_.slippage_bps) || config_.slippage_bps < 0.0 ||
-        config_.slippage_bps >= 10'000.0) {
-      throw std::invalid_argument{
-          "execution config requires finite nonnegative fee and slippage "
-          "below 10000 bps"};
-    }
+    validate_execution_config(config_);
   }
 
   [[nodiscard]] std::optional<Fill> match(const OrderIntent& order,

@@ -18,11 +18,6 @@ function(quant_target target source)
   endif()
 endfunction()
 
-function(quant_project_target target source)
-  quant_target(${target} ${source})
-  target_include_directories(${target} PRIVATE project/include project/tests)
-endfunction()
-
 quant_target(ch01_first_program code/ch01/first_program.cpp)
 quant_target(ch02_objects_and_literals code/ch02/objects_and_literals.cpp)
 quant_target(ch02_expressions code/ch02/expressions.cpp)
@@ -534,72 +529,7 @@ add_test(NAME ch08_clean_domain_pipeline_configures_builds_and_runs
           --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests
           --config $<CONFIG>)
 
-quant_project_target(test_strategy project/tests/test_strategy.cpp)
-add_test(NAME strategy_decision_seam COMMAND test_strategy)
-
-quant_project_target(test_execution_portfolio project/tests/test_execution_portfolio.cpp)
-add_test(NAME execution_portfolio_seam COMMAND test_execution_portfolio)
-
-quant_project_target(test_csv_reader project/tests/test_csv_reader.cpp)
-add_test(NAME market_data_input_seam COMMAND test_csv_reader)
-
-quant_project_target(test_backtest project/tests/test_backtest.cpp)
-add_test(NAME end_to_end_backtest_seam COMMAND test_backtest)
-
-quant_project_target(quant_backtest project/src/main.cpp)
-add_test(NAME sample_backtest_runs
-  COMMAND ${Python3_EXECUTABLE}
-          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
-          --expected ${CMAKE_CURRENT_SOURCE_DIR}/project/expected/sample_backtest.txt
-          -- $<TARGET_FILE:quant_backtest>
-             ${CMAKE_CURRENT_SOURCE_DIR}/project/data/sample.csv)
-add_test(NAME ch17_configured_costs_flow_to_the_cli_summary
-  COMMAND ${Python3_EXECUTABLE}
-          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
-          --expected
-            ${CMAKE_CURRENT_SOURCE_DIR}/project/expected/sample_backtest_costs.txt
-          -- $<TARGET_FILE:quant_backtest>
-             ${CMAKE_CURRENT_SOURCE_DIR}/project/data/sample.csv 1.0 10.0)
-add_test(NAME ch17_cli_reports_the_multi_asset_valuation_boundary
-  COMMAND ${Python3_EXECUTABLE}
-          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
-          --expected-exit 2
-          --expected-stderr
-            ${CMAKE_CURRENT_SOURCE_DIR}/project/expected/mixed_symbols_error.txt
-          -- $<TARGET_FILE:quant_backtest>
-             ${CMAKE_CURRENT_SOURCE_DIR}/project/data/mixed_symbols.csv)
-
-quant_project_target(ch17_backtest_benchmark
-  project/benchmarks/backtest_benchmark.cpp)
-add_test(NAME ch17_backtest_benchmark_preserves_the_hand_ledger
-  COMMAND ch17_backtest_benchmark)
-set_tests_properties(ch17_backtest_benchmark_preserves_the_hand_ledger
-  PROPERTIES PASS_REGULAR_EXPRESSION
-    "benchmark-ok events=200000 samples=11 warmups=2 equity=10100 fills=1")
-
-add_executable(ch17_mixed_symbol_failure EXCLUDE_FROM_ALL
-  project/failures/mixed_symbols.cpp)
-target_include_directories(ch17_mixed_symbol_failure PRIVATE project/include)
-if(MSVC)
-  target_compile_options(ch17_mixed_symbol_failure PRIVATE /W4 /permissive-)
-else()
-  target_compile_options(ch17_mixed_symbol_failure PRIVATE
-    -Wall -Wextra -Wpedantic)
-endif()
-add_test(NAME ch17_build_mixed_symbol_failure
-  COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}
-          --target ch17_mixed_symbol_failure --config $<CONFIG>)
-set_tests_properties(ch17_build_mixed_symbol_failure PROPERTIES
-  FIXTURES_SETUP ch17_mixed_symbol_failure_fixture)
-add_test(NAME ch17_mixed_symbols_report_the_valuation_boundary
-  COMMAND ${Python3_EXECUTABLE}
-          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
-          --expected-exit 2
-          --expected-stderr
-            ${CMAKE_CURRENT_SOURCE_DIR}/project/expected/mixed_symbols_error.txt
-          -- $<TARGET_FILE:ch17_mixed_symbol_failure>)
-set_tests_properties(ch17_mixed_symbols_report_the_valuation_boundary
-  PROPERTIES FIXTURES_REQUIRED ch17_mixed_symbol_failure_fixture)
+add_subdirectory(project ch17-project)
 
 add_test(NAME ch17_clean_final_backtest_configures_builds_tests_and_runs
   COMMAND ${Python3_EXECUTABLE}
@@ -616,8 +546,6 @@ add_test(NAME ch17_clean_final_backtest_configures_builds_tests_and_runs
           --build-all
           --ctest ${CMAKE_CTEST_COMMAND}
           --run-ctest)
-
-quant_target(layout_benchmark project/benchmarks/layout_benchmark.cpp)
 add_subdirectory(code/ch11 ch11-snapshot)
 add_subdirectory(code/ch12 ch12-snapshot)
 add_subdirectory(code/ch13 ch13-snapshot)

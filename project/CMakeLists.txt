@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
-project(ch17_event_driven_backtest LANGUAGES CXX)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  project(ch17_event_driven_backtest LANGUAGES CXX)
+endif()
 
 include(CTest)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
@@ -47,6 +49,14 @@ add_test(NAME ch17_configured_costs_flow_to_the_cli_summary
           --expected ${CMAKE_CURRENT_LIST_DIR}/expected/sample_backtest_costs.txt
           -- $<TARGET_FILE:quant_backtest>
              ${CMAKE_CURRENT_LIST_DIR}/data/sample.csv 1.0 10.0)
+add_test(NAME ch17_invalid_execution_config_reports_one_invariant
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_LIST_DIR}/../tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr
+            ${CMAKE_CURRENT_LIST_DIR}/expected/invalid_config_error.txt
+          -- $<TARGET_FILE:quant_backtest>
+             ${CMAKE_CURRENT_LIST_DIR}/data/sample.csv -1.0 10.0)
 add_test(NAME ch17_cli_reports_the_multi_asset_valuation_boundary
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_LIST_DIR}/../tools/expect_process.py
@@ -56,10 +66,9 @@ add_test(NAME ch17_cli_reports_the_multi_asset_valuation_boundary
           -- $<TARGET_FILE:quant_backtest>
              ${CMAKE_CURRENT_LIST_DIR}/data/mixed_symbols.csv)
 add_test(NAME ch17_backtest_benchmark_preserves_the_hand_ledger
-  COMMAND ch17_backtest_benchmark)
-set_tests_properties(ch17_backtest_benchmark_preserves_the_hand_ledger
-  PROPERTIES PASS_REGULAR_EXPRESSION
-    "benchmark-ok events=200000 samples=11 warmups=2 equity=10100 fills=1")
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_LIST_DIR}/../tools/validate_ch17_benchmark.py
+          -- $<TARGET_FILE:ch17_backtest_benchmark>)
 add_test(NAME ch17_build_mixed_symbol_failure
   COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}
           --target ch17_mixed_symbol_failure --config $<CONFIG>)

@@ -376,7 +376,11 @@ def validate_code_evidence(
     if stale:
         errors.append(f"registered listings are not referenced by TeX: {sorted(stale)}")
 
-    cmake_files = [root / "CMakeLists.txt", *sorted((root / "code").glob("**/CMakeLists.txt"))]
+    cmake_files = [
+        root / "CMakeLists.txt",
+        root / "project" / "CMakeLists.txt",
+        *sorted((root / "code").glob("**/CMakeLists.txt")),
+    ]
     cmake_text = "\n".join(read_text(path, errors) for path in cmake_files)
     for index, entry in enumerate(listings, start=1):
         if not isinstance(entry, dict):

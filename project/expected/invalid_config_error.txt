@@ -1,0 +1,1 @@
+invalid execution config: execution config requires finite nonnegative fee and slippage below 10000 bps

@@ -44,10 +44,12 @@ int main() {
     checksum += result.final_portfolio.equity;
   }
 
-  std::ranges::sort(samples);
-  const long long median_us = samples[sample_count / 2];
+  auto sorted_samples = samples;
+  std::ranges::sort(sorted_samples);
+  const long long median_us = sorted_samples[sample_count / 2];
   const long long iqr_us =
-      samples[(sample_count * 3) / 4] - samples[sample_count / 4];
+      sorted_samples[(sample_count * 3) / 4] -
+      sorted_samples[sample_count / 4];
   if (!ledger_valid) {
     std::cerr << "benchmark-invalid hand-ledger-mismatch\n";
     return 2;
@@ -55,6 +57,10 @@ int main() {
 
   std::cout << "benchmark-ok events=" << event_count
             << " samples=" << sample_count << " warmups=" << warmup_count
-            << " equity=10100 fills=1 median-us=" << median_us
+            << " equity=10100 fills=1 raw-us=";
+  for (std::size_t index = 0; index < samples.size(); ++index) {
+    std::cout << (index == 0 ? "" : ",") << samples[index];
+  }
+  std::cout << " median-us=" << median_us
             << " iqr-us=" << iqr_us << " checksum=" << checksum << '\n';
 }

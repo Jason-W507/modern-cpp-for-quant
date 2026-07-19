@@ -77,8 +77,7 @@ Python 的 pytest fixture 可以建立相同 seam；C++ 额外需要决定测试
 Portfolio 已能按代码保存多个仓位，但当前 \texttt{snapshot(symbol, price)} 只接收一个代码的一项价格。若事件序列混入 AAPL 与 MSFT，再用最后事件价格计算“总权益”，会得到语法合法、金融含义错误的数字。因此 \texttt{BacktestEngine::run} 目前要求一次运行只有一个代码；混合输入稳定失败：
 
 \begin{lstlisting}[numbers=none]
-model-boundary-error single-symbol backtest requires one symbol;
-define a complete price map before enabling multi-asset valuation
+model-boundary-error single-symbol backtest requires one symbol; define a complete price map before enabling multi-asset valuation
 \end{lstlisting}
 
 故意失败源 \path{project/failures/mixed_symbols.cpp} 不进入默认 \texttt{all}，CTest 先单独构建它，再验收状态 2 与上面的诊断。根因不是“vector 不能放两个代码”，而是估值契约缺少完整价格映射。
@@ -109,9 +108,7 @@ ctest --test-dir build/ch17 --output-on-failure
 
 成本配置输出必须逐字为：
 \begin{lstlisting}[numbers=none]
-backtest-ok events=3 fills=1 cash=7521.525 equity=10096.525
-return=0.965250% max-drawdown=0.034750% volatility=0.000018
-fee-per-fill=1.000 slippage-bps=10.000
+backtest-ok events=3 fills=1 cash=7521.525 equity=10096.525 return=0.965250% max-drawdown=0.034750% volatility=0.000018 fee-per-fill=1.000 slippage-bps=10.000
 \end{lstlisting}
 
 端到端 benchmark 先生成 20 万个单代码事件，执行 2 次预热和 11 个样本；每个样本都必须保持一笔成交与权益 10100，之后才报告中位数和 IQR。完整可运行实现如下：

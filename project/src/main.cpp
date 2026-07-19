@@ -1,5 +1,4 @@
 #include <charconv>
-#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -12,12 +11,11 @@
 
 namespace {
 
-bool parse_nonnegative(const std::string_view text, double& value) {
+bool parse_number(const std::string_view text, double& value) {
   const char* begin = text.data();
   const char* end = begin + text.size();
   const auto [position, error] = std::from_chars(begin, end, value);
-  return error == std::errc{} && position == end && std::isfinite(value) &&
-         value >= 0.0;
+  return error == std::errc{} && position == end;
 }
 
 }  // namespace
@@ -31,11 +29,15 @@ int main(int argc, char** argv) {
 
   quant::ExecutionConfig execution;
   if (argc == 4 &&
-      (!parse_nonnegative(argv[2], execution.fixed_fee) ||
-       !parse_nonnegative(argv[3], execution.slippage_bps) ||
-       execution.slippage_bps >= 10'000.0)) {
-    std::cerr << "invalid execution config: expected nonnegative finite fee "
-                 "and slippage-bps below 10000\n";
+      (!parse_number(argv[2], execution.fixed_fee) ||
+       !parse_number(argv[3], execution.slippage_bps))) {
+    std::cerr << "invalid execution config: expected two numbers\n";
+    return 2;
+  }
+  try {
+    quant::validate_execution_config(execution);
+  } catch (const std::invalid_argument& error) {
+    std::cerr << "invalid execution config: " << error.what() << '\n';
     return 2;
   }
 
