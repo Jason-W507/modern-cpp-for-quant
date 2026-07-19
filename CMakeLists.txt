@@ -404,6 +404,31 @@ add_test(NAME ch12_logic_bug_is_caught_by_behavior_oracle
           --expected-exit 2
           --diagnostic "observed-cash=801 expected-cash=799")
 
+add_test(NAME ch13_clean_layout_snapshot_configures_builds_and_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
+          --cmake ${CMAKE_COMMAND}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch13
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch13/expected/quote_scan.txt
+          --target ch13_quote_scan
+          --generator "${CMAKE_GENERATOR}"
+          --compiler ${CMAKE_CXX_COMPILER}
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests/ch13
+          --config $<CONFIG>
+          --build-all
+          --ctest ${CMAKE_CTEST_COMMAND}
+          --run-ctest)
+add_test(NAME ch13_arena_dangling_is_reported_by_address_sanitizer
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_sanitizer_failure.py
+          --compiler ${CMAKE_CXX_COMPILER}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch13/failures/arena_dangling.cpp
+          --work-dir ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch13-arena
+          --sanitizer address
+          --diagnostic "heap-use-after-free")
+set_tests_properties(ch13_arena_dangling_is_reported_by_address_sanitizer
+  PROPERTIES SKIP_RETURN_CODE 77)
+
 add_test(NAME ch08_domain_pipeline_runs
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
@@ -465,6 +490,7 @@ set_tests_properties(sample_backtest_runs PROPERTIES
 quant_target(layout_benchmark project/benchmarks/layout_benchmark.cpp)
 add_subdirectory(code/ch11 ch11-snapshot)
 add_subdirectory(code/ch12 ch12-snapshot)
+add_subdirectory(code/ch13 ch13-snapshot)
 add_test(NAME layout_benchmark_smoke COMMAND layout_benchmark)
 set_tests_properties(layout_benchmark_smoke PROPERTIES
   PASS_REGULAR_EXPRESSION "checksum-match=true")

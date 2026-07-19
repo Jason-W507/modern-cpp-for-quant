@@ -218,11 +218,19 @@ CSV 读取层保留表头、列数、数字字段和构造异常的行号上下�
 
 \section{第 13 章}
 \begin{enumerate}
-  \item 手算权益应再减手续费；测试先红，再让成交/组合一次性记录费用。
-  \item 价格映射带时刻与币种，缺价返回不完整或错误，不能默认为零。
-  \item 典型状态为 new、partially filled、filled、cancelled、rejected；终态不能再成交。
-  \item 报告必须列环境、命令、数据、重复、统计、checksum 和结论适用范围。
+  \item \texttt{sizeof} 是对象数组步长，\texttt{alignof} 是起始地址对齐要求，\texttt{offsetof} 是 standard-layout 成员偏移；具体数字通常属于 ABI/实现观察。
+  \item 成员之间和末尾可有填充；尾部填充让数组中下一个对象仍满足对齐要求。
+  \item AoS 适合一起读取完整记录，SoA 适合连续扫描少数列；访问模式变化时选择也可能变化。
+  \item checksum 不同表示业务语义已不同，此时耗时差异不能归因于布局。
+  \item \texttt{reserve} 改 capacity 而不构造元素，\texttt{resize} 改 size 并构造/销毁元素；超过容量仍会使地址失效。
+  \item 预分配可减少搬迁，却可能因不可信或过大上界增加峰值内存、失败和工作集压力。
+  \item memory resource 必须晚于 PMR 容器及其使用者销毁；需要逃逸的数据应复制到更长寿命所有者。
+  \item \texttt{alignas(64)} 只保证源码请求的对齐，64 是实验假设，不是 C++ 对硬件缓存行的承诺。
 \end{enumerate}
+
+核心输出任务的列式行情扫描如下。阈值等于 100 的行情也应入选，因此比较使用 \texttt{>=}；独立手算为 \(100\times3+101.5\times4+102\times1=808\)。
+
+\lstinputlisting[caption={第 13 章证据门控的行情扫描答案}]{code/ch13/app/quote_scan.cpp}
 
 \section{第 14 章}
 \begin{enumerate}

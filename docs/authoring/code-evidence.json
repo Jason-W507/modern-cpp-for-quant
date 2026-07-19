@@ -69,7 +69,11 @@
     {"tex": "chapters/ch12.tex", "source": "code/ch12/failures/out_of_bounds.cpp", "target": "ch12_out_of_bounds_failure"},
     {"tex": "chapters/ch12.tex", "source": "code/ch12/failures/dangling_pointer.cpp", "target": "ch12_dangling_pointer_failure"},
     {"tex": "chapters/ch12.tex", "source": "code/ch12/failures/signed_overflow.cpp", "target": "ch12_signed_overflow_failure"},
-    {"tex": "chapters/ch13.tex", "source": "project/include/quant/statistics.hpp", "target": "test_backtest"}
+    {"tex": "chapters/ch13.tex", "source": "code/ch13/experiments/object_layout.cpp", "target": "ch13_object_layout"},
+    {"tex": "chapters/ch13.tex", "source": "code/ch13/experiments/aos_soa.cpp", "target": "ch13_aos_soa"},
+    {"tex": "chapters/ch13.tex", "source": "code/ch13/failures/arena_dangling.cpp", "target": "ch13_arena_dangling_failure"},
+    {"tex": "chapters/ch13.tex", "source": "code/ch13/app/quote_scan.cpp", "target": "ch13_quote_scan"},
+    {"tex": "appendices/solutions.tex", "source": "code/ch13/app/quote_scan.cpp", "target": "ch13_quote_scan"}
   ],
   "intentional_failures": [
     {
@@ -191,6 +195,11 @@
       "source": "code/ch12/failures/double_delete.cpp",
       "stage": "compile",
       "diagnostic_category": "GCC analyzer reports double free or use after delete"
+    },
+    {
+      "source": "code/ch13/failures/arena_dangling.cpp",
+      "stage": "runtime",
+      "diagnostic_category": "AddressSanitizer reports heap-use-after-free after the monotonic memory resource is destroyed"
     }
   ],
   "chapter_snapshots": [
@@ -233,6 +242,10 @@
     {
       "path": "code/ch12",
       "entry_target": "ch12_portfolio_tests"
+    },
+    {
+      "path": "code/ch13",
+      "entry_target": "ch13_quote_scan"
     }
   ]
 }

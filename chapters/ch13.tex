@@ -1,100 +1,157 @@
-\chapter{贯穿项目：事件驱动回测引擎}
+\chapter{数据布局、缓存与分配}
 
 \begin{introduction}
-  \item 把输入、策略、撮合、组合与统计组装为完整数据流
-  \item 用公开 seam 验证组件与端到端行为
-  \item 识别教学引擎与生产平台之间的明确边界
-  \item 把项目讲成可复现的求职作品，而不是代码堆积
+  \item 用 \texttt{sizeof}、\texttt{alignof} 与 \texttt{offsetof} 区分语言保证和本机观察
+  \item 在相同 checksum 下比较 AoS 与 SoA 搬运的字段集合
+  \item 观察 \texttt{vector::reserve} 与 arena 对分配、移动和生命周期的影响
+  \item 把 false sharing 写成带缓存行假设的实验，而不是固定硬件真理
 \end{introduction}
 
-\chaptermeta{完成前 12 章并能运行 CMake/CTest。}{Python 原型常在一处隐式共享状态；贯穿项目把输入、决策、事实与统计拆成显式值和 seam。}{端到端结果错误时沿数据流逐段检查，先用手算账本确定第一个发生偏差的公开边界。}
+\chaptermeta{已完成第 6、7、12 章，理解对象生命周期、vector 失效规则与 sanitizer。}{NumPy 的 dtype、shape、strides 和 contiguous 属性显式描述数组布局；C++ 对象布局还受成员顺序、对齐、填充和实现选择影响。}{先验证两种布局产生相同结果，再记录编译器、目标架构、数据规模和布局事实；若结果不同，性能数字全部作废。}
 
-\section{从一个事件开始}
+\section{本章输出：正确性受控的布局报告}
 
-贯穿项目的数据流是
-\[
-\text{CSV}\rightarrow\text{MarketEvent}\rightarrow\text{Strategy}
-\rightarrow\text{OrderIntent}\rightarrow\text{Fill}
-\rightarrow\text{Portfolio}\rightarrow\text{BacktestResult}.
-\]
+“SoA 更快”“arena 没有分配”“64 字节一定是缓存行”都不是可以脱离条件复述的结论。本章先交付一份布局报告，再允许修改项目快照。报告至少包含：源码与命令、编译器和架构、数据规模、两种实现的同一 checksum、\texttt{sizeof}/\texttt{alignof} 等观察、模型假设以及没有测量的内容。计时留给第 14 章。
 
-每条箭头都是边界：CSV 解析将不可信文本变为已验证值；策略只观察事件和只读组合快照；撮合器决定订单能否成为成交；组合只接受事实成交；独立统计模块汇总总收益、最大回撤、逐事件收益波动与交易摘要。
-
-这种设计避免“策略直接改现金”或“CSV 行同时充当领域对象”。边界越清楚，越容易替换数据源、策略或撮合模型，也越容易在正确位置测试错误。
-
-\section{运行项目}
+从项目根目录运行：
 
 \begin{lstlisting}[language=bash,numbers=none]
-cmake -S . -B build-mingw -G "MinGW Makefiles" \
-      -DCMAKE_BUILD_TYPE=Release
-cmake --build build-mingw
-ctest --test-dir build-mingw --output-on-failure
-./build-mingw/quant_backtest.exe project/data/sample.csv
+cmake -S code/ch13 -B build/ch13 -DCMAKE_BUILD_TYPE=Release
+cmake --build build/ch13 -j
+ctest --test-dir build/ch13 --output-on-failure
+./build/ch13/ch13_object_layout
+./build/ch13/ch13_aos_soa
+./build/ch13/ch13_preallocation
+./build/ch13/ch13_arena
+./build/ch13/ch13_false_sharing_layout
 \end{lstlisting}
 
-样例从 \(10000\) 现金出发，在价格 \(99\) 时买入 25 股，末价为 \(103\)，输出一笔成交、权益 \(10100\)、\(1\%\) 总收益和非年化逐事件波动。这个结果来自独立手算，是端到端测试的事实来源。
+本机 WSL2、x86-64、GCC 13.3 的一次实际输出是：
 
-\section{绩效统计契约}
+\begin{lstlisting}[numbers=none]
+layout-facts-ok sizeof-quote=24 alignof-quote=8
+  field-bytes=17 padding-bytes=7 offsets=0,8,16
+aos-soa-ok rows=5 checksum=1496.00
+  modeled-aos-bytes=160 modeled-soa-hot-bytes=80
+preallocation-ok rows=32 checksum=3696.00
+  unreserved-moves=31 reserved-moves=0
+arena-ok rows=3 checksum=608.00 buffer-bytes=4096
+false-sharing-layout-ok assumed-line-bytes=64
+  slot-size=64 slot-stride=64 separated-by-assumption=true
+\end{lstlisting}
 
-\lstinputlisting[caption={收益、回撤、波动与交易摘要}]{project/include/quant/statistics.hpp}
+换一台机器后数字可以变化；\texttt{*-ok} 只说明实验自己的正确性条件成立。报告不能把 24、8、31 或 64 当作 C++ 标准承诺。
 
-本项目的 volatility 是相邻权益点简单收益的样本标准差，不做年化，因为输入事件没有固定频率。交易摘要包含成交数、买卖数量和成交总名义金额。生产系统必须进一步定义时间加权、现金流、基准、年化频率、无风险利率和费用口径。
+\section{对象表示：成员之外还有填充}
 
-\section{四个测试 seam}
+\subsection{规则与可观察实验}
+
+对象必须从满足其对齐要求的地址开始。\texttt{sizeof(T)} 给出数组中相邻两个 \texttt{T} 的步长，包含成员、内部填充和尾部填充；\texttt{alignof(T)} 给出对齐要求。对 standard-layout 类型，\texttt{offsetof(T, member)} 可观察成员相对对象起点的字节偏移。
+
+\lstinputlisting[caption={记录对象大小、对齐、成员字节与偏移}]{code/ch13/experiments/object_layout.cpp}
+
+三个成员本身在本机共 17 字节，\texttt{Quote} 却占 24 字节。填充让 \texttt{Quote[]} 中每个元素都正确对齐，它不是“编译器浪费的神秘空间”。成员声明顺序受保证，具体偏移、基本类型大小和尾部填充仍与 ABI/实现有关；不要把本机输出写进跨平台文件格式或网络协议。
+
+立即练习：把 \texttt{venue} 移到两个大成员之间，在全新构建树中记录大小与偏移。若大小改变，只能写“此编译器和 ABI 下改变了”；随后恢复原顺序并确认 checksum 类测试不受布局观察影响。
+
+\begin{pythonbridge}
+NumPy 的结构化 dtype 也可能有偏移与对齐，\texttt{itemsize} 类似数组步长；普通 Python 对象还包含运行时元数据和间接引用，\texttt{sys.getsizeof} 通常不含它引用的全部对象。两边都不能只把字段标称大小相加就声称得到真实工作集。
+\end{pythonbridge}
+
+\section{连续访问与无关字段：AoS 还是 SoA}
+
+Array of Structures（AoS）把一条记录的全部字段放在一起，适合逐条使用完整记录；Structure of Arrays（SoA）把同一字段放进连续数组，适合只扫描少数“热字段”。本实验计算同一名义金额，AoS 的记录还带时间戳和 venue，而 SoA 热循环只读取价格与数量：
+
+\lstinputlisting[caption={AoS 与 SoA 先比较结果，再记录字段搬运模型}]{code/ch13/experiments/aos_soa.cpp}
+
+两个 checksum 都是 1496，因而布局没有改变业务语义。\texttt{modeled-*-bytes} 只是源码层模型：AoS 按 \texttt{rows * sizeof(Quote)} 计算完整记录字节，SoA 按两个热数组的元素大小计算。它不是硬件计数器读数，没有证明 CPU 恰好搬运这些字节，也没有计入预取、缓存行、TLB、向量化或额外指针。
+
+若下一步操作同时需要价格、数量、时间和 venue，AoS 可能避免从多条数组收集字段；若只扫描价格，SoA 可能减少无关字段进入工作集。选择来自访问模式，不来自容器名字。第 14 章会在相同数据、交替顺序和 checksum 保护下测量；本章不从复杂度相同推断速度相同，也不从字节模型直接推断耗时比例。
+
+立即练习：为两种循环都增加 venue 过滤，列出现在实际读取的字段。先保持 checksum 相同，再更新“模型字节”；不要计时，先解释为什么原来的冷热字段判断已经变化。
+
+\section{预分配：减少搬迁，不等于增加元素}
+
+\texttt{vector::reserve(n)} 只保证容量至少为 \texttt{n}，\texttt{size()} 不变；\texttt{resize(n)} 会真正创建或销毁元素。容量不足时，vector 申请新存储，把现有元素复制或移动过去，再释放旧存储；指针、引用和迭代器因而失效。
+
+\path{code/ch13/experiments/preallocation.cpp} 用带移动计数的值类型构造两组相同 32 行。保留容量的一组在本次实现上已有元素移动数为 0，未保留的一组为 31；两组 checksum 都是 3696。测试只要求结果相同且预留组不搬迁已有元素，不要求“31”跨标准库稳定，因为 vector 的增长策略没有固定倍率保证。
+
+核心语法只有两步：
+
+\begin{lstlisting}[language=C++,numbers=none]
+std::vector<TrackedQuote> quotes;
+quotes.reserve(expected_rows);  // capacity >= expected_rows, size still 0
+quotes.emplace_back(100.0);     // now size becomes 1
+\end{lstlisting}
+
+预分配需要可信上界；把攻击者提供的行数直接用于 \texttt{reserve} 可能造成巨大分配。过度预留也会提高峰值内存和工作集。若保存了 \texttt{data()} 或元素地址，仍需保证后续不超过容量；\texttt{reserve} 不是永久地址承诺。
+
+\section{Arena 与 \texttt{std::pmr}：分配策略不是所有权策略}
+
+大量同寿命小对象可从 arena 顺序取得存储，阶段结束时批量释放。\texttt{std::pmr} 容器把内存资源从容器类型中解耦。本章用栈上 4096 字节缓冲构造 \path{monotonic_buffer_resource}；upstream 另设为 \path{null_memory_resource()}。容量不足会明确抛出，而不是悄悄退回堆分配。
+
+关键构造如下，完整可运行源码在 \path{code/ch13/experiments/arena.cpp}：
+
+\begin{lstlisting}[language=C++,numbers=none]
+std::array<std::byte, 4'096> storage{};
+std::pmr::monotonic_buffer_resource arena{
+    storage.data(), storage.size(), std::pmr::null_memory_resource()};
+std::pmr::vector<Quote> quotes{&arena};
+quotes.reserve(3);
+\end{lstlisting}
+
+arena 必须比使用它的容器和对象活得久。批量释放存储也不等于可以跳过对象析构：让容器正常离开作用域，元素析构仍会运行。若先销毁资源却保留指向其中的指针，指针立刻悬空。隔离的失败实验正返回 arena 内地址：
+
+\lstinputlisting[caption={故意失败：资源销毁后继续解引用 arena 地址}]{code/ch13/failures/arena_dangling.cpp}
+
+用第 12 章相同的 ASan 配置运行，稳定类别是 \texttt{heap-use-after-free}；具体地址和调用栈不是契约。恢复方法不是延长裸指针的“猜测寿命”，而是把消费者放进资源作用域、复制需要逃逸的值，或让拥有资源的对象同时拥有全部使用者。
+
+\section{False sharing：先声明缓存行假设}
+
+两个线程即使更新不同原子变量，若变量落在同一一致性块，写入仍可能让缓存所有权来回转移。这叫 false sharing；变量没有 C++ 数据竞争，却可能有硬件一致性开销。真正的并发测量留给第 15 章，本章只检查布局实验是否满足自己声明的假设：
+
+\begin{lstlisting}[language=C++,numbers=none]
+constexpr std::size_t experiment_line_bytes = 64;
+struct alignas(experiment_line_bytes) CounterSlot {
+  std::atomic<std::uint64_t> value{};
+};
+\end{lstlisting}
+
+\path{code/ch13/experiments/false_sharing_layout.cpp} 打印 \texttt{assumed-line-bytes=64}、slot 大小和相邻地址步长。\texttt{alignas(64)} 只保证 C++ 对齐至少满足 64 这一源码请求，不证明机器缓存行就是 64，也不证明两个对象永不共享更大的硬件块。实现提供 \texttt{std::hardware\_destructive\_interference\_size} 时可作为线索，但仍应记录编译器、CPU 拓扑和实际地址，并用受控实验验证。
+
+立即练习：把假设改为 128，记录 \texttt{sizeof} 和 stride 的变化。解释为什么内存占用已经确定增加，却仍不能在没有线程测量时声称吞吐提高。
+
+\section{有证据后才进入章节快照}
+
+AoS/SoA 实验先证明价格与数量的两列计算保持 1496，再显示本工作负载不读取 timestamp 与 venue。只有得到这两项证据后，章节快照才采用列式价格/数量数组完成阈值扫描；它没有修改最终回测引擎，也没有声称列式布局适合所有阶段。
+
+\lstinputlisting[caption={第 13 章快照：列式热字段行情扫描}]{code/ch13/app/quote_scan.cpp}
+
+初始实现使用 \texttt{price > 100}，把恰好等于阈值的行情错误排除，输出 \texttt{selected=2 notional=508.00}。公开输出测试先红；最小修复为 \texttt{>=}，最终精确输出：
+
+\begin{lstlisting}[numbers=none]
+quote-scan-ok rows=5 selected=3 notional=808.00
+\end{lstlisting}
+
+输出任务：从空目录构建 \path{code/ch13}，保存五个实验输出和工具链环境；说明每个数字是语言保证、实现观察还是实验假设；再运行行情扫描并用独立手算解释 808。完整核心答案见附录。
+
+自测：
 
 \begin{enumerate}
-  \item 行情输入：文本要么成为规范事件，要么给出带行号错误。
-  \item 策略决策：给定事件和快照，产生订单或正常的空值。
-  \item 成交与组合：订单按明确模型成交，快照显示一致现金和持仓。
-  \item 整段回测：已知事件序列产生确定成交与绩效摘要。
+  \item \texttt{sizeof}、\texttt{alignof} 与 \texttt{offsetof} 分别观察什么，哪些数字不能写进协议？
+  \item 17 字节成员为何可能组成 24 字节对象，尾部填充对数组有什么作用？
+  \item AoS 与 SoA 的选择为什么取决于访问字段，而不是谁“理论上更快”？
+  \item checksum 不同的两种布局为什么没有资格比较性能？
+  \item \texttt{reserve} 与 \texttt{resize} 对 size、对象构造和地址失效有何差异？
+  \item 为什么预分配既可能减少搬迁，也可能增加峰值内存风险？
+  \item arena 资源、PMR 容器和逃逸指针必须满足什么生命周期顺序？
+  \item \texttt{alignas(64)} 为什么不能证明硬件缓存行固定为 64 字节？
 \end{enumerate}
-
-这些测试通过公开接口观察行为。持仓内部使用哈希表只是实现细节；更换容器不应让测试失败。相反，若成交价格或现金符号改变，行为测试必须失败。
-
-\section{当前引擎明确不做什么}
-
-教学引擎只处理单资产快照、市场事件驱动的立即成交、无手续费、无滑点、无延迟和单币种现金。它没有公司行动、交易日历、订单生命周期、部分成交、借券、保证金、复权、数据修订或生存者偏差控制。
-
-这些限制不是脚注。若把样例收益解释为可交易结果，就犯了模型风险错误。生产演进应先选择一个真实用例，再增加对应契约和测试。例如支持手续费时，成交模型产生费用明细，组合一次性提交现金、持仓与费用，端到端预期由独立账本例子给出。
-
-\section{扩展顺序}
-
-合理演进路线如下：
-
-\begin{enumerate}
-  \item 多资产估值：引入价格映射和缺失价格政策。
-  \item 订单生命周期：订单 ID、状态、部分成交、撤单和拒绝原因。
-  \item 成本模型：手续费、点差、滑点与容量限制。
-  \item 数据正确性：交易日历、时区、复权、公司行动和版本化数据。
-  \item 性能：批量解析、列式事件、分片回测和受控基准。
-  \item 实时化：有界队列、时钟、网络适配器、背压和恢复协议。
-\end{enumerate}
-
-每一步都应保持旧行为绿色，并添加一条穿过输入、领域、输出与测试的新 tracer bullet。
-
-\section{性能报告怎么写}
-
-报告应包含硬件、操作系统、编译器、优化级别、数据规模、命令、预热、重复次数和统计量。布局基准提供本机 20 次交替顺序采样的中位数与 IQR；有价值的结论是“在指定环境与工作负载下，方案 A 的中位数比 B 低多少，并保持同一 checksum”，不是“二维数组永远更快”。
-
-\section{作为求职作品}
-
-README 的第一屏应回答问题、构建、运行和验证方式。面试讲解按“约束—设计—证据—限制”展开：为什么用值语义，为什么测试四个 seam，哪次测试发现真实问题，当前模型不能支持什么，下一步扩展如何保持契约。
-
-展示失败和修复比声称“高性能框架”更可信。本项目中 Release 移除 \texttt{assert} 造成假绿色、ranges 的 const 视图编译失败、MiKTeX 依赖与模板兼容问题，都是工程判断的具体证据。
 
 \begin{interviewcheck}
-请在五分钟内画出引擎数据流并说明每个所有权边界；解释为什么策略不直接修改组合；选择一个生产特性，描述其 tracer bullet 与验收事实；说明当前收益为何不能代表真实可交易表现。
+被问“怎样优化数据布局”时，先描述访问模式和正确性 oracle，再记录对象表示与工作集，提出 AoS/SoA 或预分配假设，最后用第 14 章的方法测量。主动说明 ABI、标准库增长策略、arena 生命周期和缓存行假设的边界；不要用一个 \texttt{sizeof} 或单次耗时给出跨机器结论。
 \end{interviewcheck}
-
-\section{练习}
-
-\begin{enumerate}
-  \item 增加固定每笔手续费，先写端到端手算测试，再实现。
-  \item 设计多资产权益快照，明确缺失行情和币种转换政策。
-  \item 为部分成交写状态机，列出非法状态转换。
-  \item 写一页性能实验报告，包含可复现命令和结论限制。
-\end{enumerate}
 
 \section{本章小结}
 
-贯穿项目的价值不在功能数量，而在端到端契约：不可信输入被验证，组件各守边界，结果可手算，限制被明示，演进可由 tracer bullet 驱动。这正是生产工程和面试系统设计共同需要的能力。
+数据布局决定对象怎样占据地址空间，访问模式决定哪些字节可能进入工作集，分配策略决定存储取得与回收的节奏。\texttt{reserve} 和 arena 能减少某些分配或搬迁，却引入容量估计与生命周期责任；对齐可构造 false-sharing 实验，却不能替硬件作保证。始终先守住 checksum 和公开行为，再记录环境、假设与限制，项目改造才有可审计的依据。
