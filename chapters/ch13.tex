@@ -26,7 +26,7 @@ ctest --test-dir build/ch13 --output-on-failure
 ./build/ch13/ch13_false_sharing_layout
 \end{lstlisting}
 
-本机 WSL2、x86-64、GCC 13.3 的一次实际输出是：
+本机 WSL2、x86-64、GCC 13.3 的一次实际输出如下；缩进续行仅用于排版，程序每项实际输出一行：
 
 \begin{lstlisting}[numbers=none]
 layout-facts-ok sizeof-quote=24 alignof-quote=8
@@ -86,9 +86,11 @@ quotes.emplace_back(100.0);     // now size becomes 1
 
 预分配需要可信上界；把攻击者提供的行数直接用于 \texttt{reserve} 可能造成巨大分配。过度预留也会提高峰值内存和工作集。若保存了 \texttt{data()} 或元素地址，仍需保证后续不超过容量；\texttt{reserve} 不是永久地址承诺。
 
+立即练习：\texttt{reserve(3)} 后插入 3 个元素，记录实际 \texttt{capacity()} 和移动计数；继续插入到 \texttt{size()} 超过该容量，再记录两者。容量一旦改变，先前元素地址便全部失效，不要读取或比较旧指针。
+
 \section{Arena 与 \texttt{std::pmr}：分配策略不是所有权策略}
 
-大量同寿命小对象可从 arena 顺序取得存储，阶段结束时批量释放。\texttt{std::pmr} 容器把内存资源从容器类型中解耦。本章用栈上 4096 字节缓冲构造 \path{monotonic_buffer_resource}；upstream 另设为 \path{null_memory_resource()}。容量不足会明确抛出，而不是悄悄退回堆分配。
+大量同寿命小对象可从 arena 顺序取存储并批量释放。\texttt{std::pmr} 容器把资源从容器类型中解耦。本章用栈上 4096 字节缓冲构造 \path{monotonic_buffer_resource}，upstream 设为 \path{null_memory_resource()}；容量不足会明确抛出。
 
 关键构造如下，完整可运行源码在 \path{code/ch13/experiments/arena.cpp}：
 
@@ -104,11 +106,21 @@ arena 必须比使用它的容器和对象活得久。批量释放存储也不�
 
 \lstinputlisting[caption={故意失败：资源销毁后继续解引用 arena 地址}]{code/ch13/failures/arena_dangling.cpp}
 
-用第 12 章相同的 ASan 配置运行，稳定类别是 \texttt{heap-use-after-free}；具体地址和调用栈不是契约。恢复方法不是延长裸指针的“猜测寿命”，而是把消费者放进资源作用域、复制需要逃逸的值，或让拥有资源的对象同时拥有全部使用者。
+从项目根目录触发下列隔离测试；它会以 \texttt{-fsanitize=address} 单独编译并运行失败样例：
+
+\begin{lstlisting}[language=bash,numbers=none]
+cmake -S . -B build/ch13-asan -DCMAKE_BUILD_TYPE=Debug
+ctest --test-dir build/ch13-asan -R ch13_arena_dangling \
+  --output-on-failure
+\end{lstlisting}
+
+失败阶段是资源销毁后的解引用，稳定类别为 \texttt{heap-use-after-free}；地址和调用栈不是契约。恢复方法是把消费者留在资源作用域、复制逃逸值，或让拥有资源的对象同时拥有使用者。
+
+立即练习：复制样例为 \path{arena_copy.cpp}，让函数在 arena 存活时按值返回 \texttt{double}。用 \path{g++ -std=c++20 -fsanitize=address arena_copy.cpp -o arena_copy} 编译并直接运行 \path{./arena_copy}，要求正常退出且值为 100；不要调用上面期望失败的 CTest。
 
 \section{False sharing：先声明缓存行假设}
 
-两个线程即使更新不同原子变量，若变量落在同一一致性块，写入仍可能让缓存所有权来回转移。这叫 false sharing；变量没有 C++ 数据竞争，却可能有硬件一致性开销。真正的并发测量留给第 15 章，本章只检查布局实验是否满足自己声明的假设：
+不同原子变量若落在同一一致性块，两个线程写入仍可能让缓存所有权来回转移，即 false sharing。变量无 C++ 数据竞争，却可能有硬件开销；原子与并发测量留到第 15 章，本章只检查布局假设：
 
 \begin{lstlisting}[language=C++,numbers=none]
 constexpr std::size_t experiment_line_bytes = 64;
@@ -117,15 +129,17 @@ struct alignas(experiment_line_bytes) CounterSlot {
 };
 \end{lstlisting}
 
-\path{code/ch13/experiments/false_sharing_layout.cpp} 打印 \texttt{assumed-line-bytes=64}、slot 大小和相邻地址步长。\texttt{alignas(64)} 只保证 C++ 对齐至少满足 64 这一源码请求，不证明机器缓存行就是 64，也不证明两个对象永不共享更大的硬件块。实现提供 \texttt{std::hardware\_destructive\_interference\_size} 时可作为线索，但仍应记录编译器、CPU 拓扑和实际地址，并用受控实验验证。
+程序打印 64 字节假设、slot 大小和地址步长。\texttt{alignas(64)} 只保证满足源码的对齐请求，不证明缓存行就是 64，也不排除对象共享更大的硬件块。\path{std::hardware_destructive_interference_size} 可作线索，仍须记录环境并实验验证。
 
 立即练习：把假设改为 128，记录 \texttt{sizeof} 和 stride 的变化。解释为什么内存占用已经确定增加，却仍不能在没有线程测量时声称吞吐提高。
 
+\enlargethispage{2\baselineskip}
 \section{有证据后才进入章节快照}
 
 AoS/SoA 实验先证明价格与数量的两列计算保持 1496，再显示本工作负载不读取 timestamp 与 venue。只有得到这两项证据后，章节快照才采用列式价格/数量数组完成阈值扫描；它没有修改最终回测引擎，也没有声称列式布局适合所有阶段。
 
-\lstinputlisting[caption={第 13 章快照：列式热字段行情扫描}]{code/ch13/app/quote_scan.cpp}
+\newpage
+\lstinputlisting[caption={第 13 章快照：列式热字段行情扫描},basicstyle=\ttfamily\footnotesize]{code/ch13/app/quote_scan.cpp}
 
 初始实现使用 \texttt{price > 100}，把恰好等于阈值的行情错误排除，输出 \texttt{selected=2 notional=508.00}。公开输出测试先红；最小修复为 \texttt{>=}，最终精确输出：
 
