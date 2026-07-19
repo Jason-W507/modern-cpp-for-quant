@@ -87,6 +87,19 @@ class BookContractCliTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("unregistered complete listings", result.stderr)
 
+    def test_main_must_include_every_contract_chapter_in_order(self) -> None:
+        invalid_main = (
+            REPOSITORY_ROOT
+            / "tools"
+            / "tests"
+            / "fixtures"
+            / "main-missing-final-chapter.tex"
+        )
+        result = self.run_checker("--main", str(invalid_main))
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("main chapter includes must be contiguous 1..18", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

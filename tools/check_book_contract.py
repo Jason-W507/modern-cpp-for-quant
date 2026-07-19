@@ -33,6 +33,7 @@ PLACEHOLDER = re.compile(r"(?:TBD|TODO|待补|占位)", re.IGNORECASE)
 MARKER = re.compile(r"<!--\s*contract:([a-z-]+)\s*-->")
 CHAPTER_REFERENCE = re.compile(r"ch(\d{2})")
 LISTING_REFERENCE = re.compile(r"\\lstinputlisting(?:\[[^\]]*\])?\{([^}]+)\}")
+CHAPTER_INCLUDE = re.compile(r"\\include\{chapters/ch(\d{2})\}")
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -57,6 +58,11 @@ def parse_arguments() -> argparse.Namespace:
         "--code-evidence",
         type=Path,
         help="Override the code-evidence registry (useful for contract tests).",
+    )
+    parser.add_argument(
+        "--main",
+        type=Path,
+        help="Override main.tex (useful for contract tests).",
     )
     return parser.parse_args()
 
@@ -332,6 +338,18 @@ def validate_chapter_units(
     return accepted
 
 
+def validate_main_chapter_includes(
+    text: str, chapter_numbers: set[int], errors: list[str]
+) -> None:
+    included = [int(number) for number in CHAPTER_INCLUDE.findall(text)]
+    expected = sorted(chapter_numbers)
+    if included != expected:
+        errors.append(
+            "main chapter includes must be contiguous 1..18, "
+            f"found {included}"
+        )
+
+
 def declared_cmake_target(cmake_text: str, target: str) -> bool:
     declaration = re.compile(
         rf"\b(?:quant_target|quant_project_target|add_executable|add_library)\(\s*"
@@ -452,6 +470,10 @@ def main() -> int:
     contract = load_json_document(authoring / "book-contract.json", errors)
     chapter_count, planned_pages, chapter_numbers, required_syntax_ids = validate_contract(
         contract, errors
+    )
+    main_path = args.main.resolve() if args.main else root / "main.tex"
+    validate_main_chapter_includes(
+        read_text(main_path, errors), chapter_numbers, errors
     )
 
     coverage_path = args.coverage.resolve() if args.coverage else authoring / "syntax-coverage.md"

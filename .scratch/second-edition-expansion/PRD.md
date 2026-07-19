@@ -8,7 +8,7 @@ Status: ready-for-agent
 
 ## Solution
 
-将教程重构为约 145–155 页、18 章、五篇的第二版。新增五章连续的零基础教学，并对现有章节拆分、去重和扩写，使每个核心小节形成“问题场景、语法规则、可运行例子、逐步解释、Python 差异、失败诊断、立即练习”的七步教学闭环。基础篇以一个可运行的行情分析命令行程序收口，后续将它逐步演化为事件驱动回测引擎。完整代码清单必须对应真实、可编译的源码；关键项目阶段保留可独立构建的章节快照。全书采用 Linux/WSL、GCC、CMake、GDB 和 sanitizer 作为唯一正文主线，并保留必要的 Windows 差异提示。
+将教程重构为约 145–170 页、18 章、五篇的第二版。新增五章连续的零基础教学，并对现有章节拆分、去重和扩写，使每个核心小节形成“问题场景、语法规则、可运行例子、逐步解释、Python 差异、失败诊断、立即练习”的七步教学闭环。基础篇以一个可运行的行情分析命令行程序收口，后续将它逐步演化为事件驱动回测引擎。完整代码清单必须对应真实、可编译的源码；关键项目阶段保留可独立构建的章节快照。全书采用 Linux/WSL、GCC、CMake、GDB 和 sanitizer 作为唯一正文主线，并保留必要的 Windows 差异提示。
 
 ## User Stories
 
@@ -45,12 +45,12 @@ Status: ready-for-agent
 31. As a maintainer, I want every complete listing compiled from real source, so that book text and code cannot silently diverge.
 32. As a maintainer, I want chapter-level learning acceptance in addition to book-level build checks, so that a green PDF does not conceal a pedagogically incomplete chapter.
 33. As a reader using Windows, I want concise MSVC and MinGW differences beside the WSL/Linux mainline, so that platform variation is visible without duplicating every instruction.
-34. As a reader, I want the second edition to stay within roughly 145–155 pages, so that added depth does not turn into an unfocused language encyclopedia.
+34. As a reader, I want the second edition to stay within roughly 145–170 pages, so that added depth does not turn into an unfocused language encyclopedia.
 
 ## Implementation Decisions
 
 - The target reader is proficient in Python and may have zero C++ knowledge.
-- The second edition has 18 chapters in five parts and targets approximately 145–155 rendered pages.
+- The second edition has 18 chapters in five parts and targets approximately 145–170 rendered pages.
 - The five foundation chapters cover: first build and diagnostics; types, expressions and control flow; functions, references, `const` and multi-file organization; standard data structures, algorithms and CSV; structs, classes and the completed market-data analyzer.
 - The next five chapters cover: object lifetime, value categories, RAII and ownership; STL and ranges; class and interface design; templates and concepts; error handling and observability.
 - Two reliable-engineering chapters separate CMake and dependency modeling from testing, debugging and quality tools.
@@ -100,3 +100,4 @@ Status: ready-for-agent
 - The current source has no subsection-level hierarchy in the 14 main chapters and most chapters contain very few complete listings; the rewrite must introduce genuine instructional layers rather than elongating existing paragraphs.
 - The planned 150-page allocation is: 6 pages front matter, 37 pages foundation, 36 pages language and components, 13 pages reliable engineering, 24 pages performance and interoperability, 22 pages project and career, and 12 pages appendices. Chapter 18 receives 12 pages, within the agreed 12–15 page career range. Chapter budgets remain guardrails rather than word-count targets.
 - The specification is ready for an agent once the ticket breakdown is approved.
+- On 2026-07-19 the user explicitly relaxed the former 155-page ceiling so the final career chapter would not be over-compressed; 170 pages is now the publication guardrail while 150 remains the structural allocation baseline.

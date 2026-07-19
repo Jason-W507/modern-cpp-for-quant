@@ -705,7 +705,7 @@
         "self_checks": 8,
         "feedback": "appendices/solutions.tex",
         "project_connection": "code/ch16 is an independently buildable numerical and interoperability lab whose dependency-free core owns the algorithms and strict batch contract, while an optional pybind11 module delegates to that same core and preserves dtype, continuity, GIL and buffer-lifetime boundaries before Chapter 17 integrates it with the backtest engine.",
-        "publication_note": "The rendered Chapter 16 uses five main-text pages against its six-page guardrail, with its answer spanning two appendix pages; the complete book remains within the 155-page publication cap while keeping numerical representation, stable reduction, finance-specific rounding, batch-boundary costs and pybind11 ownership protocols together without a trailing blank page.",
+        "publication_note": "The rendered Chapter 16 uses five main-text pages against its six-page guardrail, with its answer spanning two appendix pages; the chapter keeps numerical representation, stable reduction, finance-specific rounding, batch-boundary costs and pybind11 ownership protocols together without a trailing blank page.",
         "checklist_markers": [
           "prerequisites",
           "learning-output",
@@ -752,7 +752,7 @@
         "self_checks": 8,
         "feedback": "appendices/solutions.tex",
         "project_connection": "project/ is the independently configurable final event-driven backtest snapshot; it evolves the preserved analyzer and component snapshots through the same CSV, strategy, execution/portfolio and end-to-end seams, adds explicit cost configuration and valuation rejection, and measures only after the hand ledger passes.",
-        "publication_note": "The rendered Chapter 17 uses five main-text pages against its ten-page guardrail; removing duplicate printed copies of advanced exercise sources keeps the complete book at the 155-page cap while preserving worked reasoning, exact outputs and runnable source paths in the answer appendix.",
+        "publication_note": "The rendered Chapter 17 uses five main-text pages against its ten-page guardrail; removing duplicate printed copies of advanced exercise sources preserves worked reasoning, exact outputs and runnable source paths in the answer appendix without compressing the final career chapter.",
         "checklist_markers": [
           "prerequisites",
           "learning-output",
@@ -770,6 +770,46 @@
         ]
       }
     },
-    {"number": 18, "state": "planned"}
+    {
+      "number": 18,
+      "state": "accepted",
+      "evidence": {
+        "tex": "chapters/ch18.tex",
+        "examples": [
+          "project/README.md",
+          "project/CMakeLists.txt",
+          "project/include/quant/statistics.hpp",
+          "project/include/quant/backtest.hpp",
+          "project/tests/test_backtest.cpp",
+          "project/benchmarks/backtest_benchmark.cpp",
+          "project/failures/mixed_symbols.cpp",
+          "tools/validate_ch17_benchmark.py"
+        ],
+        "failure_experiment": {
+          "source": "project/failures/mixed_symbols.cpp",
+          "diagnostic_category": "the interview and portfolio evidence package reproduces the status-2 mixed-symbol valuation rejection and explains the missing timestamp-consistent price-map contract rather than claiming an invalid multi-asset result"
+        },
+        "output_task": "Submit a five-part evidence package: a target-role claim/evidence/limit map; eight definition-scenario-cost-failure language answers tied to repository evidence; a maximum-drawdown contract with independent worked examples; a reproducible project and system-design narrative containing the clean build, eleven project CTest cases, exact summaries, benchmark boundary and one failure repair; and a 30/60/90-day onboarding plan with observable deliverables and explicit unknowns.",
+        "self_checks": 10,
+        "feedback": "appendices/solutions.tex",
+        "project_connection": "Chapter 18 treats project/README.md and the already accepted final backtest seams as the evidence boundary: every interview, portfolio and onboarding claim must resolve to a reproducible command, independent oracle, stable failure, measurement record or explicit limitation, without inventing production or team experience.",
+        "publication_note": "The rendered Chapter 18 uses nine main-text pages against its twelve-page guardrail, adds worked language and code answers, a searchable evidence index, a full code-to-system-design drill, a reproducible portfolio story, gap-to-tracer-bullet planning and a 30/60/90-day route; the complete 166-page PDF remains within the user-approved 170-page guardrail without compressing earlier teaching.",
+        "checklist_markers": [
+          "prerequisites",
+          "learning-output",
+          "scenario",
+          "syntax-rule",
+          "runnable-example",
+          "guided-explanation",
+          "python-boundary",
+          "failure-diagnosis",
+          "immediate-practice",
+          "code-evidence",
+          "feedback",
+          "project-connection",
+          "publication"
+        ]
+      }
+    }
   ]
 }
