@@ -17,6 +17,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--diagnostic", required=True)
+    parser.add_argument("--compiler-argument", action="append", default=[])
     return parser.parse_args()
 
 
@@ -24,10 +25,12 @@ def main() -> int:
     args = parse_arguments()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.unlink(missing_ok=True)
+    command = compile_object_command(
+        args.compiler, args.source, args.output, warnings=True
+    )
+    command[1:1] = args.compiler_argument
     completed = subprocess.run(
-        compile_object_command(
-            args.compiler, args.source, args.output, warnings=True
-        ),
+        command,
         text=True,
         capture_output=True,
         check=False,

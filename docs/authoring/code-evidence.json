@@ -61,8 +61,14 @@
     {"tex": "chapters/ch11.tex", "source": "code/ch11/app/main.cpp", "target": "ch11_market_report"},
     {"tex": "chapters/ch11.tex", "source": "code/ch11/failures/missing_target_link.cpp", "target": "ch11_missing_target_link_failure"},
     {"tex": "appendices/solutions.tex", "source": "code/ch11/exercises/notional_report_solution.cpp", "target": "ch11_notional_solution"},
-    {"tex": "chapters/ch12.tex", "source": "code/ch12/numerical_stability.cpp", "target": "ch12_numerical_stability"},
-    {"tex": "chapters/ch12.tex", "source": "code/ch12/pybind11_boundary.cpp", "target": "ch12_pybind_boundary"},
+    {"tex": "chapters/ch12.tex", "source": "code/ch12/tests/test_portfolio.cpp", "target": "ch12_portfolio_tests"},
+    {"tex": "chapters/ch12.tex", "source": "code/ch12/failures/logic_bug.cpp", "target": "ch12_logic_bug_failure"},
+    {"tex": "chapters/ch12.tex", "source": "code/ch12/exercises/logic_fix_solution.cpp", "target": "ch12_logic_fix_solution"},
+    {"tex": "chapters/ch12.tex", "source": "code/ch12/failures/assert_only_test.cpp", "target": "ch12_assert_only_release"},
+    {"tex": "chapters/ch12.tex", "source": "code/ch12/failures/double_delete.cpp", "target": "ch12_double_delete_failure"},
+    {"tex": "chapters/ch12.tex", "source": "code/ch12/failures/out_of_bounds.cpp", "target": "ch12_out_of_bounds_failure"},
+    {"tex": "chapters/ch12.tex", "source": "code/ch12/failures/dangling_pointer.cpp", "target": "ch12_dangling_pointer_failure"},
+    {"tex": "chapters/ch12.tex", "source": "code/ch12/failures/signed_overflow.cpp", "target": "ch12_signed_overflow_failure"},
     {"tex": "chapters/ch13.tex", "source": "project/include/quant/statistics.hpp", "target": "test_backtest"}
   ],
   "intentional_failures": [
@@ -155,6 +161,36 @@
       "source": "code/ch11/failures/missing_target_link.cpp",
       "stage": "link",
       "diagnostic_category": "compilation succeeds before the linker reports an undefined reference caused by a missing target dependency"
+    },
+    {
+      "source": "code/ch12/failures/assert_only_test.cpp",
+      "stage": "runtime",
+      "diagnostic_category": "NDEBUG removes the deliberately false standard assertion and the program exits successfully"
+    },
+    {
+      "source": "code/ch12/failures/logic_bug.cpp",
+      "stage": "runtime",
+      "diagnostic_category": "behavior oracle reports observed cash 801 instead of expected cash 799"
+    },
+    {
+      "source": "code/ch12/failures/out_of_bounds.cpp",
+      "stage": "runtime",
+      "diagnostic_category": "AddressSanitizer reports heap-buffer-overflow"
+    },
+    {
+      "source": "code/ch12/failures/dangling_pointer.cpp",
+      "stage": "runtime",
+      "diagnostic_category": "AddressSanitizer reports heap-use-after-free"
+    },
+    {
+      "source": "code/ch12/failures/signed_overflow.cpp",
+      "stage": "runtime",
+      "diagnostic_category": "UndefinedBehaviorSanitizer reports signed integer overflow"
+    },
+    {
+      "source": "code/ch12/failures/double_delete.cpp",
+      "stage": "compile",
+      "diagnostic_category": "GCC analyzer reports double free or use after delete"
     }
   ],
   "chapter_snapshots": [
@@ -193,6 +229,10 @@
     {
       "path": "code/ch11",
       "entry_target": "ch11_market_report"
+    },
+    {
+      "path": "code/ch12",
+      "entry_target": "ch12_portfolio_tests"
     }
   ]
 }

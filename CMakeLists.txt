@@ -285,7 +285,7 @@ add_test(NAME ch11_clean_target_graph_configures_builds_and_runs
           --target ch11_market_report
           --generator "${CMAKE_GENERATOR}"
           --compiler ${CMAKE_CXX_COMPILER}
-          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests/ch11-debug
           --config $<CONFIG>
           --build-all
           --ctest ${CMAKE_CTEST_COMMAND}
@@ -306,13 +306,103 @@ add_test(NAME ch11_sanitized_configuration_builds_and_runs
           --target ch11_market_report
           --generator "${CMAKE_GENERATOR}"
           --compiler ${CMAKE_CXX_COMPILER}
-          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests/ch11-sanitized
           --config $<CONFIG>
           --cmake-argument=-DCMAKE_BUILD_TYPE=Debug
           --cmake-argument=-DCH11_ENABLE_SANITIZERS=ON
           --build-all
           --ctest ${CMAKE_CTEST_COMMAND}
           --run-ctest)
+
+add_test(NAME ch12_clean_quality_lab_configures_builds_and_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
+          --cmake ${CMAKE_COMMAND}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch12
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch12/expected/portfolio_test.txt
+          --target ch12_portfolio_tests
+          --generator "${CMAKE_GENERATOR}"
+          --compiler ${CMAKE_CXX_COMPILER}
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests/ch12-debug
+          --config $<CONFIG>
+          --build-all
+          --ctest ${CMAKE_CTEST_COMMAND}
+          --run-ctest)
+add_test(NAME ch12_release_assertion_trap_is_observable
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
+          --cmake ${CMAKE_COMMAND}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch12
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch12/expected/assert_only_release.txt
+          --target ch12_assert_only_release
+          --generator "${CMAKE_GENERATOR}"
+          --compiler ${CMAKE_CXX_COMPILER}
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests/ch12-assert-release
+          --config Release
+          --cmake-argument=-DCMAKE_BUILD_TYPE=Release)
+add_test(NAME ch12_release_real_checks_stay_active
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
+          --cmake ${CMAKE_COMMAND}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch12
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch12/expected/portfolio_test.txt
+          --target ch12_portfolio_tests
+          --generator "${CMAKE_GENERATOR}"
+          --compiler ${CMAKE_CXX_COMPILER}
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests/ch12-release
+          --config Release
+          --cmake-argument=-DCMAKE_BUILD_TYPE=Release
+          --build-all
+          --ctest ${CMAKE_CTEST_COMMAND}
+          --run-ctest)
+add_test(NAME ch12_out_of_bounds_is_reported_by_address_sanitizer
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_sanitizer_failure.py
+          --compiler ${CMAKE_CXX_COMPILER}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch12/failures/out_of_bounds.cpp
+          --work-dir ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch12-bounds
+          --sanitizer address
+          --diagnostic "heap-buffer-overflow")
+set_tests_properties(ch12_out_of_bounds_is_reported_by_address_sanitizer
+  PROPERTIES SKIP_RETURN_CODE 77)
+add_test(NAME ch12_dangling_access_is_reported_by_address_sanitizer
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_sanitizer_failure.py
+          --compiler ${CMAKE_CXX_COMPILER}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch12/failures/dangling_pointer.cpp
+          --work-dir ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch12-dangling
+          --sanitizer address
+          --diagnostic "heap-use-after-free")
+set_tests_properties(ch12_dangling_access_is_reported_by_address_sanitizer
+  PROPERTIES SKIP_RETURN_CODE 77)
+add_test(NAME ch12_signed_overflow_is_reported_by_undefined_sanitizer
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_sanitizer_failure.py
+          --compiler ${CMAKE_CXX_COMPILER}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch12/failures/signed_overflow.cpp
+          --work-dir ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch12-overflow
+          --sanitizer undefined
+          --diagnostic "signed integer overflow")
+set_tests_properties(ch12_signed_overflow_is_reported_by_undefined_sanitizer
+  PROPERTIES SKIP_RETURN_CODE 77)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  add_test(NAME ch12_double_delete_is_reported_by_static_analyzer
+    COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_compile_diagnostic.py
+            --compiler ${CMAKE_CXX_COMPILER}
+            --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch12/failures/double_delete.cpp
+            --output ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch12_double_delete.obj
+            --compiler-argument=-fanalyzer
+            --diagnostic "double.*free|use after.*delete")
+endif()
+add_test(NAME ch12_logic_bug_is_caught_by_behavior_oracle
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_runtime_failure.py
+          --compiler ${CMAKE_CXX_COMPILER}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch12/failures/logic_bug.cpp
+          --work-dir ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch12-logic
+          --expected-exit 2
+          --diagnostic "observed-cash=801 expected-cash=799")
 
 add_test(NAME ch08_domain_pipeline_runs
   COMMAND ${Python3_EXECUTABLE}
@@ -374,24 +464,10 @@ set_tests_properties(sample_backtest_runs PROPERTIES
 
 quant_target(layout_benchmark project/benchmarks/layout_benchmark.cpp)
 add_subdirectory(code/ch11 ch11-snapshot)
-quant_target(ch12_numerical_stability code/ch12/numerical_stability.cpp)
-quant_target(ch12_pybind_boundary code/ch12/pybind11_boundary.cpp)
+add_subdirectory(code/ch12 ch12-snapshot)
 add_test(NAME layout_benchmark_smoke COMMAND layout_benchmark)
 set_tests_properties(layout_benchmark_smoke PROPERTIES
   PASS_REGULAR_EXPRESSION "checksum-match=true")
-add_test(NAME ch12_numerical_stability_runs COMMAND ch12_numerical_stability)
-set_tests_properties(ch12_numerical_stability_runs PROPERTIES
-  PASS_REGULAR_EXPRESSION "naive=0 compensated=1")
-add_test(NAME ch12_pybind_boundary_runs COMMAND ch12_pybind_boundary)
-set_tests_properties(ch12_pybind_boundary_runs PROPERTIES
-  PASS_REGULAR_EXPRESSION "pybind-boundary final-equity=103")
-
-find_package(pybind11 CONFIG QUIET)
-if(pybind11_FOUND)
-  pybind11_add_module(quant_boundary MODULE code/ch12/pybind11_boundary.cpp)
-  target_compile_definitions(quant_boundary PRIVATE QUANT_WITH_PYBIND11=1)
-endif()
-
 add_test(NAME ch01_first_program_prints_exact_readiness_message
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py

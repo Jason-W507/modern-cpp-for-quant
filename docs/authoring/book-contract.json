@@ -70,7 +70,11 @@
     "assertions",
     "cmake-targets",
     "dependency-visibility",
-    "build-configurations"
+    "build-configurations",
+    "behavior-testing",
+    "debug-symbols-gdb",
+    "sanitizers",
+    "static-analysis"
   ],
   "parts": [
     {

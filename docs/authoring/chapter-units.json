@@ -487,7 +487,78 @@
         ]
       }
     },
-    {"number": 12, "state": "planned"},
+    {
+      "number": 12,
+      "state": "accepted",
+      "evidence": {
+        "tex": "chapters/ch12.tex",
+        "examples": [
+          "code/ch12/CMakeLists.txt",
+          "code/ch12/include/quant/ch12/portfolio.hpp",
+          "code/ch12/src/portfolio.cpp",
+          "code/ch12/tests/test_portfolio.cpp",
+          "code/ch12/tests/test_portfolio_overflow.cpp",
+          "code/ch12/failures/assert_only_test.cpp",
+          "code/ch12/failures/logic_bug.cpp",
+          "code/ch12/failures/out_of_bounds.cpp",
+          "code/ch12/failures/dangling_pointer.cpp",
+          "code/ch12/failures/signed_overflow.cpp",
+          "code/ch12/failures/double_delete.cpp",
+          "code/ch12/exercises/logic_fix_solution.cpp"
+        ],
+        "failure_experiment": {
+          "source": "code/ch12/failures/logic_bug.cpp",
+          "diagnostic_category": "a public behavior oracle reports observed cash 801 instead of the independently calculated 799 before GDB local-state evidence identifies the reversed fee sign"
+        },
+        "additional_failure_experiments": [
+          {
+            "source": "code/ch12/failures/assert_only_test.cpp",
+            "stage": "release-runtime",
+            "diagnostic_category": "NDEBUG removes the only standard assertion so a deliberately wrong result exits successfully"
+          },
+          {
+            "source": "code/ch12/failures/out_of_bounds.cpp",
+            "stage": "sanitized-runtime",
+            "diagnostic_category": "AddressSanitizer reports heap-buffer-overflow"
+          },
+          {
+            "source": "code/ch12/failures/dangling_pointer.cpp",
+            "stage": "sanitized-runtime",
+            "diagnostic_category": "AddressSanitizer reports heap-use-after-free"
+          },
+          {
+            "source": "code/ch12/failures/signed_overflow.cpp",
+            "stage": "sanitized-runtime",
+            "diagnostic_category": "UndefinedBehaviorSanitizer reports signed integer overflow"
+          },
+          {
+            "source": "code/ch12/failures/double_delete.cpp",
+            "stage": "static-analysis",
+            "diagnostic_category": "GCC analyzer reports double free or use after delete"
+          }
+        ],
+        "output_task": "Reproduce code/ch12/failures/logic_bug.cpp, record the expected and observed cash plus exit status, use a Debug GDB session to capture arguments, notional and returned value, identify the first divergent expression, fix only the fee sign, and retain a non-assert regression check that prints exactly fixed-cash=799 in Debug and Release.",
+        "self_checks": 8,
+        "feedback": "appendices/solutions.tex",
+        "project_connection": "code/ch12 is an independently buildable testing and debugging lab that protects the execution/portfolio seam, isolates intentional failures from the default build, and reuses the same snapshot through the root CMake project.",
+        "publication_note": "The rendered Chapter 12 meets its 7-page planning budget while keeping behavior testing, one red-green loop, Release assertion evidence, a real GDB transcript, warnings, static analysis, ASan, UBSan and a diagnosis-report task together so a Python reader can choose tools from symptoms rather than memorize commands.",
+        "checklist_markers": [
+          "prerequisites",
+          "learning-output",
+          "scenario",
+          "syntax-rule",
+          "runnable-example",
+          "guided-explanation",
+          "python-boundary",
+          "failure-diagnosis",
+          "immediate-practice",
+          "code-evidence",
+          "feedback",
+          "project-connection",
+          "publication"
+        ]
+      }
+    },
     {"number": 13, "state": "planned"},
     {"number": 14, "state": "planned"},
     {"number": 15, "state": "planned"},

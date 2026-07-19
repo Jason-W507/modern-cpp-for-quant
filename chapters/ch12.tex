@@ -1,65 +1,240 @@
-\chapter{数值计算与 Python 互操作}
+\chapter{测试与调试工具}
 
 \begin{introduction}
-  \item 理解浮点表示、舍入与误差传播
-  \item 使用稳定归约与容差测试
-  \item 设计清楚的 Python/C++ 所有权和数组边界
-  \item 判断何时值得把热点移入 C++
+  \item 把需求写成不依赖实现细节的行为测试，并完成一次红---绿循环
+  \item 在 Debug 构建中用 GDB 从失败输出追到错误表达式
+  \item 用编译器警告、静态分析、ASan 与 UBSan 各自回答合适的问题
+  \item 识别 Release 下消失的 \texttt{assert}，让测试始终执行真实检查
 \end{introduction}
 
-\chaptermeta{理解 Python/NumPy 数组、浮点基础和 C++ 生命周期。}{NumPy 已调用原生内核；只有 Python 调度或逐元素循环真是热点时，跨语言批量边界才可能获益。}{数值差异先检查表示、归约顺序和容差；绑定崩溃则检查 dtype、连续性、GIL 与缓冲所有权。}
+\chaptermeta{已完成第 6、10、11 章，理解生命周期、错误分类、CMake 目标与构建配置。}{pytest 异常通常仍由解释器管理；C++ 还可能在没有语言级异常的情况下发生未定义行为，所以需要编译器、调试器和 sanitizer 共同取证。}{先保存最小复现、退出码和行为差异，再按症状选择工具；工具报告的是证据，不自动证明业务根因。}
 
-\section{浮点不是实数}
+\section{本章输出：一份可复核的故障诊断报告}
 
-IEEE 754 二进制浮点只能精确表示有限集合。多数十进制小数会被舍入；加法不满足结合律；数量级相差悬殊时，小值可能消失。直接用 \texttt{==} 比较经计算结果通常不合适，但容差也必须结合量纲和误差模型。
+量化系统最危险的失败不一定崩溃。手续费符号写反仍会生成看似合理的净值；悬空指针可能在测试机上“碰巧可用”；只含 \texttt{assert} 的测试会在 Release 中安静通过。本章交付的不是一串调试命令，而是一份包含六项证据的诊断报告：症状与期望、最小复现命令、失败层级、工具输出中的稳定类别、根因、修复后的回归测试。
 
-经典灾难例子是 \(10^{16}+1-10^{16}\)：按双精度顺序累加可能得到 0。补偿求和保留舍入中丢失的一部分：
+仓库已有四条公开行为 seam，可作为测试先例：\path{project/tests/test_csv_reader.cpp} 保护行情输入，\path{project/tests/test_strategy.cpp} 保护策略决策，\path{project/tests/test_execution_portfolio.cpp} 保护成交与组合，\path{project/tests/test_backtest.cpp} 保护端到端手算账本。它们只观察输入、返回值、状态和输出，不断言某个私有成员或某次内部调用，因此重构实现时仍有价值。
 
-\lstinputlisting[caption={普通求和与补偿求和}]{code/ch12/numerical_stability.cpp}
+本章新增一个更小的成交/组合 seam。初始现金为 1000，以 100 买入 2 份并支付 1 元手续费，标记价格为 110；手算得到现金 799、权益 1019。完整测试如下：
 
-补偿算法提高精度但增加运算和依赖链，并非所有工作负载都更快。先定义允许误差，再在真实数据分布上测试。
+\lstinputlisting[caption={Release 中仍执行真实分支检查的组合行为测试}]{code/ch12/tests/test_portfolio.cpp}
 
-\section{价格、收益与方差}
+测试使用 \texttt{if (!correct)} 返回非零状态。它不是为了绕开测试框架，而是让最小快照不引入外部依赖，同时展示测试程序最基本的协议：零表示通过，非零表示失败，标准错误流解释差异。完整快照可独立验证：
 
-交易金额常需要可审计舍入，可用整数最小货币单位或定点表示；收益率和模型计算通常需要浮点。跨表示转换必须集中并写明舍入模式。在线方差应使用数值稳定算法，而不是分别累计 \(\sum x\) 与 \(\sum x^2\) 后相减。
+\begin{lstlisting}[language=bash,numbers=none]
+cmake -S code/ch12 -B build/ch12-debug -DCMAKE_BUILD_TYPE=Debug
+cmake --build build/ch12-debug -j
+ctest --test-dir build/ch12-debug --output-on-failure
+./build/ch12-debug/ch12_portfolio_tests
+\end{lstlisting}
 
-测试浮点结果时可使用绝对与相对容差组合：
-\[
- |a-b| \leq \epsilon_{abs} + \epsilon_{rel}\max(|a|,|b|).
-\]
-容差不是让测试变绿的旋钮，应来自业务最小显著差异和算法误差分析。
+预期输出严格为：
 
-\section{先确认 Python 热点在哪里}
+\begin{lstlisting}[numbers=none]
+portfolio-fee-ok cash=799.00 equity=1019.00
+\end{lstlisting}
 
-NumPy、SciPy 和许多 pandas 操作已经在 C/C++/Fortran 中执行。把外层 \python{} 函数重写为 \cpp{} 可能没有收益，反而增加复制与绑定成本。profiler 应区分 Python 调度、原生内核、内存分配和数据转换。
+\section{从行为开始：一次红---绿---整理循环}
 
-\section{pybind11 边界}
+\subsection{先写能失败的账本事实}
 
-pybind11 适合暴露小而稳定的 C++ API。边界必须说明：数组是否连续、dtype 与字节序、谁拥有内存、调用期间能否释放 GIL、异常如何映射、返回视图能活多久。
+测试驱动开发的第一步不是提前设计所有类，而是选择一个可观察事实。若实现把手续费加回现金，错误程序会报告 \texttt{observed-cash=801 expected-cash=799} 并以状态 2 退出：
 
-\lstinputlisting[caption={可编译的 pybind11 可选边界}]{code/ch12/pybind11_boundary.cpp}
+\lstinputlisting[caption={红灯：手续费符号写反的最小逻辑错误}]{code/ch12/failures/logic_bug.cpp}
 
-该源文件始终作为 C++20 可执行目标编译并验证边界函数；若 CMake 找到 pybind11，还会额外构建名为 \texttt{quant\_boundary} 的真实 Python 模块。这样默认教程不强制下载依赖，安装依赖的环境又会编译绑定代码，而不是让书中草图长期漂移。
+这条红灯有三个质量条件。第一，它因目标行为尚未满足而失败，不是因源文件不存在或测试本身无法编译。第二，期望值来自独立手算 \(1000-100\times2-1=799\)，不是复制实现表达式。第三，输出同时给出 observed 与 expected，失败后无需先打开测试源码猜测。
 
-对 NumPy 数组，零拷贝视图要求底层缓冲在 C++ 使用期间存活；返回指向临时 \texttt{vector} 的数组是悬空错误。若 C++ 长计算不访问 Python 对象，可释放 GIL，但重新调用 Python 前必须获取。
+最小修复只把 \texttt{+ fee} 改为 \texttt{- fee}，并保留同一个行为检查：
 
-\section{批量边界胜过逐元素调用}
+\lstinputlisting[caption={绿灯：修复公式并保留回归检查}]{code/ch12/exercises/logic_fix_solution.cpp}
 
-跨语言调用具有固定成本。每个 tick 从 Python 调一次 C++，往往不如一次传入连续批次；反过来，若实时回调由 C++ 驱动，则策略接口和 GIL 行为要单独设计。边界应传递领域批次，而不是暴露大量细碎 getter。
+绿色之后才整理重复代码：真实快照把组合状态与输入检查封装进 \texttt{Portfolio}，测试只调用公开的 \texttt{buy} 与 \texttt{snapshot}。整理不能改变 799 与 1019 这两个外部事实。若重构后测试先红，先恢复行为再继续整理，不要同时扩大改动面。
 
-\begin{interviewcheck}
-为什么浮点加法不满足结合律？金额与收益率为何可能选择不同表示？零拷贝 NumPy 视图需要什么生命周期保证？何时可以释放 GIL？
-\end{interviewcheck}
+\begin{pythonbridge}
+pytest 的 \texttt{assert observed == expected} 会由 pytest 改写并生成丰富差异；C++ 标准 \texttt{assert} 是可被 \texttt{NDEBUG} 删除的调试宏。GoogleTest、Catch2 等框架提供不会随 Release 消失的检查，但本书最小快照用显式分支展示底层协议。两种语言相同的原则是：先断言公开行为，再重构实现；不要对私有调用顺序写脆弱测试。
+\end{pythonbridge}
 
-\section{练习}
+立即练习：把正确实现中的费用暂改为 0，先写下你预测的现金和权益，再运行测试。确认失败来自数值差异后恢复代码；若你先改期望值让测试变绿，就失去了手续费需求的独立 oracle。
+
+\section{Release 陷阱：\texttt{assert} 不是测试框架}
+
+\texttt{assert(condition)} 适合表达程序员认为不可能被合法输入破坏的内部不变量。条件为假时，Debug 程序终止并报告位置；定义 \texttt{NDEBUG} 后，整个表达式通常不再求值。下面的故障测试故意让实际成交数为 1、期望为 2，却只用 \texttt{assert} 检查：
+
+\lstinputlisting[caption={只在 Debug 有效的断言陷阱}]{code/ch12/failures/assert_only_test.cpp}
+
+分别显式构建这个隔离目标：
+
+\begin{lstlisting}[language=bash,numbers=none]
+cmake -S code/ch12 -B build/ch12-debug -DCMAKE_BUILD_TYPE=Debug
+cmake --build build/ch12-debug --target ch12_assert_only_release
+./build/ch12-debug/ch12_assert_only_release
+
+cmake -S code/ch12 -B build/ch12-release -DCMAKE_BUILD_TYPE=Release
+cmake --build build/ch12-release --target ch12_assert_only_release
+./build/ch12-release/ch12_assert_only_release
+\end{lstlisting}
+
+Debug 运行会被断言终止；Release 却输出 \texttt{assertion-check-disappeared} 并返回成功。更隐蔽的错误是把有副作用的操作写进 \texttt{assert(place\_order())}：Release 中连下单调用也会消失。因此断言表达式应无副作用，测试判定必须来自测试框架或显式检查。
+
+本章自动验收还会从全新 Release 构建树运行 \texttt{ch12\_portfolio\_tests}。其错误分支没有被预处理器删除，错误费用仍会令进程返回 1。这才是“Release 测试通过”的真实含义，而不是“测试可执行文件返回了 0”。
+
+\section{逻辑错误：用 GDB 检查数据流}
+
+逻辑错误通常不会触发 sanitizer，因为每次内存访问都可能合法，类型转换也符合语言规则。正确顺序是先用行为测试稳定复现，再在带调试信息的低优化构建中检查数据流：
+
+\begin{lstlisting}[language=bash,numbers=none]
+g++ -std=c++20 -O0 -g code/ch12/failures/logic_bug.cpp \
+  -o build/ch12-logic-bug
+gdb -q build/ch12-logic-bug
+(gdb) break cash_after_buy
+(gdb) run
+(gdb) info args
+(gdb) next
+(gdb) info locals
+(gdb) finish
+\end{lstlisting}
+
+本机 WSL 的实际证据可压缩成三行：
+
+\begin{lstlisting}[numbers=none]
+cash=1000 price=100 quantity=2 fee=1
+notional=200
+Value returned is 801
+\end{lstlisting}
+
+输入和中间乘积正确，差异首次出现在返回表达式，根因范围便从“组合系统不对”缩小到手续费符号。
+
+常用 GDB 动作可按问题组织：\texttt{break} 在怀疑边界停住，\texttt{run} 复现，\texttt{next} 越过函数调用，\texttt{step} 进入函数，\texttt{print expr} 检查表达式，\texttt{bt} 查看调用栈，\texttt{frame n} 切换栈帧，\texttt{watch expr} 在值改变时暂停。不要从入口逐行走完整程序；先让失败测试把断点推到最小边界。
+
+优化会内联函数、删除变量或重排指令，GDB 可能显示 \texttt{optimized out}。这不说明调试器坏了。先在 \texttt{-O0 -g} 重现正确性问题；若故障只在 Release 出现，再保留 \texttt{-g} 并逐级增加优化，比较行为与生成配置。禁止通过“Debug 没问题”推断 Release 正确。
+
+Windows 上 Visual Studio 调试器可完成断点、局部变量和调用栈检查；MinGW 的 GDB 命令与 WSL 主线接近。界面不同，但证据链仍是失败行为、可疑边界、输入、中间状态和首次错误值。
+
+\section{编译器警告与静态分析：不运行也能发现什么}
+
+警告分析单个翻译单元和部分跨语句事实。GCC/Clang 主线建议从以下集合开始：
+
+\begin{lstlisting}[language=bash,numbers=none]
+g++ -std=c++20 -Wall -Wextra -Wpedantic -c source.cpp
+\end{lstlisting}
+
+\texttt{-Wall} 并不等于“所有警告”，\texttt{-Wextra} 补充常见可疑构造，\texttt{-Wpedantic} 提醒非标准扩展。受控 CI 可以在清洁后使用 \texttt{-Werror} 防止新增警告；直接把第三方头文件和多编译器差异全部升级为错误，容易让工具链升级变成无关阻塞。MSVC 对应起点是 \texttt{/W4 /permissive-}。
+
+静态分析会沿可能的控制流追踪资源和状态。下面的最小程序语法正确，却在同一路径释放同一地址两次：
+
+\lstinputlisting[caption={静态分析目标：同一路径双重释放}]{code/ch12/failures/double_delete.cpp}
+
+本机 GCC 13 可直接运行：
+
+\begin{lstlisting}[language=bash,numbers=none]
+g++ -std=c++20 -fanalyzer -c \
+  code/ch12/failures/double_delete.cpp
+\end{lstlisting}
+
+稳定证据类别是 double free/use after delete；具体措辞和行号会随编译器版本变化。clang-tidy 能补充现代化、可读性和缺陷检查，但它不是本章复现的隐藏前置依赖：未安装时先用已有编译器警告和 GCC analyzer。静态分析会有误报，也看不到真实运行数据；先检查报告路径是否可达，再决定修复、抑制或调整规则，并在代码审查中记录理由。
+
+立即练习：删除第一次 \texttt{delete} 后复跑 analyzer，确认类别消失；再把裸资源改为 \texttt{std::unique\_ptr<int>}。解释为什么所有权类型既减少错误路径，也比局部抑制警告提供更强的设计证据。
+
+\section{Sanitizer：让未定义行为留下运行证据}
+
+C++ 的越界、释放后使用和有符号溢出属于未定义行为。程序可能崩溃、输出旧值、污染别处，也可能看似正常；“运行十次都没事”不是正确性证据。Sanitizer 在编译时插入检查并在运行时报告类别，适合用能覆盖缺陷路径的小输入触发。
+
+\subsection{ASan：越界与悬空}
+
+第一个程序分配两个 \texttt{double}，却写入下标 2 指向的第三个位置：
+
+\lstinputlisting[caption={ASan 目标：堆越界访问}]{code/ch12/failures/out_of_bounds.cpp}
+
+\begin{lstlisting}[language=bash,numbers=none]
+g++ -std=c++20 -O0 -g -fsanitize=address \
+  -fno-omit-frame-pointer code/ch12/failures/out_of_bounds.cpp \
+  -o build/ch12-out-of-bounds
+./build/ch12-out-of-bounds
+\end{lstlisting}
+
+验收类别是 \texttt{heap-buffer-overflow}。报告通常还给出访问大小、分配栈和越界地址相对缓冲区的位置。先读第一条错误及其用户代码栈帧，不要被后续影子字节表淹没。
+
+第二个程序保存动态对象地址，释放后又解引用：
+
+\lstinputlisting[caption={ASan 目标：释放后使用}]{code/ch12/failures/dangling_pointer.cpp}
+
+这里的稳定类别是 \texttt{heap-use-after-free}。ASan 给出的读取位置、释放位置和分配位置共同构成生命周期证据。修复不是“把指针设为 nullptr”这么简单：若别处还保存副本，仍可能悬空；优先让对象按值存在、由容器拥有，或用 \texttt{unique\_ptr} 表达唯一所有权。
+
+\subsection{UBSan：合法内存上的非法运算}
+
+有符号整数越过可表示上限不是保证回绕：
+
+\lstinputlisting[caption={UBSan 目标：有符号整数溢出}]{code/ch12/failures/signed_overflow.cpp}
+
+\begin{lstlisting}[language=bash,numbers=none]
+g++ -std=c++20 -O0 -g -fsanitize=undefined \
+  -fno-omit-frame-pointer code/ch12/failures/signed_overflow.cpp \
+  -o build/ch12-overflow
+./build/ch12-overflow
+\end{lstlisting}
+
+预期类别是 \texttt{signed integer overflow}。量化代码中的数量乘价格、时间单位换算和累计计数都应在运算前检查范围；把溢出后的结果再转成更宽类型已经太迟。若确实需要模运算，使用无符号类型并在接口中明确语义，不要依赖有符号回绕。
+
+ASan 和 UBSan 应在 Debug/Sanitized 配置中编译并链接相同选项；它们增加内存与时间开销，不用于性能结论。MSVC 近年支持 AddressSanitizer，但选项和覆盖范围与 GCC/Clang 不同；本章自动故障类别测试在不支持的编译器上显式跳过，而不是伪造通过。
+
+\begin{pythonbridge}
+Python 列表越界通常抛出 \texttt{IndexError}，整数自动扩展，普通对象由运行时维持生命周期；这会降低一类内存错误，却不会阻止 NumPy/C 扩展、ctypes 或原生库中的 UB。C++ sanitizer 更像“带观测器的特殊构建”，不是异常处理机制：发现错误后应修复所有权、边界或范围，并留下行为回归测试。
+\end{pythonbridge}
+
+\section{症状决定工具，工具不能代替根因}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+症状 & 首选证据 & 本章稳定类别或观察 \\
+\midrule
+业务数值错误 & 行为测试 + GDB & 801 与手算 799 首次分歧 \\
+堆越界 & ASan & heap-buffer-overflow \\
+释放后使用 & ASan & heap-use-after-free \\
+有符号溢出 & UBSan & signed integer overflow \\
+资源路径可疑 & 静态分析 & double free/use after delete \\
+只在 Release 假绿 & 显式检查 + 配置对照 & assert 被 NDEBUG 删除 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+编译错误先读第一条根因诊断，链接错误检查目标边，确定性崩溃用 sanitizer 和调用栈，数据竞争留给第 15 章的 ThreadSanitizer，性能慢留给第 14 章的 benchmark/profiler。随意把所有工具同时打开会增加噪声，也可能让 sanitizer 开销改变时序；一次实验应写清它回答的单一问题。
+
+实际故障循环可固定为六步：保存失败输入与命令；用最小公开行为稳定复现；按错误阶段和症状选择工具；记录稳定类别及首个用户栈帧；提出能解释全部证据的根因；做最小修复并增加回归测试。若修复只让症状消失却不能解释证据，诊断仍未完成。
+
+\section{输出任务：诊断而不是照抄命令}
+
+从 \path{code/ch12/failures/logic_bug.cpp} 开始，不先查看练习答案。提交一份短报告并满足以下验收：
 
 \begin{enumerate}
-  \item 为收益率比较定义绝对/相对容差，并解释数值来源。
-  \item 用 Welford 算法实现在线方差，与两遍算法比较。
-  \item 设计批量回测绑定，列出 shape、dtype、所有权和错误契约。
-  \item profiler 一个 NumPy 工作流，判断瓶颈是否真的位于 Python 循环。
+  \item 写出独立手算的预期现金以及程序实际输出、退出码。
+  \item 用 Debug 信息编译，在 \texttt{cash\_after\_buy} 入口停住，记录四个参数、\texttt{notional} 和返回值。
+  \item 解释为什么 ASan/UBSan 不应报告这个逻辑错误，为什么行为 oracle 会报告。
+  \item 指出首次产生差异的表达式，只修改根因，不修改期望值。
+  \item 增加不依赖 \texttt{assert} 的回归检查，在 Debug 与 Release 都运行。
+  \item 最终程序精确输出 \texttt{fixed-cash=799}，报告同时保留复现命令与限制。
 \end{enumerate}
 
+完整修复见附录；先提交证据再对照答案。若报告只有“运行 GDB、发现 bug、已修复”，不算完成，因为其他人无法复核你观察过什么，也无法判断修复是否碰巧掩盖症状。
+
+自测：
+
+\begin{enumerate}
+  \item 行为测试为何应断言公开事实，而不是私有成员或内部调用顺序？
+  \item 红灯为什么必须因目标行为不满足而失败，期望值又为何要独立计算？
+  \item \texttt{assert} 在 Release 中可能发生什么，为什么条件中不能有副作用？
+  \item GDB 显示参数和中间值正确、返回值错误时，根因范围如何缩小？
+  \item 编译器警告、静态分析与 sanitizer 分别需要多少运行信息？
+  \item ASan 的分配、释放、错误访问三条栈分别回答什么？
+  \item 为什么有符号溢出后再转宽类型不能修复溢出？
+  \item 一份可复核诊断报告至少应保存哪些证据？
+\end{enumerate}
+
+\begin{interviewcheck}
+被问“怎样调试 C++ 崩溃”时，不要只背 GDB 命令。先说明如何用输入、配置、退出码和公开行为复现，再按症状选择调用栈、ASan、UBSan 或静态分析，最后用根因解释证据并留下回归测试。若被问测试为何在 Release 假绿，明确指出 \texttt{NDEBUG} 可删除标准 \texttt{assert}，真实测试检查必须在所有配置执行。
+\end{interviewcheck}
+
+\enlargethispage{4\baselineskip}
 \section{本章小结}
 
-数值正确性需要表示、算法和容差共同定义。Python/C++ 互操作的核心是批量边界和生命周期，不是绑定语法；只有测得热点且接口稳定时，迁移到 C++ 才有工程价值。
+可靠诊断从可观察行为开始。行为测试提供 oracle，GDB 展开具体数据流，警告与静态分析检查未运行路径，ASan 和 UBSan 把部分未定义行为变成稳定类别。每种工具都有盲区；逻辑错误不会因 sanitizer 自动现形，Release 成功也可能只是断言消失。保存复现、选择最小工具、解释全部证据、最小修复并留下回归测试，才是一条能用于量化求职项目和真实工作的调试闭环。

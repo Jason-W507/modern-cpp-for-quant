@@ -67,5 +67,9 @@
 | cmake-targets | `add_library`、`add_executable`、目标属性与依赖图 | ch11 | ch11 | ch12, ch17 |
 | dependency-visibility | `PRIVATE`、`PUBLIC`、`INTERFACE` 与使用要求传播 | ch11 | ch11 | ch12, ch17 |
 | build-configurations | Debug、Sanitized、Release 与单/多配置生成器 | ch11 | ch11 | ch12, ch14 |
+| behavior-testing | 公开行为、独立 oracle 与红---绿---整理循环 | ch12 | ch12 | ch17, ch18 |
+| debug-symbols-gdb | `-g`、断点、参数、局部变量与调用栈 | ch12 | ch12 | ch14, ch17 |
+| sanitizers | ASan、UBSan、稳定诊断类别与工具盲区 | ch12 | ch12 | ch15, ch17 |
+| static-analysis | 警告、GCC analyzer 与静态路径证据 | ch12 | ch12 | ch15, ch17 |
 
 维护规则：新增基础语法必须增加一行；若某概念第一次出现的章节提前，必须同时移动首次教学与立即练习，不能只改后续引用。
