@@ -1,5 +1,6 @@
 #include "quant/ch15/bounded_queue.hpp"
 
+#include <exception>
 #include <future>
 #include <iostream>
 #include <stdexcept>
@@ -22,6 +23,7 @@ int main() {
     consumer_stop_signal.set_value(consumer_queue.wait_pop(stop).status);
   }};
   consumer_started.get();
+  int handshakes_completed = 1;
   consumer.request_stop();
   const bool consumer_stop = consumer_stopped.get() == PopStatus::stopped;
   consumer.join();
@@ -39,21 +41,30 @@ int main() {
     producer_stop_signal.set_value(producer_queue.wait_push(8, stop));
   }};
   producer_started.get();
+  ++handshakes_completed;
   producer.request_stop();
   const bool producer_stop =
       producer_stopped.get() == quant::ch15::PushStatus::stopped;
   producer.join();
-  const bool started_observed = true;
+  const bool started_observed = handshakes_completed == 2;
 
-  auto failed_task = std::async(std::launch::async, [] {
-    throw std::runtime_error{"negative quantity"};
-  });
+  std::promise<void> failed_worker_signal;
+  std::future<void> failed_worker_result = failed_worker_signal.get_future();
+  std::jthread failed_worker{
+      [signal = std::move(failed_worker_signal)]() mutable {
+        try {
+          throw std::runtime_error{"negative quantity"};
+        } catch (...) {
+          signal.set_exception(std::current_exception());
+        }
+      }};
   bool exception_propagated = false;
   try {
-    failed_task.get();
+    failed_worker_result.get();
   } catch (const std::runtime_error& error) {
     exception_propagated = std::string{error.what()} == "negative quantity";
   }
+  failed_worker.join();
 
   consumer_queue.close();
   producer_queue.close();

@@ -475,7 +475,9 @@ add_test(NAME ch15_data_race_is_reported_by_thread_sanitizer
           --sanitizer thread
           --diagnostic "ThreadSanitizer: data race")
 set_tests_properties(ch15_data_race_is_reported_by_thread_sanitizer
-  PROPERTIES SKIP_RETURN_CODE 77)
+  PROPERTIES
+    RUN_SERIAL TRUE
+    SKIP_RETURN_CODE 77)
 
 add_test(NAME ch08_domain_pipeline_runs
   COMMAND ${Python3_EXECUTABLE}

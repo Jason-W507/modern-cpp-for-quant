@@ -60,9 +60,11 @@ CPython 的 GIL 不等于业务对象的复合操作具有事务性，也不代�
 
 线程接口表达“在哪个线程运行”，任务接口更接近“计算一个结果”。本章显式传入 \texttt{std::launch::async}，避免实现选择 deferred 后到 \texttt{get} 才在调用线程执行。\texttt{future::get()} 等待完成、取得值，并把任务中保存的异常重新抛给调用者；每个 future 的结果只能 \texttt{get} 一次。
 
-\path{code/ch15/experiments/protocol_demo.cpp} 让异步任务抛出 \texttt{runtime\_error\{"negative quantity"\}}，调用方在 \texttt{get()} 处捕获。相反，裸线程函数若让异常逃出入口函数，进程会调用 \texttt{std::terminate}；异常不会自动穿过线程边界。
+\path{code/ch15/experiments/protocol_demo.cpp} 让裸 \texttt{jthread} 抛出 \texttt{runtime\_error}。线程入口捕获后写入 promise，调用方再于 \texttt{get()} 处捕获。若任由异常逃出入口函数，进程会终止；异常不会自动穿过线程边界。
 
-立即练习：删掉 \texttt{std::launch::async}，打印任务与主调方线程 ID；记录实现实际选择，但不要把一次观察写成标准保证。
+失败可由“在线程入口直接 \texttt{throw}”触发；诊断类别是 \texttt{terminate}，根因是跨越了线程异常边界。修复是在入口内 \texttt{catch (...)}，用 \texttt{promise::set\_exception(std::current\_exception())} 写入共享状态，再由控制线程的 future 统一处理。Python 的 \texttt{concurrent.futures.Future.result()} 同样会等待并重抛任务异常；但 C++ 的启动策略、捕获寿命与裸线程终止规则都不同，不能照搬 Python 的引用直觉。
+
+立即练习：在 \path{pipeline_compare.cpp} 的任务版移除显式 \texttt{std::launch::async}，打印任务与主调方线程 ID；仍须得到 \texttt{checksum-match=true}，并记录实现实际选择，但不要把一次观察写成标准保证。
 
 \section{mutex、条件变量与复合不变量}
 
@@ -86,6 +88,8 @@ not_full_.notify_one();
 
 \texttt{std::atomic} 适合一个独立值，例如只作观测的 processed 计数。即使 cash 和 position 各自是 atomic，也不能让读者得到同一时刻的二字段快照；更新之间仍可被观察。复合不变量继续用一把 mutex 或单所有者消息传递。若 relaxed 原子只计数，它也不发布另一对象的内容，不能替代队列同步。
 
+若把谓词检查移到锁外，可用两个生产者同时通过“尚未满”的检查来触发越界；TSan 可能报告竞态，而容量断言报告的是不变量破坏。根因是检查与修改不再原子，修复是让同一 mutex 覆盖整段事务。Python 的 \texttt{queue.Queue(maxsize=...)} 也把 mutex 与条件等待封装在队列里；C++ 模板还必须明确元素移动、对象寿命与停止优先级，解释器锁不会替普通 C++ 容器同步。
+
 立即练习：把 \texttt{closed\_} 改为 atomic 却让 deque 保持原样，画出“读到已关闭但仍未看见最后一项”的错误推理；再解释为什么统一锁更直接。
 
 \section{缓冲满就是业务协议}
@@ -100,6 +104,10 @@ queue-ok capacity=2 accepted=2 full=1 drained-sum=30 closed=true
 
 \texttt{full} 只是队列事实，调用方才决定策略。输出任务采用 drop-newest，并且每个被提供的元素必须计入 accepted 或 dropped，不能静默消失。立即练习：把容量改为 3，五个输入应得到 accepted=3、dropped=2、drained-sum=60。
 
+若监控只看到内存上升或尾延迟恶化，触发方法是让生产速率持续高于消费速率；诊断应记录队列深度、full 次数与丢弃率，根因是没有可观测的容量协议，修复才是按业务选择阻塞、拒绝或丢弃。
+
+Python \texttt{Queue.put} 的 \texttt{block} 参数与 \texttt{Full} 异常提供相似机制，但也不会替应用选择能否丢行情、如何计数和怎样恢复。
+
 \section{启动、停止与关闭协议}
 
 可靠关闭需要顺序而不是延时：先创建共享状态；启动工作线程；用 promise/future 确认入口已执行；停止时请求 stop 并唤醒等待；生产结束时 close；最后 join；主线程再销毁队列。工作线程内部捕获异常并写入 promise，控制线程在 future 边界决定记录、重试或终止。
@@ -112,6 +120,8 @@ protocol-ok started=true consumer-stop=true producer-stop=true
 \end{lstlisting}
 
 停止请求不是强制杀线程；代码必须在阻塞点或循环边界协作检查。若任务正在无法取消的外部调用中，请求也不能保证立即结束。立即练习：去掉 close 但保留 join，指出哪一类不接收 stop token 的消费者可能永久等待，并给出显式终止条件。
+
+这个永久等待可由“空队列、无 stop-aware wait、生产者退出且未 close”稳定触发；诊断类别是 join 卡住，根因是消费者没有终止事件，修复是把 stop 或 close 纳入等待谓词并负责唤醒。Python \texttt{threading.Event} 也只是协作信号，\texttt{Thread} 没有安全的强制取消；Event 本身不会自动唤醒任意队列等待，同样需要完整关闭协议。
 
 \section{失败实验：让 ThreadSanitizer 建立证据}
 
