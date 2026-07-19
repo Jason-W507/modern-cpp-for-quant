@@ -1,0 +1,1 @@
+orders=1 fills=1 symbol=AAPL quantity=25 cash=7525.00 equity=10050.00

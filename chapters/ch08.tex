@@ -1,70 +1,189 @@
-\chapter{CMake、测试与代码质量}
+\chapter{接口与值语义}
 
 \begin{introduction}
-  \item 用 target-based CMake 表达构建关系
-  \item 在公开 seam 编写不依赖内部实现的行为测试
-  \item 组织警告、sanitizer、静态分析和 CI 配置
-  \item 让研究代码具备可重复构建路径
+  \item 从订单、成交与组合失败场景推导公开接口
+  \item 用值语义表达可独立复制的领域事实
+  \item 用组合装配默认路径，并识别运行时多态的适用边界
+  \item 在修改状态前维护数量、价格、现金和持仓不变量
 \end{introduction}
 
-\chaptermeta{能使用 Python 测试框架和虚拟环境，理解公开接口。}{CMake target 类似可复现环境声明，但还决定编译、链接与传递依赖；CTest 必须在 Release 下仍执行真实断言。}{绿色但无断言是测试基础设施故障；检查测试发现数、失败敏感性、编译配置和干净构建。}
+\chaptermeta{已完成第 3--7 章，会使用类、构造函数、引用、异常、容器和 ranges。}{Python 对象通常通过名字共享引用；C++ 对象默认按值拥有自己的状态，复制会得到独立对象。Python 的鸭子类型可以直接替换策略，C++ 需要具体类型、模板约束或虚函数接口。}{若组合结果错误，先检查无效值是否在构造边界被拒绝，再检查“无订单/无成交”是否被当成正常缺席，最后检查组合更新是否在验证完成前修改了状态。}
 
-\section{构建系统描述目标}
+本章把脚本式分析流程演化为四类组件：行情事件是输入事实，策略产生订单，交易所把可成交订单变为成交，组合只接受合法成交并给出快照。固定场景从 10000 现金开始，在 99 元买入 25 股，以 101 元估值，必须精确输出：
 
-现代 CMake 的中心是目标。每个可执行文件或库声明自己的源文件、头文件搜索路径、编译特性和依赖；\texttt{PRIVATE}、\texttt{PUBLIC} 与 \texttt{INTERFACE} 控制需求是否传播。避免全局加入所有 include 路径和编译选项，这会让无关目标互相污染。
-
-\begin{lstlisting}[language=bash,numbers=none]
-cmake -S . -B build-mingw -G "MinGW Makefiles" \
-      -DCMAKE_BUILD_TYPE=Release
-cmake --build build-mingw
-ctest --test-dir build-mingw --output-on-failure
+\begin{lstlisting}
+orders=1 fills=1 symbol=AAPL quantity=25 cash=7525.00 equity=10050.00
 \end{lstlisting}
 
-Linux 上推荐 Ninja 或 Unix Makefiles，编译器由工具链文件或环境选择。团队应保存可重复命令、依赖版本和至少一种受支持配置，不要求每位开发者手工点击 IDE 才能构建。
+完成判据不只是“能打印”。零数量、非有限价格、超现金买入和超持仓卖出都必须在越过领域边界前失败；策略决策与成交/组合两个公开 seam 由独立行为测试保护；\path{code/ch08} 能从空构建目录独立配置。
 
-\section{测试公开行为}
+\section{先写用例，再决定类}
 
-本项目预先确认四个 seam：行情输入、策略决策、成交与组合、整段回测。测试只调用公开接口，不访问私有持仓表，也不验证某函数内部调用次数。这样数据结构和算法可以重构，而业务行为仍受保护。
+\subsection{场景：一条行情怎样变成持仓}
 
-TDD 循环是一条竖直切片：写一个失败行为，确认失败原因正确，只实现足够代码让它通过，再进入下一行为。一次写几十个基于想象的测试，常会锁定错误接口。
-
-\section{独立预期值}
-
-测试预期应来自手算例子、规范或可信外部数据，而不是把实现公式复制进测试。回测例子用三笔已知价格手算：以 99 买入 25 股，从 10000 现金出发，末价 103 时权益为
+先写成功路径的业务句子，而不是先列类名：当 AAPL 价格不高于 100 且组合为空仓时，策略申请买入 25 股；只有订单代码与行情代码相同且行情数量充足时才成交；组合扣除 \(25\times99=2475\) 现金并增加 25 股。第二条 101 元行情到达时，已有持仓使策略不再下单，最终权益为
 \[
-  10000 - 25\times 99 + 25\times 103 = 10100,
+  7525 + 25\times101 = 10050.
 \]
-总收益为 \(1\%\)。这个字面预期可以与实现真正分歧。
 
-\section{测试也会失效}
+再写失败句子：数量不能为零或负数；价格必须为正且有限；AAPL 订单不能由 MSFT 行情成交；持有 15 股时不能卖 20 股；现金 100 元时不能买入名义金额 110 元的股票。这些句子决定了组件的职责边界。
 
-Release 配置通常定义 \texttt{NDEBUG}，会移除标准 \texttt{assert}。本项目最初的 seam 测试曾因此“绿色但未断言”，编译器的 unused 警告揭示了问题。测试框架或自定义检查必须在所有测试配置中保持有效。
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+事实或动作 & 拥有的知识 & 不应承担的职责 \\
+\midrule
+\texttt{MarketEvent} & 代码、价格、可用数量 & 决定是否交易 \\
+\texttt{Order} & 代码、方向、申请数量 & 假装已经成交 \\
+\texttt{Fill} & 代码、方向、数量、成交价 & 自己修改组合 \\
+\texttt{Portfolio} & 现金和本次运行的单代码持仓 & 猜测策略意图 \\
+\texttt{Strategy} & 从事件与快照作决策 & 直接写组合内部表 \\
+\bottomrule
+\end{tabular}
+\end{center}
 
-\section{质量工具分工}
+这不是 getter/setter 清单。公开操作来自用例：策略需要读取事件；交易所需要比较订单与事件；组合需要应用成交和产生快照。没有用例要求调用者任意改写成交价，因此没有 \texttt{set\_price}。
 
-编译器警告发现可疑转换和未使用代码；sanitizer 观察执行路径上的内存与 UB；静态分析覆盖未运行路径和代码模式；格式化器减少无意义差异；代码审查检查契约、命名和范围。它们互补，任何一个绿色都不能证明程序无错。
+\begin{pythonbridge}
+Python 的 \texttt{@dataclass} 很适合快速表达这些记录，但默认字段仍可被任意改写，也不会从类型声明自动得到正价格约束。C++ 同样不会自动验证业务规则；区别在于我们可以让构造函数成为唯一建成对象的入口，并把字段保持为私有。Python 也能用只读 property 或验证库实现类似契约，关键是边界而不是语言优越性。
+\end{pythonbridge}
 
-建议 CI 矩阵至少包含：GCC/Clang Debug + 测试，sanitizer 配置，Release + 基准烟雾测试。性能回归阈值要考虑共享机器噪声，严肃延迟验证应在固定硬件和受控负载上进行。
+失败诊断：如果 \texttt{Portfolio} 同时读取 CSV、选择策略、撮合并打印报告，那么任何失败都指向这个大类，测试也必须搭建整条流水线。根因是职责由“程序需要哪些名词”而非具体行为划分。恢复方法是先写成功/失败句子，再把每条规则放到拥有足够信息的最小组件。
 
-\section{端到端样例}
+立即练习：为“订单数量大于行情可用数量时不成交”补一句用例，并指出规则属于 \texttt{SimulatedExchange} 而不是 \texttt{Portfolio}。原因是撮合时已经同时拥有订单与行情，组合不应重新推断市场流动性。
 
-\lstinputlisting[caption={从 CSV 到回测摘要的命令行程序}]{project/src/main.cpp}
+\section{值对象：构造后始终有效}
 
-这个程序在进程边界处理文件打开和解析错误，核心引擎只接收已验证事件。它很小，却贯通输入、策略、撮合、组合与报告，是比大量孤立类更有价值的 tracer bullet。
+\subsection{场景：不让非法订单流入后续组件}
 
-\begin{interviewcheck}
-为什么 target-based CMake 优于全局 flags？什么是测试 seam？为什么复制实现公式会产生恒真测试？sanitizer 绿色可以证明什么、不能证明什么？
-\end{interviewcheck}
+\texttt{Order} 和 \texttt{Fill} 是值对象：它们表示事实，拥有自己的字符串和数值，复制后两份对象互不依赖。核心声明位于：
 
-\section{练习}
+\lstinputlisting[caption={带构造不变量的领域值对象}]{code/ch08/include/quant/ch08/domain.hpp}
+
+构造函数先接收参数，再初始化私有成员，最后验证。空代码、非正数量、非正或非有限价格都会被拒绝，并抛出 \texttt{invalid\_\allowbreak argument}。因此一旦调用者持有 \texttt{Fill}，组合无需在每次读取时再次猜测价格是否为 NaN。
+
+\texttt{std::isfinite} 很重要：对 NaN，\texttt{price <= 0.0} 为假，只检查大小会让 NaN 漏过。条件必须写成“不是有限数，或者不为正”。无效外部 CSV 如何保留行号和字段上下文留到第 10 章；本章只建立核心对象不能代表非法领域事实。
+
+类没有手写析构、复制构造或复制赋值。\texttt{string} 自己管理资源，编译器生成的成员逐一复制正是需要的语义，这称为 rule of zero。复制一笔订单不会创建共享可变字段；把副本交给交易所后，原订单仍是独立值。
+
+\texttt{PortfolioSnapshot} 则是只读观察结果的简单 \texttt{struct}。它不负责被重新送入组合更新，因此公开数据记录比一组机械 getter 更直接。选择 \texttt{class} 还是 \texttt{struct} 不是“复杂与简单”的区别，而是是否需要用访问控制维护构造与修改规则。
+
+\begin{pythonbridge}
+Python 的 \texttt{b = a} 通常让两个名字指向同一对象；要得到独立对象需显式复制。C++ 的 \texttt{Order b = a;} 默认复制成员，\texttt{a} 与 \texttt{b} 是两个对象。反过来，\texttt{const Order\&} 才是借用同一个对象且不复制。判断接口成本时要先分清按值拥有、按引用借用和移动所有权。
+\end{pythonbridge}
+
+失败诊断：若提供 \texttt{set\_quantity(-5)}，对象可能先有效、后失效，下游每层都被迫防御。根因是修改入口破坏了构造契约。恢复方案通常是创建一个新的合法值，或提供一个名称体现完整业务动作的方法，而不是开放任意字段写入。
+
+立即练习：在 \path{code/ch08/tests/test_invalid_values.cpp} 中把零数量改为负数，把 NaN 改为正无穷。两种构造仍应抛出 \texttt{invalid\_argument}，测试最终精确输出 \texttt{domain invariants ok}。
+
+\section{正常缺席不是非法对象}
+
+\subsection{场景：策略可以合理地不下单}
+
+高于阈值或已有持仓时，“没有订单”是正常业务结果，不应伪造数量为零的订单，也不应抛异常。策略返回 \texttt{std::optional<Order>}：有值表示一笔完整合法订单，无值表示本次不行动。
+
+\lstinputlisting[caption={策略接口、optional 与阈值实现}]{code/ch08/include/quant/ch08/strategy.hpp}
+
+\texttt{optional<T>} 要么包含一个 \texttt{T}，要么为空。\texttt{has\_value()} 查询状态；确认有值后，可用 \texttt{*order} 或 \texttt{order->\allowbreak quantity()} 访问其中对象。\texttt{std::nullopt} 明确构造空状态。它不解释“为何没有”，因此适合这里单一而正常的缺席。需要错误原因、外部故障或诊断上下文时，第 10 章会比较其他机制。
+
+\texttt{ThresholdStrategy} 的构造参数同样有不变量。若把非法下单数量留到 \texttt{on\_event} 才判断，错误配置可能潜伏到某条特定行情才出现。配置对象应在建成时就有效。
+
+策略行为测试只从公开 seam 观察结果：低价空仓得到 AAPL 买单，高价与已有持仓都得到空 optional。测试不检查阈值字段叫什么，也不要求内部执行几次比较，所以成员布局可以重构而不改测试。
+
+\begin{pythonbridge}
+Python 常用 \texttt{None} 表示没有订单；\texttt{optional<Order>} 把这条可能性写进静态类型，调用者不能把结果直接当 \texttt{Order} 使用。它仍不等于 Python 的异常：无值是预期分支，非法策略配置才在构造边界失败。
+\end{pythonbridge}
+
+失败诊断：用 \texttt{Order\{"AAPL", buy, 0\}} 表示“不下单”会与“非法订单”混在一起，而且该对象根本无法通过本章构造函数。恢复方案是让值对象只表达有效事实，用 optional 表达事实可能缺席。
+
+立即练习：把阈值改为 98。测试中的 99 元事件应不再产生订单；先观察策略 seam 以“cheap event should create an order”失败，再同步修改用例或恢复阈值。失败消息证明测试保护的是行为而非内部实现。
+
+\section{组合是默认装配方式}
+
+\subsection{场景：策略、交易所和组合协作但互不拥有对方内部状态}
+
+\texttt{SimulatedExchange} 接收订单和行情，代码不匹配或流动性不足时返回空 optional；否则创建合法成交。\texttt{Portfolio} 拥有现金和仓位表，只通过 \texttt{apply} 修改状态：
+
+\lstinputlisting[caption={撮合与组合不变量}]{code/ch08/include/quant/ch08/execution.hpp}
+
+\texttt{apply} 先读取当前仓位并计算名义金额，然后完成所有可能失败的检查。只有验证通过才写 \texttt{positions\_} 和 \texttt{cash\_}。因此超卖或现金不足时，异常离开函数，组合的可观察快照保持不变。本章只验证这个具体性质；异常安全术语和更复杂的回滚策略留到第 10 章。
+
+主程序沿用第 7 章“文件边界只负责读取，核心接收已验证对象”的数据路径：\path{event_reader.cpp} 把本快照自带的 \path{events.csv} 转为事件值；随后按值拥有具体 \texttt{ThresholdStrategy}、\texttt{SimulatedExchange} 和 \texttt{Portfolio}。每个对象的生命都覆盖事件循环，所有权不需要智能指针：
+
+\lstinputlisting[caption={由具体组件组合成事件管道}]{code/ch08/src/main.cpp}
+
+这就是组合：较大行为由现成对象协作得到，而不是通过继承把交易所、策略和组合塞进同一父类。默认先选具体成员和值成员，因为依赖、生命和调用成本在代码中直接可见。只有真实需求要求运行时替换一种能力时，才引入动态接口。
+
+成交/组合 seam 测试手算两笔成交。99 元买 25 股后现金 7525；101 元卖 10 股后现金 8535、持仓 15、权益 10050。它还验证错误代码与流动性不足都不成交、超卖与第二个代码都在修改前被拒绝。策略 seam 另外拒绝事件与快照代码不一致。测试只调用 \texttt{match}、\texttt{apply} 与 \texttt{snapshot}，不读取私有状态。本章快照明确限定一次运行一个代码；多资产总权益需要一组完整估值价格，留到第 17 章统一设计，不能只拿最后一个代码的价格冒充总权益。
+
+\begin{pythonbridge}
+Python 可把策略对象作为参数传入循环，只要它有所需方法；对象生命由引用计数或垃圾回收协助管理。C++ 的具体局部对象让所有权和销毁点完全可见，引用参数只借用它们。不要为了模仿 Python 的可替换性，提前把每个组件都放进 \texttt{shared\_ptr}。
+\end{pythonbridge}
+
+失败诊断：若 \texttt{apply} 先扣现金、随后才发现超卖，异常会留下半更新状态。根因不是异常本身，而是把修改放在完整验证之前。恢复方法是先算候选结果并验证，再一次提交相关字段。
+
+立即练习：运行 \path{code/ch08/exercises/sell_down_solution.cpp}，解释为何买入 25、卖出 10 后精确输出 \texttt{quantity=15 cash=8535.00 equity=10050.00}。再把卖出数量改为 26，程序应在产生输出前以状态不一致失败。
+
+\section{什么时候才需要运行时多态}
+
+\subsection{场景：启动后按配置选择一种策略}
+
+若可执行文件启动时读取配置，在阈值策略和持有策略中选择一个，而事件循环不应写两套分支，就需要通过同一运行时接口调用不同具体类型。\texttt{Strategy} 使用虚函数表达这种契约：
+
+以下只摘出两个成员声明，省略了所属类、头文件和命名空间上下文；完整可编译定义就是前文引入的 \path{strategy.hpp}：
+
+\begin{lstlisting}[language=C++]
+virtual std::optional<Order> on_event(
+    const MarketEvent&, const PortfolioSnapshot&) const = 0;
+
+std::optional<Order> on_event(
+    const MarketEvent&, const PortfolioSnapshot&) const override;
+\end{lstlisting}
+
+\texttt{= 0} 使成员成为纯虚函数，基类不能单独实例化；通过 \texttt{Strategy\&} 或指针调用时，运行期选择实际覆盖函数。基类析构函数为虚函数，保证未来通过基类指针拥有派生对象时销毁完整对象。\texttt{override} 要求签名确实覆盖基类函数，\texttt{final} 禁止继续派生。
+
+下面的完整程序让同一个 \texttt{creates\_order(const Strategy\&)} 分别接收阈值策略和持有策略，精确输出 \texttt{threshold=1 hold=0}。这里引用不拥有策略；调用者必须保证实际对象仍存活。
+
+\lstinputlisting[caption={通过基类引用运行时替换策略}]{code/ch08/runtime_strategy.cpp}
+
+动态分派有成本：对象通常携带虚表关联信息，调用可能是间接调用，接口演化还影响 ABI；更重要的是所有实现都必须服从同一个运行时契约。若类型在编译时已知，直接组合最简单。若需要对许多类型复用算法且愿意在编译期实例化，第 9 章再引入模板与 concepts；不要把“可替换”自动等同于“必须继承”。
+
+故意失败的 \path{code/ch08/failures/wrong_override.cpp} 把基类的 \texttt{const double\&} 参数误写为 \texttt{double\&}，却标记 \texttt{override}。编译器必须报告该函数没有覆盖基类成员。去掉 \texttt{override} 可能让错误潜伏为新重载，并使派生类仍是抽象类；正确修复是让签名完全一致。
+
+立即练习：在 \texttt{HoldStrategy::on\_event} 参数末尾删除成员函数的 \texttt{const}，保留 \texttt{override}。预测并验证编译失败；恢复 \texttt{const} 后输出重新变为 \texttt{threshold=1 hold=0}。
+
+\section{独立快照与验收命令}
+
+在 WSL 中从项目根目录执行：
+
+\begin{lstlisting}[language=bash]
+cmake -S code/ch08 -B build/ch08
+cmake --build build/ch08 -j
+ctest --test-dir build/ch08 --output-on-failure
+./build/ch08/ch08_domain_pipeline code/ch08/data/events.csv
+\end{lstlisting}
+
+最后一行必须与章首输出逐字一致。根项目还运行 8 项 ch08 检查：策略 seam、成交/组合 seam、主流水线、运行时替换、非法值、核心练习、错误覆盖诊断以及从空目录配置的快照。Windows 可选择 Visual Studio 生成器；多配置生成器的可执行文件通常位于 \texttt{Debug} 或 \texttt{Release} 子目录，接口与值语义规则不变。
+
+\section{自测、编码任务与面试检查点}
 
 \begin{enumerate}
-  \item 新增 Debug + ASan/UBSan 配置并运行全部测试。
-  \item 故意改变撮合价格，确认端到端测试以有意义消息失败。
-  \item 将一个测试改写为只验证公开结果，不检查内部容器。
-  \item 设计一份 CI 矩阵，说明每个 job 捕获的失败类别和成本。
+  \item 为什么先写成功和失败用例，比先列 getter/setter 更能确定接口？
+  \item \texttt{Order} 与 \texttt{Fill} 的哪些不变量由构造函数维护？为什么只检查 \texttt{price <= 0} 不够？
+  \item 值语义复制与 \texttt{const T\&} 借用在所有权和成本上有何不同？
+  \item 为什么“不下单”应是空 optional，而不是数量为零的 Order？
+  \item 撮合失败和非法成交对象分别属于正常缺席还是契约错误？
+  \item \texttt{Portfolio::apply} 为什么先验证再修改？哪项测试观察了失败后的状态？
+  \item 组合、具体值成员与运行时多态分别适合什么需求？
+  \item \texttt{virtual}、\texttt{=0}、\texttt{override}、\texttt{final} 各提供什么约束？
 \end{enumerate}
+
+编码任务：从 10000 现金开始，应用 99 元买入 25 股和 101 元卖出 10 股两笔成交，再以 101 元估值。可运行答案位于 \path{code/ch08/exercises/sell_down_solution.cpp}；输出必须精确为 \texttt{quantity=15 cash=8535.00 equity=10050.00}。扩展题是尝试应用一笔 MSFT 成交，验证程序在任何现金或数量改变前以“单次运行只支持一个代码”的状态错误拒绝它。
+
+\begin{interviewcheck}
+被问“什么时候用继承”时，先说默认用值语义和组合表达明确所有权；只有调用方必须在运行时通过同一契约替换实现时，才考虑抽象接口。随后说明虚析构、override、对象生命周期和间接调用成本，并指出编译期已知类型将在第 9 章用模板方案比较。
+\end{interviewcheck}
 
 \section{本章小结}
 
-CMake 让构建关系显式，测试在公开 seam 保护行为，多类工具提供互补证据。可靠工程的关键不是工具数量，而是每个检查都真实执行、失败可诊断、从干净环境可重复。
+接口来自用例和失败边界，而不是成员字段清单。值对象在构造后保持有效，optional 表达正常缺席，组合让策略、撮合与组合各守职责。组合状态在验证完成后才修改；运行时多态只服务于真实的运行时替换需求。到此，行情分析器已经演化为可独立构建、行为受测且不变量明确的领域组件快照。

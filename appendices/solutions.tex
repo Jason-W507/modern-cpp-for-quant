@@ -138,11 +138,19 @@ CSV 读取层保留表头、列数、数字字段和构造异常的行号上下�
 
 \section{第 8 章}
 \begin{enumerate}
-  \item 单独 build 目录加入 sanitizer flags；全部测试绿色且无 sanitizer 报告才通过。
-  \item 端到端权益应偏离 10100，并以“最终权益”行为消息失败。
-  \item 只调用 run 并检查结果，不读取 Portfolio 的内部 map。
-  \item GCC/Clang Debug、sanitizer、Release smoke 各覆盖不同故障；固定硬件另跑性能。
+  \item 接口应从“低价空仓下单、代码一致且流动性足够才成交、组合应用成交”等用例产生；没有用例支持任意改价，因此不提供 setter。
+  \item Order 拥有自己的 string 和数量，复制得到独立对象；\texttt{const Order\&} 只借用调用者对象，不复制也不延长其生命。
+  \item 数量必须为正；行情和成交价格还必须为正且有限，因为 NaN 与零比较可能绕过仅有的大小检查。
+  \item 不下单是正常缺席，使用空 optional；数量为零是非法订单，不能让一个哨兵对象同时表达两种语义。
+  \item 代码不匹配或流动性不足是本次无法撮合，返回空 optional；构造非法 Fill 则违反领域前置条件。
+  \item apply 在写现金和仓位前完成超卖与现金检查；测试比较拒绝前后公开 snapshot，而不读取私有 map。
+  \item 默认用值成员和组合；只有启动后必须通过同一接口选择实现时使用虚函数；编译期泛型留到第 9 章。
+  \item \texttt{virtual} 开启动态分派，\texttt{=0} 声明纯虚接口，\texttt{override} 让编译器核对签名，\texttt{final} 禁止继续派生或覆盖。
 \end{enumerate}
+
+99 元买 25 股后现金为 7525；101 元卖 10 股后现金为 8535、持仓为 15，以 101 元估值的权益为 10050。完整答案如下，独立构建入口为 \path{code/ch08/CMakeLists.txt}。
+
+\lstinputlisting[caption={第 8 章卖出部分持仓练习答案}]{code/ch08/exercises/sell_down_solution.cpp}
 
 \section{第 9 章}
 \begin{enumerate}

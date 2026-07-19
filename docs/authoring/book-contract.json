@@ -59,7 +59,9 @@
     "exception-basics",
     "associative-containers",
     "ranges-views",
-    "numeric-reduction"
+    "numeric-reduction",
+    "optional-value",
+    "runtime-polymorphism"
   ],
   "parts": [
     {

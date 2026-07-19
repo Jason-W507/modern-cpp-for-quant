@@ -38,7 +38,12 @@
     {"tex": "chapters/ch07.tex", "source": "code/ch07/src/pipeline.cpp", "target": "ch07_ranges_pipeline"},
     {"tex": "chapters/ch07.tex", "source": "code/ch07/reduction_order.cpp", "target": "ch07_reduction_order"},
     {"tex": "appendices/solutions.tex", "source": "code/ch07/exercises/top_prices_solution.cpp", "target": "ch07_top_prices_solution"},
-    {"tex": "chapters/ch08.tex", "source": "project/src/main.cpp", "target": "quant_backtest"},
+    {"tex": "chapters/ch08.tex", "source": "code/ch08/include/quant/ch08/domain.hpp", "target": "ch08_domain_pipeline"},
+    {"tex": "chapters/ch08.tex", "source": "code/ch08/include/quant/ch08/strategy.hpp", "target": "ch08_domain_pipeline"},
+    {"tex": "chapters/ch08.tex", "source": "code/ch08/include/quant/ch08/execution.hpp", "target": "ch08_domain_pipeline"},
+    {"tex": "chapters/ch08.tex", "source": "code/ch08/src/main.cpp", "target": "ch08_domain_pipeline"},
+    {"tex": "chapters/ch08.tex", "source": "code/ch08/runtime_strategy.cpp", "target": "ch08_runtime_strategy"},
+    {"tex": "appendices/solutions.tex", "source": "code/ch08/exercises/sell_down_solution.cpp", "target": "ch08_sell_down_solution"},
     {"tex": "chapters/ch09.tex", "source": "project/benchmarks/layout_benchmark.cpp", "target": "layout_benchmark"},
     {"tex": "chapters/ch11.tex", "source": "code/ch11/parallel_sum.cpp", "target": "ch11_parallel_sum"},
     {"tex": "chapters/ch12.tex", "source": "code/ch12/numerical_stability.cpp", "target": "ch12_numerical_stability"},
@@ -105,6 +110,11 @@
       "source": "code/ch07/failures/dangling_view.cpp",
       "stage": "runtime",
       "diagnostic_category": "AddressSanitizer reports invalid stack access through a dangling view"
+    },
+    {
+      "source": "code/ch08/failures/wrong_override.cpp",
+      "stage": "compile",
+      "diagnostic_category": "compiler reports that a mismatched member marked override does not override"
     }
   ],
   "chapter_snapshots": [
@@ -127,6 +137,10 @@
     {
       "path": "code/ch07",
       "entry_target": "ch07_ranges_pipeline"
+    },
+    {
+      "path": "code/ch08",
+      "entry_target": "ch08_domain_pipeline"
     }
   ]
 }

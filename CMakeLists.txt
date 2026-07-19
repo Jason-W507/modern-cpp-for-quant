@@ -79,6 +79,79 @@ target_include_directories(ch07_top_prices_solution PRIVATE code/ch07/include)
 quant_target(ch07_container_choices code/ch07/container_choices.cpp)
 target_include_directories(ch07_container_choices PRIVATE code/ch07/include)
 
+quant_target(ch08_test_strategy code/ch08/tests/test_strategy.cpp)
+target_sources(ch08_test_strategy PRIVATE
+  code/ch08/src/domain.cpp code/ch08/tests/test_support.cpp)
+target_include_directories(ch08_test_strategy PRIVATE
+  code/ch08/include code/ch08/tests)
+add_test(NAME ch08_strategy_decision_seam COMMAND ch08_test_strategy)
+
+quant_target(ch08_test_execution_portfolio
+  code/ch08/tests/test_execution_portfolio.cpp)
+target_sources(ch08_test_execution_portfolio PRIVATE
+  code/ch08/src/domain.cpp code/ch08/tests/test_support.cpp)
+target_include_directories(ch08_test_execution_portfolio PRIVATE
+  code/ch08/include code/ch08/tests)
+add_test(NAME ch08_execution_portfolio_seam
+  COMMAND ch08_test_execution_portfolio)
+
+quant_target(ch08_domain_pipeline code/ch08/src/main.cpp)
+target_sources(ch08_domain_pipeline PRIVATE
+  code/ch08/src/domain.cpp code/ch08/src/event_reader.cpp)
+target_include_directories(ch08_domain_pipeline PRIVATE code/ch08/include)
+quant_target(ch08_runtime_strategy code/ch08/runtime_strategy.cpp)
+target_sources(ch08_runtime_strategy PRIVATE code/ch08/src/domain.cpp)
+target_include_directories(ch08_runtime_strategy PRIVATE code/ch08/include)
+quant_target(ch08_test_invalid_values code/ch08/tests/test_invalid_values.cpp)
+target_sources(ch08_test_invalid_values PRIVATE
+  code/ch08/src/domain.cpp code/ch08/tests/test_support.cpp)
+target_include_directories(ch08_test_invalid_values PRIVATE
+  code/ch08/include code/ch08/tests)
+quant_target(ch08_sell_down_solution
+  code/ch08/exercises/sell_down_solution.cpp)
+target_sources(ch08_sell_down_solution PRIVATE code/ch08/src/domain.cpp)
+target_include_directories(ch08_sell_down_solution PRIVATE code/ch08/include)
+
+add_test(NAME ch08_domain_pipeline_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch08/expected/domain_pipeline.txt
+          -- $<TARGET_FILE:ch08_domain_pipeline>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch08/data/events.csv)
+add_test(NAME ch08_runtime_strategy_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch08/expected/runtime_strategy.txt
+          -- $<TARGET_FILE:ch08_runtime_strategy>)
+add_test(NAME ch08_invalid_values_are_rejected
+  COMMAND ch08_test_invalid_values)
+set_tests_properties(ch08_invalid_values_are_rejected PROPERTIES
+  PASS_REGULAR_EXPRESSION "domain invariants ok")
+add_test(NAME ch08_sell_down_solution_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch08/expected/sell_down_solution.txt
+          -- $<TARGET_FILE:ch08_sell_down_solution>)
+add_test(NAME ch08_wrong_override_fails_during_compilation
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_compile_failure.py
+          --compiler ${CMAKE_CXX_COMPILER}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch08/failures/wrong_override.cpp
+          --output ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch08_wrong_override.obj
+          --diagnostic "does not override|marked.*override|override.*but does not")
+add_test(NAME ch08_clean_domain_pipeline_configures_builds_and_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
+          --cmake ${CMAKE_COMMAND}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch08
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch08/expected/domain_pipeline.txt
+          --target ch08_domain_pipeline
+          --argument ${CMAKE_CURRENT_SOURCE_DIR}/code/ch08/data/events.csv
+          --generator "${CMAKE_GENERATOR}"
+          --compiler ${CMAKE_CXX_COMPILER}
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests
+          --config $<CONFIG>)
+
 quant_project_target(test_strategy project/tests/test_strategy.cpp)
 add_test(NAME strategy_decision_seam COMMAND test_strategy)
 
