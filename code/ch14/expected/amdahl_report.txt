@@ -1,0 +1,1 @@
+amdahl-ok total-ms=100.00 hotspot-ms=60.00 fraction=0.60 local-speedup=4.00 predicted-total-ms=55.00 overall-speedup=1.82 ceiling-speedup=2.50

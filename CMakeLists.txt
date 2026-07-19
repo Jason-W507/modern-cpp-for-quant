@@ -429,6 +429,29 @@ add_test(NAME ch13_arena_dangling_is_reported_by_address_sanitizer
 set_tests_properties(ch13_arena_dangling_is_reported_by_address_sanitizer
   PROPERTIES SKIP_RETURN_CODE 77)
 
+add_test(NAME ch14_clean_measurement_lab_configures_builds_and_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
+          --cmake ${CMAKE_COMMAND}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch14
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch14/expected/statistics_report.txt
+          --target ch14_statistics_report
+          --generator "${CMAKE_GENERATOR}"
+          --compiler ${CMAKE_CXX_COMPILER}
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests/ch14
+          --config $<CONFIG>
+          --build-all
+          --ctest ${CMAKE_CTEST_COMMAND}
+          --run-ctest)
+add_test(NAME ch14_checksum_mismatch_invalidates_benchmark
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_runtime_failure.py
+          --compiler ${CMAKE_CXX_COMPILER}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch14/failures/checksum_mismatch.cpp
+          --work-dir ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch14-checksum
+          --expected-exit 2
+          --diagnostic "benchmark-invalid checksum-mismatch")
+
 add_test(NAME ch08_domain_pipeline_runs
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
@@ -491,6 +514,7 @@ quant_target(layout_benchmark project/benchmarks/layout_benchmark.cpp)
 add_subdirectory(code/ch11 ch11-snapshot)
 add_subdirectory(code/ch12 ch12-snapshot)
 add_subdirectory(code/ch13 ch13-snapshot)
+add_subdirectory(code/ch14 ch14-snapshot)
 add_test(NAME layout_benchmark_smoke COMMAND layout_benchmark)
 set_tests_properties(layout_benchmark_smoke PROPERTIES
   PASS_REGULAR_EXPRESSION "checksum-match=true")

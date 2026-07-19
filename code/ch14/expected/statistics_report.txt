@@ -1,0 +1,3 @@
+stats-ok samples-per-run=8 serial-model=true
+stable median-us=10.00 iqr-us=0.50 p99-us=12 throughput-ops-per-s=97560.98
+bursty median-us=10.00 iqr-us=37.50 p99-us=100 throughput-ops-per-s=34782.61

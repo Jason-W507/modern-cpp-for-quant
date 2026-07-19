@@ -1,81 +1,183 @@
-\chapter{量化 C++ 求职与入职}
+\chapter{Benchmark 与 profiling}
 
 \begin{introduction}
-  \item 把语言知识组织为代码、性能和系统设计能力
-  \item 用证据描述项目，不堆砌技术名词
-  \item 建立面试复盘与入职学习循环
-  \item 识别不同量化岗位对 C++ 深度的差异
+  \item 把“更快”改写成可反驳假设和正确性受控的实验
+  \item 用预热、重复样本、交替顺序和结果消费减少常见测量偏差
+  \item 区分中位数、IQR、吞吐与尾延迟回答的问题
+  \item 用 profiler 和 Amdahl 定律选择端到端优化优先级
 \end{introduction}
 
-\chaptermeta{完成贯穿项目并能解释其测试与限制。}{Python 经历是优势，但面试回答必须补充 C++ 的生命周期、成本模型和生产边界。}{准备材料若只有形容词没有命令、测试或数字，应删除形容词并补可复现证据。}
+\chaptermeta{已完成第 12、13 章，能够构建 Release 目标并解释 checksum 与布局实验。}{Python 的 \texttt{timeit}、\texttt{cProfile} 和 NumPy 经验有帮助，但 C++ 优化器、编译配置和原生 profiler 改变了证据边界。}{先写正确性 oracle 与环境，再收集原始样本；若结果不同或工作负载不代表目标系统，全部性能结论作废。}
 
-\section{先识别岗位}
+\section{本章输出：一份可被推翻的性能报告}
 
-Quant Researcher 更重模型、实验和数据，但需要理解原生库与性能边界；Research Engineer 连接研究与生产，重视可复现数据管道、数值正确性和 Python/C++ 接口；Quant Developer 构建回测、执行、风险和基础设施；低延迟工程师进一步要求操作系统、网络、硬件计数器和并发内存模型。
+“SoA 比 AoS 快”不是实验假设，因为它没有限定程序、输入、机器、编译器、配置和指标。可检验版本是：在本章固定的 100 万行热字段扫描、GCC 13.3、x86-64、Release 配置下，SoA 的单进程批处理耗时中位数低于 AoS；两者必须先得到同一手算 checksum。
 
-不要用同一份准备清单覆盖所有岗位。阅读职位描述时，把要求映射为语言、算法、系统、金融领域和协作五列，再为每项准备“做过什么、证据是什么、还不知道什么”。
+从项目根目录构建独立实验：
 
-\section{语言面试主线}
+\begin{lstlisting}[language=bash,numbers=none]
+cmake -S code/ch14 -B build/ch14-release -DCMAKE_BUILD_TYPE=Release
+cmake --build build/ch14-release -j
+ctest --test-dir build/ch14-release --output-on-failure
+./build/ch14-release/ch14_layout_benchmark
+\end{lstlisting}
 
-高频问题不是孤立关键字，而是成本与契约：
+合格报告保存六项：假设；完整命令；编译器、架构、配置与数据规模；未经挑选的原始样本；正确性和统计摘要；结论与限制。先写判负条件，例如 checksum 不同、机器发生明显负载干扰或样本不足；不能看完数字后再改变成功标准。
 
-\begin{itemize}
-  \item 对象生命周期、RAII、复制/移动与悬空；
-  \item 值语义、引用、\texttt{const} 和智能指针选择；
-  \item 容器布局、迭代器失效和复杂度；
-  \item 模板、concepts、虚分派与 ABI；
-  \item 异常安全、错误边界和 UB；
-  \item 缓存、分配、benchmark 与 profiler；
-  \item 数据竞争、锁、原子、队列和停止协议。
-\end{itemize}
+\section{微基准协议：先保护语义，再开始计时}
 
-回答采用“定义—何时使用—代价—失败例子”。例如 shared pointer：引用计数共享生命周期；用于没有自然单一所有者的对象；成本包含控制块和原子计数；环会泄漏且不提供对象内部线程安全。
+\path{code/ch14/experiments/layout_benchmark.cpp} 固定 100 万行，使每 200 行的手算名义金额为 920716，总 oracle 为 4603580000。程序在计时前分别预热 3 次，收集 21 对样本；偶数轮先测 AoS，奇数轮先测 SoA，以减少固定“第一个/第二个”位置偏差。下面只是核心片段，容器构造、计时函数、统计和输出见完整源码：
 
-\section{代码题}
+\begin{lstlisting}[language=C++,numbers=none]
+// 省略容器构造与统计输出；else 分支把顺序反转。
+for (int sample = 0; sample < samples; ++sample) {
+  if (sample % 2 == 0) {
+    const auto [aos_sum, aos_us] = measure(run_aos);
+    const auto [soa_sum, soa_us] = measure(run_soa);
+    aos_samples.push_back(aos_us);
+    soa_samples.push_back(soa_us);
+    checksums_match = checksums_match && aos_sum == soa_sum;
+  } else {
+    // 同样两次测量，但先 SoA 后 AoS；完整代码见源码。
+  }
+}
+// 计时区外检查 oracle；最终输出 checksum_guard 消费结果。
+\end{lstlisting}
 
-先澄清输入规模、所有权、错误和复杂度，再写小而正确的实现。选择 \texttt{vector} 作为默认序列，使用标准算法但不炫技。提交前检查空输入、整数溢出、索引边界、迭代器失效、比较器严格弱序和异常路径。
+“消费结果”不是随手加 \texttt{volatile}。本例让循环返回值参与 oracle、累加到最终输出，因而优化器必须保留可观察语义；I/O 又在计时区外。编译器仍可做合法优化，所以还要记录优化配置，必要时检查汇编。预热只能减少首次页错误、冷代码和动态初始化等一次性影响，不能保证缓存状态代表生产流量。
 
-性能题不要立刻写 SIMD 或无锁队列。先定义指标和工作负载，给出基线表示，指出潜在缓存/分配成本，再说明如何测量。面试官通常更看重推理闭环。
+本机 WSL2、GCC 13.3、x86-64 的一次 Release 运行得到：
 
-\section{系统设计题}
+\begin{lstlisting}[numbers=none]
+benchmark-ok rows=1000000 samples=21 warmups=3
+  alternating=true checksum-match=true
+aos median-us=2673.00 iqr-us=251.50
+soa median-us=2624.00 iqr-us=118.00
+conclusion=environment-specific
+\end{lstlisting}
 
-量化系统设计可以沿数据生命线回答：来源、时间与排序、验证、存储、消费、状态、错误、回放、观测和容量。实时行情系统必须回答背压与断线恢复；回测平台必须回答数据版本、确定性、资源隔离与结果可追溯；订单系统必须回答幂等、状态机、风险门和审计。
+完整程序输出两组各 21 个原始样本。这里的中位数相差 49 微秒，但样本范围重叠，而且只运行了一个进程实例；证据只支持“这次实验通过正确性门并观察到小差异”，不支持“所有机器上 SoA 快 1.8\%”。下一步应保存原始输出，交替启动多个独立进程，并调查异常样本，而不是删除不喜欢的点。
 
-明确一致性需求。交易前风险可能要求同步拒绝，研究统计可以最终一致；市场事件可能按交易所序列排序，而跨市场只有定义好的合并规则。不要用“Kafka + Redis + 微服务”替代需求分析。
+立即练习：把测量顺序改成永远先 AoS，重新运行三个独立进程；比较两种协议的中位数与 IQR。即使方向未变，也要解释为什么交替顺序仍是更可信的设计。
 
-\section{项目如何写进简历}
+\section{分布与指标：一个数字回答不了四个问题}
 
-弱表述：“使用 C++、CMake 和多线程开发高性能回测框架。”它没有规模、行为和证据。
+\path{code/ch14/experiments/statistics_report.cpp} 使用两组 8 个固定的串行请求延迟。两组中位数均为 10 微秒，却得到：
 
-更可信的结构是：动作 + 系统边界 + 验证 + 测量。例如：
+\begin{lstlisting}[numbers=none]
+stable median-us=10.00 iqr-us=0.50 p99-us=12
+  throughput-ops-per-s=97560.98
+bursty median-us=10.00 iqr-us=37.50 p99-us=100
+  throughput-ops-per-s=34782.61
+\end{lstlisting}
+
+中位数把一半样本放在两侧，适合抵抗少量极端值，却不描述抖动；本章把上下各半样本的中位数定义为 $Q_1,Q_3$，IQR 为 $Q_3-Q_1$。$p_{99}$ 关注尾部体验，但 8 个样本的 nearest-rank $p_{99}$ 只是最大值，远不足以估计真实 99 分位。吞吐按“单线程、请求串行完成”模型用 $n/\sum t_i$ 计算；并行、批处理或流水线系统不能直接用延迟倒数替代吞吐。
+
+批处理基准的“一批耗时 $p_{99}$”也不是单条行情尾延迟。先说清观测单位、并发度和时间窗口，再选指标。报告至少给样本数和原始分布；只报 best-of-N 会系统性选择幸运噪声，只报平均数又可能掩盖长尾。
+
+\begin{pythonbridge}
+Python 的 \texttt{timeit} 也会重复运行并通常报告多次结果，但不能自动证明输入、线程数和底层 BLAS 状态相同；\texttt{cProfile} 是确定性调用 profiler，开销模型不同于采样 profiler。NumPy 调用把工作移进原生库时，应同时记录 Python 边界和原生热点，不能只看 Python 行级时间。
+\end{pythonbridge}
+
+立即练习：为 bursty 样本再增加 100 个 10 微秒请求，重新计算中位数、IQR 和 nearest-rank $p_{99}$。解释为什么分位数会跳变，以及原来的 8 个样本为何不能支持尾延迟 SLA。
+
+\section{Profiler 先定位，再用 Amdahl 约束收益}
+
+微基准回答一个隔离假设，profiler 回答端到端时间落在哪里。\path{code/ch14/experiments/profile_workload.cpp} 保留 \texttt{decode\_stage}、\texttt{score\_stage} 和 \texttt{aggregate\_stage} 三个阶段；本机 WSL 没有 \texttt{perf}，但有 GNU \texttt{gprof}，实际复现命令是：
+
+\begin{lstlisting}[language=bash,numbers=none]
+cd build/ch14-release
+g++ -std=c++20 -O2 -g -pg ../../code/ch14/experiments/profile_workload.cpp \
+  -o profile_workload_pg
+./profile_workload_pg
+gprof ./profile_workload_pg gmon.out | head -n 12
+\end{lstlisting}
+
+这次报告以 0.01 秒为一个采样 tick，共把 0.11 秒归到 \texttt{score\_stage}，其余阶段显示 0。它说明人工工作负载的候选热点位置，却不证明百分比精确，更不代表真实回测；应延长运行、重复独立进程，并在目标生产形态上复测。可用 \texttt{perf} 时，\texttt{perf record -g -- executable} 与 \texttt{perf report} 能提供采样调用栈，但权限、内核和符号质量也必须写进报告。
+
+把 profiler 的阶段时间放回端到端预算。若总计 100 ms，热点为 60 ms，局部加速 4 倍，新预算是 $40+60/4=55$ ms，而不是 25 ms：
+
+\lstinputlisting[caption={把热点比例转换为整体收益上限}]{code/ch14/experiments/amdahl_report.cpp}
+
+输出整体加速 1.82 倍；即使热点无限快，未受影响的 40 ms 仍把上限锁在 2.5 倍。立即练习：把热点份额改为 20\%，局部加速仍为 4 倍，先手算整体收益再运行程序；说明为什么“优化最慢函数”仍可能不值得工程成本。
+
+\section{失败实验：结果不同，性能比较立即作废}
+
+下面的候选实现把 \texttt{>=} 偷换为 \texttt{>}，漏掉价格恰为阈值的行情。它可能少做工作，但不再具有比较资格：
+
+\newpage
+\lstinputlisting[caption={故意失败：checksum 揭示语义漂移}]{code/ch14/failures/checksum_mismatch.cpp}
+
+从根目录隔离触发：
+
+\begin{lstlisting}[language=bash,numbers=none]
+cmake -S . -B build/ch14-debug -DCMAKE_BUILD_TYPE=Debug
+ctest --test-dir build/ch14-debug -R ch14_checksum_mismatch \
+  --output-on-failure
+\end{lstlisting}
+
+失败发生在运行期正确性门，退出码为 2，稳定类别是 \texttt{benchmark-invalid checksum-mismatch}；508 与 808 分别是错误候选和基线结果。恢复步骤是在副本中恢复 \texttt{>=}、直接编译运行并要求退出 0，再回到正向微基准；不要把修复后的副本交给“期望失败”的负向 CTest。
+
+\section{从原始数字到有限结论}
+
+同一进程内的 21 个样本能显示短时抖动，却共享进程启动、地址布局、系统背景负载和频率状态，不能冒充 21 次完整独立实验。这叫伪重复风险。更可信的下一层证据是启动多个独立进程，每个进程保留完整样本；若目标部署跨机器，还应在目标硬件类别上分层重复，而不是把所有数字混成一个平均值。
+
+本机一次观察中，SoA 与 AoS 中位数相差约 1.8\%。这个差异小于任一版本一次明显异常样本的幅度，并且两组区间重叠。合格结论可以写成：
 
 \begin{quote}
-用 C++20 构建事件驱动回测内核，将 CSV 验证、策略、撮合和组合划分为四个公开测试 seam；以手算账本验证端到端收益，并建立 AoS/SoA 可重复基准，明确硬件与工作负载限制。
+在记录环境的一次 Release 进程中，两种实现均通过 4603580000 的 checksum；观察到 SoA 中位数略低，但现有证据不足以确认稳定且具有实际意义的收益，因此暂不改变项目实现，下一步进行多进程复测并检查硬件计数器。
 \end{quote}
 
-只有真实测量后才能加入吞吐或延迟数字，并保留复现实验命令。不要把教学模型称为生产级交易系统。
+“实际意义”也应在看结果前定义。例如只有端到端吞吐至少提高 5\%、内存不超预算且尾延迟不退化，改造成本才合理；5\% 只是示例，真实阈值来自容量计划和业务 SLO。统计显著不自动等于值得上线，未达统计显著也不代表系统一定相同。
 
-\section{行为面试}
+把报告组织为可审计链条：
+\begin{enumerate}
+  \item \textbf{观察：}保存原始样本、环境、checksum 和 profiler 表，不先解释原因；
+  \item \textbf{有限主张：}只覆盖实际测量的工作负载、机器与配置，并写出不确定性；
+  \item \textbf{工程决定：}采用、拒绝或继续实验，同时列出收益门槛和回滚条件；
+  \item \textbf{后续验证：}说明要增加的独立进程、数据集、硬件事件或端到端指标。
+\end{enumerate}
 
-准备 STAR 故事时优先选择有冲突和证据的工程事件：发现假绿色测试、反驳没有数据的优化、处理数据质量事故、在截止期内缩小范围、与研究者澄清可交易假设。说明你如何改变流程，而不仅是修了一行代码。
+可直接复制的最小报告骨架如下；原始样本过长时应作为文本附件保存，正文链接附件，不能用省略号代替：
 
-\section{入职后的前三个月}
+\begin{lstlisting}[numbers=none]
+hypothesis:
+invalidate-if:
+command:
+environment: compiler / CPU / OS / configuration
+workload: rows / fields / concurrency / warmups / order
+oracle: expected / observed / exit status
+raw-samples: attached path, no cherry-picking
+summary: sample count / median / IQR / throughput or tail
+profile-command-and-hotspot:
+amdahl-budget:
+decision-and-practical-threshold:
+limitations-and-next-test:
+\end{lstlisting}
 
-前 30 天建立系统地图：构建、测试、部署、数据血缘、关键指标和术语；31--60 天完成小型端到端变更，理解审查与发布；61--90 天在证据支持下改善一个可靠性或性能问题。优先学习团队代码库的约定，不要把个人偏好当现代化改造。
+立即练习：把本章结果分别改写成“观察”“主张”“决定”三句话，再故意写一句越界结论；指出越界处缺少的是独立复测、目标硬件、实际意义阈值还是端到端证据。
+
+\newpage
+\section{输出任务与自测}
+
+输出任务：提交一份布局实验报告，包含可反驳假设、命令、环境、正确性 oracle、全部原始样本、中位数/IQR、结论与限制；再附一次 profiler 命令和热点表，把热点份额代入 Amdahl 模型。不得只交截图、最快一次或脱离环境的“提升百分比”。
+
+自测：
+\begin{enumerate}
+  \item 为什么正确性 oracle 必须在任何性能结论之前通过？
+  \item 预热、重复样本和交替顺序分别减少什么偏差，又不能保证什么？
+  \item 输出 checksum 为什么能阻止死代码删除，却不能禁止所有合法优化？
+  \item 中位数相同的两组样本为何仍可能具有完全不同的工程风险？
+  \item IQR、吞吐与 $p_{99}$ 各自依赖哪些口径？
+  \item 为什么 8 个样本的 $p_{99}$ 几乎没有 SLA 证据力？
+  \item 微基准与 profiler 分别回答什么问题？
+  \item 热点占 60\%、局部加速 4 倍时，为什么整体只有约 1.82 倍？
+\end{enumerate}
 
 \begin{interviewcheck}
-用两分钟解释本书项目；回答“为什么不用 shared pointer 管理所有事件”；设计行情队列的背压；给出一个带基线和限制的性能结论；说出当前项目最重要的三个非目标。
+被问“怎样证明优化有效”时，按假设、正确性 oracle、Release 环境、预热与交替采样、原始分布、profiler 热点、Amdahl 上限和限制回答。若没有多进程复测或目标硬件数据，主动缩小结论，不用单次最好成绩包装确定性。
 \end{interviewcheck}
-
-\section{练习}
-
-\begin{enumerate}
-  \item 为目标职位做五列能力矩阵，并为每项附一条证据。
-  \item 录制五分钟项目讲解，删掉无法证明的形容词。
-  \item 完成一次 45 分钟代码题，复盘正确性、复杂度和沟通。
-  \item 为行情处理或回测平台画系统图，标注背压、恢复和观测点。
-\end{enumerate}
 
 \section{本章小结}
 
-求职准备应把 C++ 特性转化为生命周期、成本、正确性和系统边界的推理。项目陈述依靠可复现证据，系统设计沿数据生命线展开，入职后则从理解现有约束开始。
+Benchmark 是受控反驳实验，不是产生漂亮数字的脚本；profiler 是选择优化位置的证据，不是自动修复器。先守住业务结果，再保存环境与分布，最后把局部热点放回端到端预算，性能结论才可审计、可复现、可推翻。

@@ -73,7 +73,10 @@
     {"tex": "chapters/ch13.tex", "source": "code/ch13/experiments/aos_soa.cpp", "target": "ch13_aos_soa"},
     {"tex": "chapters/ch13.tex", "source": "code/ch13/failures/arena_dangling.cpp", "target": "ch13_arena_dangling_failure"},
     {"tex": "chapters/ch13.tex", "source": "code/ch13/app/quote_scan.cpp", "target": "ch13_quote_scan"},
-    {"tex": "appendices/solutions.tex", "source": "code/ch13/app/quote_scan.cpp", "target": "ch13_quote_scan"}
+    {"tex": "appendices/solutions.tex", "source": "code/ch13/app/quote_scan.cpp", "target": "ch13_quote_scan"},
+    {"tex": "chapters/ch14.tex", "source": "code/ch14/experiments/amdahl_report.cpp", "target": "ch14_amdahl_report"},
+    {"tex": "chapters/ch14.tex", "source": "code/ch14/failures/checksum_mismatch.cpp", "target": "ch14_checksum_mismatch_failure"},
+    {"tex": "appendices/solutions.tex", "source": "code/ch14/experiments/amdahl_report.cpp", "target": "ch14_amdahl_report"}
   ],
   "intentional_failures": [
     {
@@ -200,6 +203,11 @@
       "source": "code/ch13/failures/arena_dangling.cpp",
       "stage": "runtime",
       "diagnostic_category": "AddressSanitizer reports heap-use-after-free after the monotonic memory resource is destroyed"
+    },
+    {
+      "source": "code/ch14/failures/checksum_mismatch.cpp",
+      "stage": "runtime",
+      "diagnostic_category": "the benchmark correctness gate reports benchmark-invalid checksum-mismatch and exits with status 2"
     }
   ],
   "chapter_snapshots": [
@@ -246,6 +254,10 @@
     {
       "path": "code/ch13",
       "entry_target": "ch13_quote_scan"
+    },
+    {
+      "path": "code/ch14",
+      "entry_target": "ch14_statistics_report"
     }
   ]
 }
