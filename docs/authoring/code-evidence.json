@@ -33,7 +33,11 @@
     {"tex": "chapters/ch06.tex", "source": "code/ch06/borrowing_and_legacy.cpp", "target": "ch06_borrowing_and_legacy"},
     {"tex": "chapters/ch06.tex", "source": "code/ch06/raii_file.cpp", "target": "ch06_raii_file"},
     {"tex": "chapters/ch06.tex", "source": "code/ch06/ownership_choices.cpp", "target": "ch06_ownership_choices"},
-    {"tex": "chapters/ch07.tex", "source": "project/include/quant/csv.hpp", "target": "test_csv_reader"},
+    {"tex": "chapters/ch07.tex", "source": "code/ch07/container_choices.cpp", "target": "ch07_container_choices"},
+    {"tex": "chapters/ch07.tex", "source": "code/ch07/lazy_views.cpp", "target": "ch07_lazy_views"},
+    {"tex": "chapters/ch07.tex", "source": "code/ch07/src/pipeline.cpp", "target": "ch07_ranges_pipeline"},
+    {"tex": "chapters/ch07.tex", "source": "code/ch07/reduction_order.cpp", "target": "ch07_reduction_order"},
+    {"tex": "appendices/solutions.tex", "source": "code/ch07/exercises/top_prices_solution.cpp", "target": "ch07_top_prices_solution"},
     {"tex": "chapters/ch08.tex", "source": "project/src/main.cpp", "target": "quant_backtest"},
     {"tex": "chapters/ch09.tex", "source": "project/benchmarks/layout_benchmark.cpp", "target": "layout_benchmark"},
     {"tex": "chapters/ch11.tex", "source": "code/ch11/parallel_sum.cpp", "target": "ch11_parallel_sum"},
@@ -96,6 +100,11 @@
       "source": "code/ch06/failures/use_after_free.cpp",
       "stage": "runtime",
       "diagnostic_category": "AddressSanitizer reports heap-use-after-free"
+    },
+    {
+      "source": "code/ch07/failures/dangling_view.cpp",
+      "stage": "runtime",
+      "diagnostic_category": "AddressSanitizer reports invalid stack access through a dangling view"
     }
   ],
   "chapter_snapshots": [
@@ -114,6 +123,10 @@
     {
       "path": "code/ch05",
       "entry_target": "ch05_market_analyzer"
+    },
+    {
+      "path": "code/ch07",
+      "entry_target": "ch07_ranges_pipeline"
     }
   ]
 }

@@ -53,5 +53,8 @@
 | constructors | 构造函数、成员函数尾随 `const` 与构造后有效 | ch05 | ch05 | ch06, ch08 |
 | member-functions | 成员访问、成员函数与 `this` | ch05 | ch05 | ch08, ch09 |
 | exception-basics | 抛出、捕获与栈展开概览 | ch05 | ch05 | ch06, ch10 |
+| associative-containers | `std::map` 的键查找、插入与有序遍历 | ch07 | ch07 | ch08, ch17 |
+| ranges-views | ranges 算法、view adaptor、惰性与借用生命周期 | ch07 | ch07 | ch13, ch17 |
+| numeric-reduction | `std::accumulate`、初值类型与浮点顺序 | ch07 | ch07 | ch16 |
 
 维护规则：新增基础语法必须增加一行；若某概念第一次出现的章节提前，必须同时移动首次教学与立即练习，不能只改后续引用。

@@ -1,0 +1,5 @@
+symbol,side,quantity,price
+AAPL,buy,10,100
+MSFT,buy,4,200
+AAPL,sell,5,102
+AAPL,buy,10,101

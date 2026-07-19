@@ -1,0 +1,1 @@
+symbol=AAPL trades=3 first_sell=102.00 low=100.00 high=102.00 gross=2520.00 net_quantity=15

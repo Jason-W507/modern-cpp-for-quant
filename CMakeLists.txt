@@ -36,7 +36,6 @@ target_include_directories(ch03_market_tool PRIVATE code/ch03/include)
 quant_target(ch03_parameter_modes code/ch03/parameter_modes.cpp)
 quant_target(ch03_basis_points_solution
   code/ch03/exercises/basis_points_solution.cpp)
-quant_project_target(ch07_ranges_pipeline code/ch07/ranges_pipeline.cpp)
 quant_target(ch04_containers code/ch04/containers.cpp)
 quant_target(ch04_algorithms code/ch04/algorithms.cpp)
 quant_target(ch04_iterator_invalidation code/ch04/iterator_invalidation.cpp)
@@ -67,6 +66,18 @@ quant_target(ch06_lifetime_trace code/ch06/lifetime_trace.cpp)
 quant_target(ch06_borrowing_and_legacy code/ch06/borrowing_and_legacy.cpp)
 quant_target(ch06_raii_file code/ch06/raii_file.cpp)
 quant_target(ch06_ownership_choices code/ch06/ownership_choices.cpp)
+quant_target(ch07_ranges_pipeline code/ch07/src/main.cpp)
+target_sources(ch07_ranges_pipeline PRIVATE
+  code/ch07/src/csv_reader.cpp
+  code/ch07/src/pipeline.cpp)
+target_include_directories(ch07_ranges_pipeline PRIVATE code/ch07/include)
+quant_target(ch07_lazy_views code/ch07/lazy_views.cpp)
+quant_target(ch07_reduction_order code/ch07/reduction_order.cpp)
+quant_target(ch07_top_prices_solution
+  code/ch07/exercises/top_prices_solution.cpp)
+target_include_directories(ch07_top_prices_solution PRIVATE code/ch07/include)
+quant_target(ch07_container_choices code/ch07/container_choices.cpp)
+target_include_directories(ch07_container_choices PRIVATE code/ch07/include)
 
 quant_project_target(test_strategy project/tests/test_strategy.cpp)
 add_test(NAME strategy_decision_seam COMMAND test_strategy)
@@ -227,9 +238,70 @@ add_test(NAME ch03_dangling_reference_emits_compile_diagnostic
           --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch03/failures/dangling_reference.cpp
           --output ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch03_dangling.obj
           --diagnostic "reference to local variable|reference to local temporary|reference to stack memory|C4172")
-add_test(NAME ch07_ranges_pipeline_runs COMMAND ch07_ranges_pipeline)
-set_tests_properties(ch07_ranges_pipeline_runs PROPERTIES
-  PASS_REGULAR_EXPRESSION "positive-notional=3975")
+add_test(NAME ch07_ranges_pipeline_summarizes_one_symbol
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 0
+          --expected-stdout ${CMAKE_CURRENT_SOURCE_DIR}/code/ch07/expected/ranges_pipeline.txt
+          -- $<TARGET_FILE:ch07_ranges_pipeline>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch07/data/trades.csv
+             AAPL)
+add_test(NAME ch07_views_observe_late_changes_to_the_borrowed_range
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch07/expected/lazy_views.txt
+          -- $<TARGET_FILE:ch07_lazy_views>)
+add_test(NAME ch07_floating_reduction_exposes_order_dependence
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch07/expected/reduction_order.txt
+          -- $<TARGET_FILE:ch07_reduction_order>)
+add_test(NAME ch07_dangling_view_is_reported_by_address_sanitizer
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_asan_failure.py
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch07/failures/dangling_view.cpp
+          --diagnostic "stack-use-after-return|stack-use-after-scope|stack-buffer-underflow")
+set_tests_properties(ch07_dangling_view_is_reported_by_address_sanitizer
+  PROPERTIES SKIP_RETURN_CODE 77)
+add_test(NAME ch07_top_prices_solution_filters_sorts_and_limits
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch07/expected/top_prices_solution.txt
+          -- $<TARGET_FILE:ch07_top_prices_solution>)
+add_test(NAME ch07_ranges_pipeline_rejects_a_missing_symbol
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr ${CMAKE_CURRENT_SOURCE_DIR}/code/ch07/expected/missing_symbol_error.txt
+          -- $<TARGET_FILE:ch07_ranges_pipeline>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch07/data/trades.csv
+             TSLA)
+add_test(NAME ch07_ranges_pipeline_rejects_an_invalid_side
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr ${CMAKE_CURRENT_SOURCE_DIR}/code/ch07/expected/invalid_side_error.txt
+          -- $<TARGET_FILE:ch07_ranges_pipeline>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch07/data/invalid_side.csv
+             AAPL)
+add_test(NAME ch07_clean_ranges_pipeline_configures_builds_and_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
+          --cmake ${CMAKE_COMMAND}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch07
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch07/expected/ranges_pipeline.txt
+          --target ch07_ranges_pipeline
+          --argument ${CMAKE_CURRENT_SOURCE_DIR}/code/ch07/data/trades.csv
+          --argument AAPL
+          --generator "${CMAKE_GENERATOR}"
+          --compiler ${CMAKE_CXX_COMPILER}
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests
+          --config $<CONFIG>)
+add_test(NAME ch07_container_choices_match_access_patterns
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch07/expected/container_choices.txt
+          -- $<TARGET_FILE:ch07_container_choices>)
 add_test(NAME ch04_containers_expose_sizes_and_values
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
