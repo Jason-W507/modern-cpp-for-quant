@@ -1,0 +1,1 @@
+error=no sell trade for symbol MSFT

@@ -39,5 +39,11 @@ int main() {
             << " aapl_position=" << positions.at("AAPL")
             << " first_sell=" << first_sell->symbol << '@' << first_sell->price
             << " lowest=" << sorted.front().symbol << '@'
-            << sorted.front().price << '\n';
+            << sorted.front().price << " order=";
+  std::string separator;
+  for (const auto& entry : positions) {
+    std::cout << separator << entry.first;
+    separator = ',';
+  }
+  std::cout << '\n';
 }

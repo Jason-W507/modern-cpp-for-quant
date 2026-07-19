@@ -56,7 +56,10 @@
     "class-access",
     "constructors",
     "member-functions",
-    "exception-basics"
+    "exception-basics",
+    "associative-containers",
+    "ranges-views",
+    "numeric-reduction"
   ],
   "parts": [
     {

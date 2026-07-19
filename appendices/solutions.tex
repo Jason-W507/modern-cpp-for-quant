@@ -121,7 +121,7 @@ CSV 读取层保留表头、列数、数字字段和构造异常的行号上下�
 \section{第 7 章}
 \begin{enumerate}
   \item 成交时间线按到达顺序追加和扫描，\texttt{vector} 的连续拥有存储适合批处理；仓位按代码查询，\texttt{map} 把键查找写进接口。若改用其他容器，必须给出访问与失效依据。
-  \item \texttt{positions[key]} 会在缺失时插入值初始化的整数，适合累计；\texttt{positions.at(key)} 只查询，缺失时抛出异常，能暴露错误代码。
+  \item \texttt{positions[key]} 会在缺失时插入值初始化的整数，适合累计；\texttt{positions.at(key)} 只查询，缺失时抛出异常。范围循环按键顺序遍历 \texttt{map}，本例得到 AAPL、MSFT。
   \item 排序会改变顺序，因此复制后排序价格；\texttt{find\_if} 必须观察原时间线，才能回答“首笔卖出”而不是“排序后第一笔卖出”。
   \item view 创建后才把 99 改成 110，最终仍输出 220，证明筛选与转换在迭代时求值。view 按值拥有 adaptor 状态，却借用 \texttt{prices} 的元素与存储。
   \item 返回 view 时局部 \texttt{vector} 已析构，view 内的引用悬空。可让源容器由调用者拥有、在原作用域消费，或在返回前复制到拥有元素的容器。

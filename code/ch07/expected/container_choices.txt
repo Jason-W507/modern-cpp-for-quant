@@ -1,1 +1,1 @@
-rows=4 symbols=2 aapl_position=15 first_sell=AAPL@102.00 lowest=AAPL@100.00
+rows=4 symbols=2 aapl_position=15 first_sell=AAPL@102.00 lowest=AAPL@100.00 order=AAPL,MSFT

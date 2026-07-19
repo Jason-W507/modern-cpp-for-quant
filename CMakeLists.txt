@@ -276,6 +276,14 @@ add_test(NAME ch07_ranges_pipeline_rejects_a_missing_symbol
           -- $<TARGET_FILE:ch07_ranges_pipeline>
              ${CMAKE_CURRENT_SOURCE_DIR}/code/ch07/data/trades.csv
              TSLA)
+add_test(NAME ch07_ranges_pipeline_rejects_a_symbol_without_sells
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr ${CMAKE_CURRENT_SOURCE_DIR}/code/ch07/expected/no_sell_error.txt
+          -- $<TARGET_FILE:ch07_ranges_pipeline>
+             ${CMAKE_CURRENT_SOURCE_DIR}/code/ch07/data/trades.csv
+             MSFT)
 add_test(NAME ch07_ranges_pipeline_rejects_an_invalid_side
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
