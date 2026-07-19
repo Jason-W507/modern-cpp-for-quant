@@ -116,7 +116,7 @@ ctest --test-dir build/ch13-asan -R ch13_arena_dangling \
 
 失败阶段是资源销毁后的解引用，稳定类别为 \texttt{heap-use-after-free}；地址和调用栈不是契约。恢复方法是把消费者留在资源作用域、复制逃逸值，或让拥有资源的对象同时拥有使用者。
 
-立即练习：复制样例为 \path{arena_copy.cpp}，让函数在 arena 存活时按值返回 \texttt{double}。用 \path{g++ -std=c++20 -fsanitize=address arena_copy.cpp -o arena_copy} 编译并直接运行 \path{./arena_copy}，要求正常退出且值为 100；不要调用上面期望失败的 CTest。
+立即练习：复制样例为 \path{arena_copy.cpp}，让函数在 arena 存活时按值返回 \texttt{double}。用 \texttt{g++} \texttt{-std=c++20} \texttt{-fsanitize=address} \path{arena_copy.cpp} \texttt{-o} \path{arena_copy} 编译并直接运行 \path{./arena_copy}，要求正常退出且值为 100；不要调用上面期望失败的 CTest。
 
 \section{False sharing：先声明缓存行假设}
 
