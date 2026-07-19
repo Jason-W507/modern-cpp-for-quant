@@ -63,15 +63,16 @@
       "artifacts": ["code/ch05/exercises/price_range_solution.cpp", "code/ch05/CMakeLists.txt"],
       "guidance": "Construct only valid quotes, let the analyzer maintain cross-row invariants and expose a value result.",
       "acceptance": "The standalone analyzer and price-range answer pass their exact-output and invalid-input checks."
-    },
-    {
-      "chapter": 6,
-      "artifacts": ["code/ch06/ownership_choices.cpp", "code/ch06/lifetime_trace.cpp"],
-      "guidance": "Draw the owner and observer lifetimes before selecting direct value, unique ownership or shared ownership.",
-      "acceptance": "The ownership and lifetime traces match their snapshots, and the isolated dangling case is reported by ASan."
     }
   ],
   "advanced_core_answers": [
+    {
+      "chapter": 6,
+      "artifacts": ["code/ch06/ownership_choices.cpp", "code/ch06/lifetime_trace.cpp"],
+      "guidance": "Draw the owner and observer lifetimes before selecting direct value, unique ownership or shared ownership; for the asynchronous extension, start with a by-value order and transfer a unique pointer only when copying is forbidden.",
+      "acceptance": "The ownership and lifetime traces match their snapshots, the isolated dangling case is reported by ASan, and an asynchronous task never outlives a referenced local order.",
+      "common_error": "Capturing a local order by reference in work that may execute after the submitting function returns, or adding shared ownership without a shared-lifetime requirement."
+    },
     {
       "chapter": 7,
       "artifacts": ["code/ch07/exercises/top_prices_solution.cpp"],
@@ -104,7 +105,7 @@
       "chapter": 11,
       "artifacts": ["code/ch11/exercises/notional_report_solution.cpp"],
       "guidance": "Model the target graph before choosing PRIVATE, PUBLIC or INTERFACE propagation.",
-      "acceptance": "A clean standalone build produces rows=3 notional=2525.00.",
+      "acceptance": "A clean standalone build produces exercise-notional=200.00.",
       "common_error": "Confusing target creation with CTest registration or leaking private options."
     },
     {

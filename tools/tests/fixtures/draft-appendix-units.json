@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "state": "draft",
+  "units": [
+    {"id": "toolchain", "tex": "appendices/toolchain.tex", "required_markers": ["linux-wsl-mainline", "miktex-build"], "publication_note": "evidence"},
+    {"id": "glossary", "tex": "appendices/glossary.tex", "required_markers": ["python-boundary", "project-vocabulary"], "publication_note": "evidence"},
+    {"id": "solutions", "tex": "appendices/solutions.tex", "required_markers": ["foundation-runnable", "advanced-layered"], "publication_note": "evidence"},
+    {"id": "learning_path", "tex": "appendices/learning_path.tex", "required_markers": ["chapter-output", "evidence-gates"], "publication_note": "evidence"}
+  ],
+  "foundation_runnable_answers": [
+    {"chapter": 1, "artifacts": ["README.md"], "guidance": "evidence", "acceptance": "evidence"},
+    {"chapter": 2, "artifacts": ["README.md"], "guidance": "evidence", "acceptance": "evidence"},
+    {"chapter": 3, "artifacts": ["README.md"], "guidance": "evidence", "acceptance": "evidence"},
+    {"chapter": 4, "artifacts": ["README.md"], "guidance": "evidence", "acceptance": "evidence"},
+    {"chapter": 5, "artifacts": ["README.md"], "guidance": "evidence", "acceptance": "evidence"}
+  ],
+  "advanced_core_answers": [
+    {"chapter": 6, "artifacts": ["README.md"], "guidance": "evidence", "acceptance": "evidence", "common_error": "evidence"},
+    {"chapter": 7, "artifacts": ["README.md"], "guidance": "evidence", "acceptance": "evidence", "common_error": "evidence"},
+    {"chapter": 8, "artifacts": ["README.md"], "guidance": "evidence", "acceptance": "evidence", "common_error": "evidence"},
+    {"chapter": 9, "artifacts": ["README.md"], "guidance": "evidence", "acceptance": "evidence", "common_error": "evidence"},
+    {"chapter": 10, "artifacts": ["README.md"], "guidance": "evidence", "acceptance": "evidence", "common_error": "evidence"},
+    {"chapter": 11, "artifacts": ["README.md"], "guidance": "evidence", "acceptance": "evidence", "common_error": "evidence"},
+    {"chapter": 12, "artifacts": ["README.md"], "guidance": "evidence", "acceptance": "evidence", "common_error": "evidence"},
+    {"chapter": 13, "artifacts": ["README.md"], "guidance": "evidence", "acceptance": "evidence", "common_error": "evidence"},
+    {"chapter": 14, "artifacts": ["README.md"], "guidance": "evidence", "acceptance": "evidence", "common_error": "evidence"},
+    {"chapter": 15, "artifacts": ["README.md"], "guidance": "evidence", "acceptance": "evidence", "common_error": "evidence"},
+    {"chapter": 16, "artifacts": ["README.md"], "guidance": "evidence", "acceptance": "evidence", "common_error": "evidence"},
+    {"chapter": 17, "artifacts": ["README.md"], "guidance": "evidence", "acceptance": "evidence", "common_error": "evidence"},
+    {"chapter": 18, "artifacts": ["README.md"], "guidance": "evidence", "acceptance": "evidence", "common_error": "evidence"}
+  ]
+}

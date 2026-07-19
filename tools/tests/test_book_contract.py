@@ -126,6 +126,19 @@ class BookContractCliTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("appendix registry must cover", result.stderr)
 
+    def test_published_appendix_registry_must_be_accepted(self) -> None:
+        draft_path = (
+            REPOSITORY_ROOT
+            / "tools"
+            / "tests"
+            / "fixtures"
+            / "draft-appendix-units.json"
+        )
+        result = self.run_checker("--appendices", str(draft_path))
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("appendix registry state must be accepted", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

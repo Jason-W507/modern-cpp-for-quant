@@ -45,6 +45,10 @@ cmake --build build/ch08 -j2
 ctest --test-dir build/ch08 --output-on-failure
 \end{lstlisting}
 
+\section{Windows 原生编译器差异}
+
+Windows 原生构建只补充差异，不改变 WSL 主线。MinGW Makefiles 通常是单配置生成器：配置时使用 \texttt{-G "MinGW Makefiles"} 与 \texttt{-DCMAKE\_BUILD\_TYPE=Debug}，警告仍是 GCC 风格，可执行文件带 \path{.exe}。Visual Studio / MSVC 通常是多配置生成器：配置时不依赖 \texttt{CMAKE\_BUILD\_TYPE}，构建用 \texttt{cmake --build build-msvc --config Debug}，测试用 \texttt{ctest --test-dir build-msvc -C Debug}，产物常位于 \path{build-msvc/Debug/}；警告起点是 \texttt{/W4 /permissive-}，不是 \texttt{-Wall -Wextra -Wpedantic}。MinGW 与 MSVC 的 ABI 库不能因都在 Windows 上就随意混链；需要本书的 Linux sanitizer 和精确 shell 行为时仍回到 WSL。
+
 \section{警告、调试与 sanitizer}
 
 遇到失败先按阶段选择工具，不要把所有问题统称为“编译报错”：
@@ -67,11 +71,11 @@ ctest --test-dir build/ch08 --output-on-failure
 一个常用的诊断构建入口是：
 
 \begin{lstlisting}[language=bash,numbers=none]
-cmake -S . -B build-sanitized \
+cmake -S code/ch11 -B build/ch11-sanitized \
       -DCMAKE_BUILD_TYPE=Debug \
-      -DQUANT_ENABLE_SANITIZERS=ON
-cmake --build build-sanitized -j2
-ctest --test-dir build-sanitized --output-on-failure
+      -DCH11_ENABLE_SANITIZERS=ON
+cmake --build build/ch11-sanitized -j2
+ctest --test-dir build/ch11-sanitized --output-on-failure
 \end{lstlisting}
 
 具体开关以对应章节的 CMake 入口为准。AddressSanitizer 与 UndefinedBehaviorSanitizer 常组合使用；ThreadSanitizer 通常单独构建。不要用 \texttt{sleep} 代替同步，也不要把故意 UB 的输出值写成 oracle。
@@ -82,8 +86,7 @@ ctest --test-dir build-sanitized --output-on-failure
 PDF 在 Windows PowerShell 中由 MiKTeX 26.1、XeLaTeX 与 \texttt{latexmk} 复验。仓库根目录运行：
 
 \begin{lstlisting}[language=bash,numbers=none]
-latexmk -xelatex -interaction=nonstopmode -halt-on-error \
-        -outdir=build main.tex
+latexmk -xelatex -interaction=nonstopmode -halt-on-error -outdir=build main.tex
 \end{lstlisting}
 
 若 MiKTeX 为最小安装，让其包管理器按日志补齐缺失依赖；以日志中的实际包名为准，不要反复删除书稿源码，也不要把一次安装得到的包列表当成跨版本契约。

@@ -431,6 +431,10 @@ def validate_answer_evidence(
 def validate_appendix_units(
     document: dict[str, object], root: Path, main_text: str, errors: list[str]
 ) -> int:
+    state = document.get("state")
+    if state != "accepted":
+        errors.append(f"appendix registry state must be accepted, found {state!r}")
+
     units = document.get("units")
     if not isinstance(units, list):
         errors.append("appendix units must be a list")
@@ -485,7 +489,7 @@ def validate_appendix_units(
 
     validate_answer_evidence(
         document.get("foundation_runnable_answers"),
-        list(range(1, 7)),
+        list(range(1, 6)),
         "foundation runnable answers",
         root,
         errors,
@@ -493,7 +497,7 @@ def validate_appendix_units(
     )
     validate_answer_evidence(
         document.get("advanced_core_answers"),
-        list(range(7, 19)),
+        list(range(6, 19)),
         "advanced core answers",
         root,
         errors,
@@ -513,7 +517,7 @@ def validate_appendix_units(
             f"found {solution_sections}"
         )
 
-    return len(units) if document.get("state") == "accepted" else 0
+    return len(units) if state == "accepted" else 0
 
 
 def declared_cmake_target(cmake_text: str, target: str) -> bool:
