@@ -18,6 +18,8 @@ target_link_libraries(ch14_statistics_report PRIVATE ch14_project_options)
 
 add_executable(ch14_layout_benchmark experiments/layout_benchmark.cpp)
 target_link_libraries(ch14_layout_benchmark PRIVATE ch14_project_options)
+target_compile_definitions(ch14_layout_benchmark PRIVATE
+  CH14_BUILD_CONFIGURATION="$<CONFIG>")
 
 add_executable(ch14_amdahl_report experiments/amdahl_report.cpp)
 target_link_libraries(ch14_amdahl_report PRIVATE ch14_project_options)

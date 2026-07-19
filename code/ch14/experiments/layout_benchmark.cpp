@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
@@ -9,16 +10,51 @@
 #include <utility>
 #include <vector>
 
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
+
+#ifndef CH14_BUILD_CONFIGURATION
+#define CH14_BUILD_CONFIGURATION "direct"
+#endif
+
 struct Tick final {
   double price;
   std::int64_t quantity;
   std::int64_t timestamp;
 };
 
+void compiler_barrier() {
+#if defined(_MSC_VER)
+  _ReadWriteBarrier();
+#elif defined(__GNUC__) || defined(__clang__)
+  asm volatile("" ::: "memory");
+#else
+  std::atomic_signal_fence(std::memory_order_seq_cst);
+#endif
+}
+
+void consume_result(double value) {
+#if defined(_MSC_VER)
+  volatile double sink = value;
+  (void)sink;
+  _ReadWriteBarrier();
+#elif defined(__GNUC__) || defined(__clang__)
+  asm volatile("" : : "g"(value) : "memory");
+#else
+  volatile double sink = value;
+  (void)sink;
+  std::atomic_signal_fence(std::memory_order_seq_cst);
+#endif
+}
+
 template <typename Work>
-std::pair<double, long long> measure(Work&& work) {
+std::pair<double, long long> measure(Work&& work, std::size_t start_index) {
   const auto start = std::chrono::steady_clock::now();
-  const double checksum = work();
+  compiler_barrier();
+  const double checksum = work(start_index);
+  consume_result(checksum);
+  compiler_barrier();
   const auto elapsed = std::chrono::steady_clock::now() - start;
   return {checksum,
           std::chrono::duration_cast<std::chrono::microseconds>(elapsed)
@@ -103,16 +139,22 @@ int main() {
     quantities.push_back(quantity);
   }
 
-  const auto run_aos = [&] {
+  const auto run_aos = [&](std::size_t start_index) {
     double sum = 0.0;
-    for (const Tick& tick : aos) {
-      sum += tick.price * static_cast<double>(tick.quantity);
+    for (std::size_t index = start_index; index < aos.size(); ++index) {
+      sum += aos[index].price * static_cast<double>(aos[index].quantity);
+    }
+    for (std::size_t index = 0; index < start_index; ++index) {
+      sum += aos[index].price * static_cast<double>(aos[index].quantity);
     }
     return sum;
   };
-  const auto run_soa = [&] {
+  const auto run_soa = [&](std::size_t start_index) {
     double sum = 0.0;
-    for (std::size_t index = 0; index < prices.size(); ++index) {
+    for (std::size_t index = start_index; index < prices.size(); ++index) {
+      sum += prices[index] * static_cast<double>(quantities[index]);
+    }
+    for (std::size_t index = 0; index < start_index; ++index) {
       sum += prices[index] * static_cast<double>(quantities[index]);
     }
     return sum;
@@ -121,8 +163,10 @@ int main() {
   double checksum_guard = 0.0;
   bool checksums_match = true;
   for (int warmup = 0; warmup < warmups; ++warmup) {
-    const double aos_sum = run_aos();
-    const double soa_sum = run_soa();
+    const std::size_t start_index =
+        static_cast<std::size_t>(warmup + 1) * 104'729 % rows;
+    const double aos_sum = run_aos(start_index);
+    const double soa_sum = run_soa(start_index);
     checksum_guard += aos_sum + soa_sum;
     checksums_match = checksums_match && aos_sum == soa_sum &&
                       std::fabs(aos_sum - expected_checksum) < 0.01;
@@ -133,19 +177,23 @@ int main() {
   aos_samples.reserve(samples);
   soa_samples.reserve(samples);
   for (int sample = 0; sample < samples; ++sample) {
+    const std::size_t start_index =
+        static_cast<std::size_t>(sample + 1) * 7'919 % rows;
     if (sample % 2 == 0) {
-      const auto [aos_sum, aos_us] = measure(run_aos);
-      const auto [soa_sum, soa_us] = measure(run_soa);
+      const auto [aos_sum, aos_us] = measure(run_aos, start_index);
+      const auto [soa_sum, soa_us] = measure(run_soa, start_index);
       aos_samples.push_back(aos_us);
       soa_samples.push_back(soa_us);
-      checksums_match = checksums_match && aos_sum == soa_sum;
+      checksums_match = checksums_match && aos_sum == soa_sum &&
+                        std::fabs(aos_sum - expected_checksum) < 0.01;
       checksum_guard += aos_sum + soa_sum;
     } else {
-      const auto [soa_sum, soa_us] = measure(run_soa);
-      const auto [aos_sum, aos_us] = measure(run_aos);
+      const auto [soa_sum, soa_us] = measure(run_soa, start_index);
+      const auto [aos_sum, aos_us] = measure(run_aos, start_index);
       soa_samples.push_back(soa_us);
       aos_samples.push_back(aos_us);
-      checksums_match = checksums_match && aos_sum == soa_sum;
+      checksums_match = checksums_match && aos_sum == soa_sum &&
+                        std::fabs(aos_sum - expected_checksum) < 0.01;
       checksum_guard += aos_sum + soa_sum;
     }
   }
@@ -154,13 +202,14 @@ int main() {
             << "benchmark-ok rows=" << rows << " samples=" << samples
             << " warmups=" << warmups
             << " alternating=true checksum-match=" << std::boolalpha
-            << checksums_match << '\n'
+            << checksums_match << " rotating-start=true\n"
             << "environment compiler=" << compiler_name()
             << " architecture=" << architecture_name()
+            << " configuration=" << CH14_BUILD_CONFIGURATION
 #ifdef NDEBUG
-            << " configuration=optimized"
+            << " ndebug=true"
 #else
-            << " configuration=unoptimized"
+            << " ndebug=false"
 #endif
             << " clock=steady_clock\n";
   print_samples("aos", aos_samples);
