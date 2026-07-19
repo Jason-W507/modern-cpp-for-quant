@@ -1,51 +1,188 @@
-\chapter{数据布局、缓存与分配}
+\chapter{模板、concepts 与多态}
 
 \begin{introduction}
-  \item 用缓存行和局部性解释真实访问成本
-  \item 比较 AoS 与 SoA，而不预设结论
-  \item 识别分配、对象大小和间接访问
-  \item 选择测量后才值得引入的内存优化
+  \item 从只接受一种策略的普通函数演化出函数模板
+  \item 读懂模板参数、实参推导、实例化与类模板语法
+  \item 用 requires 表达式和 concept 给泛型接口命名并约束能力
+  \item 比较静态多态与运行时多态的适用场景及工程代价
 \end{introduction}
 
-\chaptermeta{理解数组、对象布局、缓存层次与前章构建流程。}{NumPy 的连续数组已体现局部性；C++ 还允许直接选择字段布局、对齐和分配策略。}{不要从复杂度或一次计时推断缓存行为；检查对象大小、访问字段、硬件计数器与重复样本。}
+\chaptermeta{已完成第 3--8 章，会使用函数、类、optional、值语义、组合和虚函数接口。}{Python 函数天然可以接收任何具有所需方法的对象；C++ 模板也按表达式能力工作，但会在编译期为实际类型检查并实例化代码。Python Protocol 更接近 concept，而抽象基类更接近虚函数接口。}{模板错误先找最早的“哪项表达式无效”或“哪项约束不满足”；运行结果错误则回到策略决策 seam，不能把“编译通过”误当作业务语义正确。}
 
-\section{复杂度相同，耗时仍可不同}
+本章保持第 8 章的领域边界与同一公开行为：事件仍验证非空代码、正有限价格和正数量，订单仍验证非空代码和正数量；99 元、空仓的 AAPL 事件使阈值策略下单，持有策略不下单。最终独立快照必须精确输出：
 
-两个 \(O(n)\) 循环可能相差很大。CPU 以缓存行为单位搬运数据，连续访问允许硬件预取；指针追逐、过大的对象和随机访问会增加缓存未命中。大 O 描述规模增长，不描述常数、布局或尾延迟。
+\begin{lstlisting}
+threshold_orders=1 hold_orders=0
+\end{lstlisting}
 
-在热循环中，先列出真正读取的字段。如果计算只需要价格和数量，但每个元素还携带字符串、时间戳和元数据，Array of Structures（AoS）会把无关字节一起搬入缓存。Structure of Arrays（SoA）把字段分列，适合扫描少数字段；但处理完整单条事件时，AoS 可能更自然且局部。
+完成判据还包括：普通函数与函数模板给出相同行为；无约束模板和 concept 约束分别产生稳定的简化诊断；静态与动态路径都得到买单；\path{code/ch09} 可从空构建目录独立配置。
 
-\lstinputlisting[caption={对同一工作负载比较 AoS 与 SoA}]{project/benchmarks/layout_benchmark.cpp}
+\section{从普通函数开始}
 
-这个程序先预热两条路径，再以交替顺序各测量 20 次，报告中位数与四分位距，并验证每轮 checksum 一致。它仍是固定数据规模、未固定 CPU 频率的本机微基准，不能据此发布跨机器结论；原始环境与完整命令必须随结果保存。
+\subsection{场景：先让一种策略工作}
 
-\section{对象大小与对齐}
+第 8 章的事件循环只需要调用策略的 \texttt{on\_event}。最直接的第一版函数把具体类型写进参数：
 
-成员顺序会引入填充。使用 \texttt{sizeof} 和 \texttt{alignof} 观察类型，而不要凭字段和相加猜测。把常用小字段集中可能缩小对象，但为了省几个字节破坏清晰语义并不总值得。网络或磁盘协议布局应显式序列化，不能把内存结构直接当稳定格式。
+\lstinputlisting[caption={只接受阈值策略的普通函数}]{code/ch09/ordinary_strategy.cpp}
 
-\section{分配是系统行为}
+\texttt{decide\_threshold} 不是模板。它只接受 \texttt{ThresholdStrategy} 的只读引用，调用方传入 \texttt{HoldStrategy} 会在重载选择阶段失败。这个限制在只有一种策略时完全合理：签名清楚、诊断直接、实现放在源文件也容易保持 ABI 边界。
 
-动态分配包含查找可用块、同步、元数据和潜在缺页。\texttt{vector::reserve} 可减少可预测增长中的重复分配。对象池和 \texttt{std::pmr} 资源适合分配模式已知且测得分配热点的场景，但会引入生命周期、峰值容量和线程归属问题。
+程序用固定事件和空仓快照调用它，精确输出 \texttt{ordinary=buy}。先保存这条可运行行为，再泛化接口；否则直接面对 concept 最终代码，读者无法判断每个语法元素解决了什么重复。
 
-短生命周期批量对象可以使用 arena，在整批结束时统一释放。前提是任何引用都不能逃出 arena 生命周期；否则“更快释放”换来了悬空风险。
+\begin{pythonbridge}
+Python 的函数通常不声明具体参数类型，只要传入对象在运行到该行时具有 \texttt{on\_event} 就能继续。C++ 普通函数把类型要求写在签名里，因此编译器在调用前就能拒绝其他类型。两者都可以从最具体实现开始，不应为了“以后可能有很多策略”预先设计复杂层次。
+\end{pythonbridge}
 
-\section{false sharing}
+失败诊断：若调用 \texttt{decide\_threshold(hold, event, flat)}，编译器会报告无法把 \texttt{HoldStrategy} 绑定到 \texttt{const ThresholdStrategy\&}。根因不是持有策略缺少方法，而是函数签名点名了另一种类型。若确实需要复用同一算法，下一步才引入模板。
 
-两个线程写不同变量，如果变量落在同一缓存行，缓存一致性仍会在核心间来回转移该行。按线程分片、减少共享写入或适当填充可以缓解。盲目添加 \texttt{alignas(64)} 会增大内存并假设硬件缓存行，应在目标平台测量。
+立即练习：把事件价格从 99 改为 101，其他代码不变。输出应变为 \texttt{ordinary=none}；若仍为 buy，先检查阈值比较而不是模板语法。
 
-\begin{interviewcheck}
-AoS 与 SoA 各适合什么访问模式？为什么链表的常数时间插入不保证更快？对象池增加了哪些正确性风险？什么是 false sharing？
-\end{interviewcheck}
+\section{函数模板：把类型变成参数}
 
-\section{练习}
+\subsection{场景：阈值策略和持有策略共享一次调用逻辑}
+
+普通函数的函数体并不依赖阈值策略的私有字段，只要求参数能执行 \texttt{on\_event(event, portfolio)}。可以把具体类型换成模板参数：
+
+\lstinputlisting[caption={从普通函数演化出的函数模板}]{code/ch09/function_template.cpp}
+
+\texttt{template <typename Strategy>} 声明接下来的函数是模板，并引入类型参数 \texttt{Strategy}。函数参数写 \texttt{const Strategy\&}；调用 \texttt{decide(threshold, ...)} 时，编译器从第一个实参推导 \texttt{Strategy} 为 \texttt{ThresholdStrategy}，调用持有策略时则推导为 \texttt{HoldStrategy}。
+
+模板本身是生成规则。只有使用某组模板实参时才形成对应的函数特化，这个过程称为实例化。本程序至少需要两个实例：一个接受阈值策略，一个接受持有策略。它们共享源码写法，却是不同的编译期函数实体，精确输出 \texttt{threshold=buy hold=none}。
+
+编译器实例化时必须看到模板定义，不能像普通非模板函数那样只在头文件留声明、把通用定义藏进一个无人可见的源文件。常见做法是把模板定义放在头文件；大型项目也可显式实例化已知类型，但会限制可用类型集合并增加构建设计成本。
+
+\begin{pythonbridge}
+Python 只保留一份函数对象，运行时对不同对象执行相同字节码；C++ 模板通常为实际类型分别实例化机器代码。Python 类型提示不会自动生成新函数，C++ 模板参数也不是运行时变量，不能在程序执行中突然换成另一种类型。
+\end{pythonbridge}
+
+失败诊断：传入整数 42 时，模板推导成功，因为任何类型都能先成为 \texttt{Strategy}；错误直到实例化函数体中的 \texttt{strategy.on\_event} 才出现。根因是模板参数没有说明所需能力，不是推导失败。
+
+立即练习：删除 \texttt{HoldStrategy} 调用并重新构建。输出只剩阈值结果，同时编译器不再需要持有策略对应的 \texttt{decide} 实例；源码模板仍然存在。
+
+\section{concept：给所需能力命名}
+
+\subsection{场景：把“像策略”写成可检查契约}
+
+本章策略不仅要有同名方法，返回类型还必须恰好是 \texttt{optional<Order>}。C++20 concept 可以给这组编译期要求命名：
+
+\lstinputlisting[caption={requires 表达式与受约束的类模板}]{code/ch09/include/quant/ch09/strategy_runner.hpp}
+
+第一行模板参数仍允许候选类型进入检查。\texttt{concept MarketStrategy = requires (...)} 定义一个布尔编译期谓词；圆括号中的 \texttt{strategy}、\texttt{event} 和 \texttt{portfolio} 只是供要求表达式使用的局部占位，不会构造运行时对象。
+
+花括号中的复合要求检查调用表达式有效，箭头后的 \texttt{std::same\_as<std::optional<Order>>} 检查表达式类型完全一致。concept 检查的是语法与类型能力：它不能证明策略一定只在低价下单，也不能证明数量符合风控规则。
+
+类模板声明把 \texttt{MarketStrategy} 用作类型参数约束。以 \texttt{ThresholdStrategy} 作为 \texttt{StrategyRunner} 的显式模板实参时，尖括号中的类型决定成员 \texttt{strategy\_} 的真实类型。两个不同策略会得到两个不同的运行器特化，彼此不能直接赋值。
+
+构造函数按值接收策略并移动到成员，运行器拥有策略对象。\texttt{count\_orders} 负责遍历一批事件、调用所持策略并汇总订单数；调用方提供同一持仓快照，因而这里刻意不模拟成交后的仓位变化。类模板既固定一种编译期策略，也封装批处理职责，不是只转发一个成员函数的空包装。
+
+\begin{pythonbridge}
+Python 的 \texttt{typing.Protocol} 也能描述“具有某方法并返回某类型”的结构化能力，但主要由静态检查器使用，运行时不一定强制。C++ concept 直接参与模板候选选择；不满足时该重载或特化不可用。两者都不能证明方法的业务语义，只能约束可表达的接口形状。
+\end{pythonbridge}
+
+失败诊断：若策略返回 \texttt{Order} 而不是 \texttt{optional<Order>}，调用表达式本身有效，但 \texttt{same\_as} 要求失败。修复应先判断领域契约：若“无订单”是正常结果，就修改策略返回 optional；不要为了让 concept 通过而放宽成与业务不一致的任意类型。
+
+立即练习：把 \texttt{HoldStrategy::on\_event} 返回类型暂时改为 \texttt{bool}，并把函数体改成 \texttt{return false;}。构建持有策略对应的运行器特化时，应报告 \texttt{MarketStrategy} 约束不满足；恢复原返回类型与函数体后，静态策略 seam 重新绿色。
+
+\section{约束改善入口诊断，不证明运行结果}
+
+\subsection{场景：同样把整数误当策略}
+
+\path{code/ch09/failures/unconstrained_strategy.cpp} 与 \path{code/ch09/failures/constrained_strategy.cpp} 都故意把 42 传给泛型 \texttt{decide}。它们与绿色目标隔离，只由编译失败测试运行。
+
+在 WSL 的项目根目录可直接触发两种失败：
+
+\begin{lstlisting}[language=bash]
+g++ -std=c++20 -c code/ch09/failures/unconstrained_strategy.cpp
+g++ -std=c++20 -c code/ch09/failures/constrained_strategy.cpp
+\end{lstlisting}
+
+两条命令都应以非零状态退出；第一条暴露函数体中的成员访问错误，第二条在 concept 入口报告约束不满足。实验结束后无需改动绿色文件；若在练习中换过候选类型，恢复原故障文件或改传满足接口的类型即可回到可构建状态。
+
+无约束版本先实例化函数体，再报告整数没有 \texttt{on\_event} 成员。真实模板库中，这类错误可能嵌套许多层。受约束版本在候选入口检查 \texttt{EventStrategy}，诊断类别变为“constraints not satisfied”，并可继续指出 requires 中哪条表达式无效。测试只匹配类别，不锁定 GCC 与 Clang 的整段措辞。
+
+concept 改善的是错误发生位置和接口文档，并不替代行为测试。一个 \texttt{AlwaysBuyStrategy} 完全可以满足返回类型，却在任何价格下买入。\path{code/ch09/tests/test_static_strategy.cpp} 仍通过公开策略 seam 验证：阈值策略给出一笔数量 25 的 AAPL 订单，持有策略没有订单。
+
+\begin{pythonbridge}
+Python 静态检查器也能在调用前指出对象不满足 Protocol；若不运行检查器，错误可能到执行方法访问时才出现。C++ concept 检查属于编译本身，但它同样只看到声明的能力，无法替代 pytest 中的业务样例。
+\end{pythonbridge}
+
+失败诊断：看到长模板诊断时，从最靠前的用户代码调用点和第一条未满足要求开始，不要从最末尾的库实现逐字倒读。先把参与类型写出来，再核对方法的参数 cv/ref 限定和精确返回类型。
+
+立即练习：在受约束失败示例中为整数换成一个含 \texttt{int on\_event(const Event\&) const} 的小类。约束应通过；随后把返回类型改为 \texttt{double}，观察 \texttt{same\_as<int>} 失败。
+
+\section{静态与动态多态的真实取舍}
+
+\subsection{场景：类型何时确定}
+
+第 8 章的虚函数接口允许启动时读取配置，再通过 \texttt{Strategy\&} 调用所选实现；本章模板要求调用点编译时知道具体类型。下面用完全相同的事件和阈值比较两条路径：
+
+\lstinputlisting[caption={相同策略行为的静态与动态路径}]{code/ch09/polymorphism_compare.cpp}
+
+两条路径都必须输出 buy，说明选择分派机制不应改变领域行为。动态路径通过虚函数表关联的间接调用选择覆盖函数，能把实现隐藏在稳定基类接口之后，也适合插件或运行时配置。静态路径的具体类型进入模板实例，编译器有机会内联并跨调用优化，不需要基类继承关系。
+
+“静态一定更快”不是可靠结论。虚分派成本可能被解析、网络或数值计算淹没；模板内联也可能扩大指令体积。性能必须在第 14 章用目标工作负载测量。本章能确定的工程权衡是：
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+问题 & 静态多态/模板 & 动态多态/虚函数 \\
+\midrule
+具体类型何时知道 & 编译期 & 运行期可替换 \\
+接口检查 & concept 与实例化 & 基类虚函数签名 \\
+代码生成 & 可能按类型重复 & 通常共享调用路径 \\
+实现可见性 & 模板定义常在头文件 & 可隐藏在源文件/库后 \\
+ABI 边界 & 头文件变化常触发重编译 & 稳定接口可隔离实现 \\
+调用形态 & 可直接调用、可内联 & 通常间接虚调用 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+模板会增加解析和实例化工作；类型组合多时，编译时间与代码体积可能上升。暴露模板定义也让调用方依赖更多头文件细节。虚接口则承担对象生命、虚析构、间接调用和 ABI 演化约束。选择来自部署与替换需求，不能只凭“modern”标签。
+
+\begin{pythonbridge}
+Python 常在运行时替换策略对象，天然接近动态分派；Numba、Cython 或专门化 JIT 又可能根据具体类型生成代码，接近静态专门化。C++ 把选择显式放在模板或虚接口中，因此类型确定时机与构建成本更容易在源码中审查。
+\end{pythonbridge}
+
+失败诊断：若为了允许一个运行时配置而实例化所有策略组合并写巨大 \texttt{variant} 分支，模板复杂度可能超过收益；反过来，若热循环中的策略集合在编译时固定，却强制所有对象经共享指针和虚接口访问，也可能增加生命管理负担。先写替换时机，再选机制。
+
+立即练习：把 \texttt{RuntimeStrategy\&} 改为具体 \texttt{RuntimeThreshold\&}。输出不变，但调用点不再展示运行时替换能力；这说明“用了继承类”本身不等于调用发生了动态分派。
+
+\section{独立快照与验收命令}
+
+最终快照用受 concept 约束的类模板保存阈值策略和持有策略，对两条固定事件计数：
+
+\lstinputlisting[caption={有约束的泛型策略运行器快照}]{code/ch09/src/main.cpp}
+
+在 WSL 中从项目根目录执行：
+
+\begin{lstlisting}[language=bash]
+cmake -S code/ch09 -B build/ch09
+cmake --build build/ch09 -j
+ctest --test-dir build/ch09 --output-on-failure
+./build/ch09/ch09_constrained_pipeline
+\end{lstlisting}
+
+最后一行必须与章首逐字一致。根项目还验证普通函数、函数模板、静态策略 seam、静态/动态对照、两种编译诊断、练习答案与干净快照。concept 只负责编译期能力，输出测试负责运行期语义，两类证据不可互相替代。
+
+\section{自测、编码任务与面试检查点}
 
 \begin{enumerate}
-  \item 在三个独立进程中运行布局基准，比较各自中位数与 IQR，解释进程间漂移。
-  \item 删除 AoS 的时间戳字段后重测，解释对象大小与结果变化。
-  \item 用 profiler 验证分配是否真是 CSV 读取热点，再决定是否引入预留容量。
-  \item 设计按线程分片的计数器并说明最终归约时机。
+  \item 普通函数的具体参数何时比模板更合适？
+  \item \texttt{template <typename Strategy>} 中类型参数的作用域是什么？调用时如何推导？
+  \item 什么是模板实例化？为什么模板定义通常需要对调用方可见？
+  \item 类模板 \texttt{StrategyRunner<ThresholdStrategy>} 中尖括号实参决定了什么？
+  \item requires 表达式中的局部参数会不会创建运行时对象？
+  \item \texttt{same\_as<optional<Order>>} 检查什么，又不能证明什么？
+  \item 无约束与受约束失败的首要诊断类别有何不同？
+  \item 静态和动态多态在替换时机、编译成本、代码体积和 ABI 上如何取舍？
 \end{enumerate}
+
+编码任务：实现一个最大持仓策略，空仓时可以买 25 股，持仓已达 50 股时不再下单，并把它交给同一个 \texttt{StrategyRunner}。完整答案位于 \path{code/ch09/exercises/maximum_position_solution.cpp}，精确输出必须为 \texttt{flat=buy full=none}。
+
+\begin{interviewcheck}
+回答“模板与虚函数怎么选”时，先说明具体类型在编译期还是运行期确定，再比较 concept 接口、实例化与内联机会、虚分派、代码体积、编译时间和 ABI。最后强调 concept 只检查能力，业务正确性仍由同一策略 seam 的手算行为测试保护。
+\end{interviewcheck}
 
 \section{本章小结}
 
-性能来自访问模式与硬件层次的互动。连续布局、减少无关字节和控制分配是有力工具，但都要以工作负载和测量为依据。
+泛型设计从可运行的普通函数开始。函数模板把类型变成编译期参数，实例化为实际类型生成函数；类模板保存具体策略。concept 用 requires 表达式把能力要求移到接口入口，却不证明业务语义。静态与动态多态服务于不同的类型确定时机，两者的性能和工程成本都必须结合真实系统选择。

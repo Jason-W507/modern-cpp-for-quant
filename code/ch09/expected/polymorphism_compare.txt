@@ -1,0 +1,1 @@
+static=buy dynamic=buy

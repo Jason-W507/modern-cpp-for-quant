@@ -154,11 +154,19 @@ CSV 读取层保留表头、列数、数字字段和构造异常的行号上下�
 
 \section{第 9 章}
 \begin{enumerate}
-  \item 在多个独立进程中重复 20 次交替顺序采样，比较中位数与 IQR；不要删除异常值而不说明。
-  \item 对象缩小可能提高扫描密度，实际收益依赖读取字段与缓存层次。
-  \item 若分配样本占比很低，不引入池；可先 reserve 并重测。
-  \item 每线程独立 cache-line-aware 累计，join 后单线程归约。
+  \item 只有一种稳定类型、需要清楚诊断或实现隐藏时，普通函数更直接；需要对多种编译期类型复用同一算法时再用模板。
+  \item 类型参数从 template 声明开始作用于随后的声明或定义；本例由函数实参的静态类型推导 Strategy。
+  \item 实例化把模板与一组实际类型结合成函数或类特化；定义通常必须可见，编译器才能生成并检查代码。
+  \item 尖括号中的 ThresholdStrategy 决定运行器成员的具体类型；不同模板实参形成不同类类型。
+  \item requires 的局部参数只用于形成表达式，不创建运行时对象。
+  \item same\_as 检查调用返回类型恰为 optional<Order>；它不能证明价格阈值、数量或风控语义正确。
+  \item 无约束版本在实例化函数体后报告成员不存在；受约束版本先报告 constraints not satisfied，并定位失败要求。
+  \item 编译期固定类型适合静态方案；运行期配置或插件适合虚接口。模板可能增加编译时间和代码体积，虚接口承担间接调用与 ABI 约束。
 \end{enumerate}
+
+编码任务完整答案如下：
+
+\lstinputlisting[caption={第 9 章最大持仓策略练习答案}]{code/ch09/exercises/maximum_position_solution.cpp}
 
 \section{第 10 章}
 \begin{enumerate}

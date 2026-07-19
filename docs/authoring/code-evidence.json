@@ -44,7 +44,12 @@
     {"tex": "chapters/ch08.tex", "source": "code/ch08/src/main.cpp", "target": "ch08_domain_pipeline"},
     {"tex": "chapters/ch08.tex", "source": "code/ch08/runtime_strategy.cpp", "target": "ch08_runtime_strategy"},
     {"tex": "appendices/solutions.tex", "source": "code/ch08/exercises/sell_down_solution.cpp", "target": "ch08_sell_down_solution"},
-    {"tex": "chapters/ch09.tex", "source": "project/benchmarks/layout_benchmark.cpp", "target": "layout_benchmark"},
+    {"tex": "chapters/ch09.tex", "source": "code/ch09/ordinary_strategy.cpp", "target": "ch09_ordinary_strategy"},
+    {"tex": "chapters/ch09.tex", "source": "code/ch09/function_template.cpp", "target": "ch09_function_template"},
+    {"tex": "chapters/ch09.tex", "source": "code/ch09/include/quant/ch09/strategy_runner.hpp", "target": "ch09_constrained_pipeline"},
+    {"tex": "chapters/ch09.tex", "source": "code/ch09/src/main.cpp", "target": "ch09_constrained_pipeline"},
+    {"tex": "chapters/ch09.tex", "source": "code/ch09/polymorphism_compare.cpp", "target": "ch09_polymorphism_compare"},
+    {"tex": "appendices/solutions.tex", "source": "code/ch09/exercises/maximum_position_solution.cpp", "target": "ch09_maximum_position_solution"},
     {"tex": "chapters/ch11.tex", "source": "code/ch11/parallel_sum.cpp", "target": "ch11_parallel_sum"},
     {"tex": "chapters/ch12.tex", "source": "code/ch12/numerical_stability.cpp", "target": "ch12_numerical_stability"},
     {"tex": "chapters/ch12.tex", "source": "code/ch12/pybind11_boundary.cpp", "target": "ch12_pybind_boundary"},
@@ -115,6 +120,16 @@
       "source": "code/ch08/failures/wrong_override.cpp",
       "stage": "compile",
       "diagnostic_category": "compiler reports that a mismatched member marked override does not override"
+    },
+    {
+      "source": "code/ch09/failures/unconstrained_strategy.cpp",
+      "stage": "compile",
+      "diagnostic_category": "compiler reports that an unconstrained template argument has no required member"
+    },
+    {
+      "source": "code/ch09/failures/constrained_strategy.cpp",
+      "stage": "compile",
+      "diagnostic_category": "compiler reports that the strategy concept constraints are not satisfied"
     }
   ],
   "chapter_snapshots": [
@@ -141,6 +156,10 @@
     {
       "path": "code/ch08",
       "entry_target": "ch08_domain_pipeline"
+    },
+    {
+      "path": "code/ch09",
+      "entry_target": "ch09_constrained_pipeline"
     }
   ]
 }

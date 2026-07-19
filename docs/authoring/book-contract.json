@@ -61,7 +61,11 @@
     "ranges-views",
     "numeric-reduction",
     "optional-value",
-    "runtime-polymorphism"
+    "runtime-polymorphism",
+    "function-templates",
+    "template-instantiation",
+    "class-templates",
+    "concepts-requires"
   ],
   "parts": [
     {

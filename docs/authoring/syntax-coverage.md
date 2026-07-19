@@ -58,5 +58,9 @@
 | numeric-reduction | `std::accumulate`、初值类型与浮点顺序 | ch07 | ch07 | ch16 |
 | optional-value | `std::optional`、`std::nullopt` 与正常缺席 | ch08 | ch08 | ch10, ch17 |
 | runtime-polymorphism | 虚函数、纯虚函数、`override`、`final` 与虚析构 | ch08 | ch08 | ch09, ch17 |
+| function-templates | `template`、类型参数与函数模板实参推导 | ch09 | ch09 | ch16, ch17 |
+| template-instantiation | 模板实例化、特化实体与定义可见性 | ch09 | ch09 | ch16, ch17 |
+| class-templates | 类模板声明、显式类型实参与值成员 | ch09 | ch09 | ch15, ch17 |
+| concepts-requires | `concept`、`requires` 表达式、复合要求与约束失败 | ch09 | ch09 | ch16, ch17 |
 
 维护规则：新增基础语法必须增加一行；若某概念第一次出现的章节提前，必须同时移动首次教学与立即练习，不能只改后续引用。

@@ -1,0 +1,1 @@
+threshold=buy hold=none

@@ -112,6 +112,84 @@ quant_target(ch08_sell_down_solution
 target_sources(ch08_sell_down_solution PRIVATE code/ch08/src/domain.cpp)
 target_include_directories(ch08_sell_down_solution PRIVATE code/ch08/include)
 
+quant_target(ch09_test_static_strategy
+  code/ch09/tests/test_static_strategy.cpp)
+target_sources(ch09_test_static_strategy PRIVATE
+  code/ch09/tests/test_support.cpp code/ch09/src/domain.cpp)
+target_include_directories(ch09_test_static_strategy PRIVATE
+  code/ch09/include code/ch09/tests)
+add_test(NAME ch09_static_strategy_decision_seam
+  COMMAND ch09_test_static_strategy)
+
+quant_target(ch09_ordinary_strategy code/ch09/ordinary_strategy.cpp)
+target_sources(ch09_ordinary_strategy PRIVATE code/ch09/src/domain.cpp)
+target_include_directories(ch09_ordinary_strategy PRIVATE code/ch09/include)
+quant_target(ch09_function_template code/ch09/function_template.cpp)
+target_sources(ch09_function_template PRIVATE code/ch09/src/domain.cpp)
+target_include_directories(ch09_function_template PRIVATE code/ch09/include)
+quant_target(ch09_constrained_pipeline code/ch09/src/main.cpp)
+target_sources(ch09_constrained_pipeline PRIVATE code/ch09/src/domain.cpp)
+target_include_directories(ch09_constrained_pipeline PRIVATE code/ch09/include)
+quant_target(ch09_polymorphism_compare code/ch09/polymorphism_compare.cpp)
+target_sources(ch09_polymorphism_compare PRIVATE code/ch09/src/domain.cpp)
+target_include_directories(ch09_polymorphism_compare PRIVATE code/ch09/include)
+quant_target(ch09_maximum_position_solution
+  code/ch09/exercises/maximum_position_solution.cpp)
+target_sources(ch09_maximum_position_solution PRIVATE code/ch09/src/domain.cpp)
+target_include_directories(ch09_maximum_position_solution PRIVATE
+  code/ch09/include)
+
+add_test(NAME ch09_ordinary_strategy_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch09/expected/ordinary_strategy.txt
+          -- $<TARGET_FILE:ch09_ordinary_strategy>)
+add_test(NAME ch09_function_template_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch09/expected/function_template.txt
+          -- $<TARGET_FILE:ch09_function_template>)
+add_test(NAME ch09_constrained_pipeline_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch09/expected/constrained_pipeline.txt
+          -- $<TARGET_FILE:ch09_constrained_pipeline>)
+add_test(NAME ch09_polymorphism_compare_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch09/expected/polymorphism_compare.txt
+          -- $<TARGET_FILE:ch09_polymorphism_compare>)
+add_test(NAME ch09_maximum_position_solution_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch09/expected/maximum_position_solution.txt
+          -- $<TARGET_FILE:ch09_maximum_position_solution>)
+add_test(NAME ch09_unconstrained_error_exposes_missing_member
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_compile_failure.py
+          --compiler ${CMAKE_CXX_COMPILER}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch09/failures/unconstrained_strategy.cpp
+          --output ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch09_unconstrained.obj
+          --diagnostic "request for member.*on_event|has no member.*on_event")
+add_test(NAME ch09_concept_error_reports_unsatisfied_constraint
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_compile_failure.py
+          --compiler ${CMAKE_CXX_COMPILER}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch09/failures/constrained_strategy.cpp
+          --output ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch09_constrained.obj
+          --diagnostic "constraints not satisfied|constraint.*not satisfied")
+add_test(NAME ch09_clean_constrained_pipeline_configures_builds_and_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
+          --cmake ${CMAKE_COMMAND}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch09
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch09/expected/constrained_pipeline.txt
+          --target ch09_constrained_pipeline
+          --generator "${CMAKE_GENERATOR}"
+          --compiler ${CMAKE_CXX_COMPILER}
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests
+          --config $<CONFIG>)
+
 add_test(NAME ch08_domain_pipeline_runs
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
