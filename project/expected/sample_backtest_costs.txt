@@ -1,0 +1,1 @@
+backtest-ok events=3 fills=1 cash=7521.525 equity=10096.525 return=0.965250% max-drawdown=0.034750% volatility=0.000018 fee-per-fill=1.000 slippage-bps=10.000

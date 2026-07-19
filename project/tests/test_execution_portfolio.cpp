@@ -1,4 +1,5 @@
 #include <iostream>
+#include <stdexcept>
 
 #include "quant/execution.hpp"
 #include "test_support.hpp"
@@ -39,6 +40,35 @@ int main() {
                       wrong_symbol)
                .has_value(),
           "symbol mismatch should not fill");
+
+  quant::SimulatedExchange costly_exchange{
+      quant::ExecutionConfig{.fixed_fee = 1.25, .slippage_bps = 10.0}};
+  quant::Portfolio costly_portfolio{10'000.0};
+  const quant::MarketEvent quoted_at_100{{}, "AAPL", 100.0, 1'000};
+  const auto costly_buy = costly_exchange.match(
+      quant::OrderIntent{"AAPL", quant::Side::buy, 10}, quoted_at_100);
+  test_support::require(costly_buy.has_value(),
+                        "configured buy should fill");
+  test_support::require(test_support::close_to(costly_buy->price, 100.10),
+                        "buy slippage should worsen the execution price");
+  test_support::require(test_support::close_to(costly_buy->fee, 1.25),
+                        "fill should preserve its fixed fee");
+  costly_portfolio.apply_fill(*costly_buy);
+  const auto costly_snapshot = costly_portfolio.snapshot("AAPL", 100.0);
+  test_support::require(test_support::close_to(costly_snapshot.cash, 8'997.75),
+                        "cash should include execution price and fee");
+  test_support::require(test_support::close_to(costly_snapshot.equity, 9'997.75),
+                        "equity should expose slippage and fee cost");
+
+  bool invalid_cost_rejected = false;
+  try {
+    (void)quant::SimulatedExchange{
+        quant::ExecutionConfig{.fixed_fee = -1.0, .slippage_bps = 0.0}};
+  } catch (const std::invalid_argument&) {
+    invalid_cost_rejected = true;
+  }
+  test_support::require(invalid_cost_rejected,
+                        "negative execution costs should be rejected");
 
   std::cout << "execution and portfolio seam ok\n";
 }

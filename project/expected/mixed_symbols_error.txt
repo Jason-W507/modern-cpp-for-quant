@@ -1,0 +1,1 @@
+model-boundary-error single-symbol backtest requires one symbol; define a complete price map before enabling multi-asset valuation

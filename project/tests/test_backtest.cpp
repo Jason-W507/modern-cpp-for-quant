@@ -1,4 +1,6 @@
 #include <iostream>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "quant/backtest.hpp"
@@ -36,6 +38,41 @@ int main() {
   test_support::require(result.performance.trades.fill_count == 1 &&
                             result.performance.trades.buy_quantity == 25,
                         "trade summary should aggregate the fill");
+
+  const quant::BacktestConfig costly_config{
+      .initial_cash = 10'000.0,
+      .execution = {.fixed_fee = 1.0, .slippage_bps = 10.0}};
+  const quant::BacktestEngine costly_engine{costly_config};
+  const auto costly_result = costly_engine.run(events, strategy);
+  test_support::require(costly_result.fills.size() == 1,
+                        "cost model should preserve the order lifecycle");
+  test_support::require(
+      test_support::close_to(costly_result.fills.front().price, 99.099),
+      "configured slippage should change the execution price");
+  test_support::require(
+      test_support::close_to(costly_result.final_portfolio.cash, 7'521.525),
+      "configured costs should flow through the cash ledger");
+  test_support::require(
+      test_support::close_to(costly_result.final_portfolio.equity, 10'096.525),
+      "configured costs should flow through final equity");
+  test_support::require(
+      test_support::close_to(costly_result.performance.total_return, 0.0096525),
+      "performance should use the cost-adjusted equity curve");
+
+  const std::vector<quant::MarketEvent> mixed_symbols{
+      {{}, "AAPL", 99.0, 1'000},
+      {{}, "MSFT", 420.0, 1'000},
+  };
+  bool mixed_symbols_rejected = false;
+  try {
+    (void)engine.run(mixed_symbols, strategy);
+  } catch (const std::invalid_argument& error) {
+    mixed_symbols_rejected =
+        std::string{error.what()}.find("single-symbol") != std::string::npos;
+  }
+  test_support::require(
+      mixed_symbols_rejected,
+      "mixed symbols should be rejected until a complete price map exists");
 
   std::cout << "end-to-end backtest seam ok\n";
 }

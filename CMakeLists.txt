@@ -548,9 +548,74 @@ add_test(NAME end_to_end_backtest_seam COMMAND test_backtest)
 
 quant_project_target(quant_backtest project/src/main.cpp)
 add_test(NAME sample_backtest_runs
-  COMMAND quant_backtest ${CMAKE_CURRENT_SOURCE_DIR}/project/data/sample.csv)
-set_tests_properties(sample_backtest_runs PROPERTIES
-  PASS_REGULAR_EXPRESSION "fills=1 equity=10100 return=1%")
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/project/expected/sample_backtest.txt
+          -- $<TARGET_FILE:quant_backtest>
+             ${CMAKE_CURRENT_SOURCE_DIR}/project/data/sample.csv)
+add_test(NAME ch17_configured_costs_flow_to_the_cli_summary
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
+          --expected
+            ${CMAKE_CURRENT_SOURCE_DIR}/project/expected/sample_backtest_costs.txt
+          -- $<TARGET_FILE:quant_backtest>
+             ${CMAKE_CURRENT_SOURCE_DIR}/project/data/sample.csv 1.0 10.0)
+add_test(NAME ch17_cli_reports_the_multi_asset_valuation_boundary
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr
+            ${CMAKE_CURRENT_SOURCE_DIR}/project/expected/mixed_symbols_error.txt
+          -- $<TARGET_FILE:quant_backtest>
+             ${CMAKE_CURRENT_SOURCE_DIR}/project/data/mixed_symbols.csv)
+
+quant_project_target(ch17_backtest_benchmark
+  project/benchmarks/backtest_benchmark.cpp)
+add_test(NAME ch17_backtest_benchmark_preserves_the_hand_ledger
+  COMMAND ch17_backtest_benchmark)
+set_tests_properties(ch17_backtest_benchmark_preserves_the_hand_ledger
+  PROPERTIES PASS_REGULAR_EXPRESSION
+    "benchmark-ok events=200000 samples=11 warmups=2 equity=10100 fills=1")
+
+add_executable(ch17_mixed_symbol_failure EXCLUDE_FROM_ALL
+  project/failures/mixed_symbols.cpp)
+target_include_directories(ch17_mixed_symbol_failure PRIVATE project/include)
+if(MSVC)
+  target_compile_options(ch17_mixed_symbol_failure PRIVATE /W4 /permissive-)
+else()
+  target_compile_options(ch17_mixed_symbol_failure PRIVATE
+    -Wall -Wextra -Wpedantic)
+endif()
+add_test(NAME ch17_build_mixed_symbol_failure
+  COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}
+          --target ch17_mixed_symbol_failure --config $<CONFIG>)
+set_tests_properties(ch17_build_mixed_symbol_failure PROPERTIES
+  FIXTURES_SETUP ch17_mixed_symbol_failure_fixture)
+add_test(NAME ch17_mixed_symbols_report_the_valuation_boundary
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr
+            ${CMAKE_CURRENT_SOURCE_DIR}/project/expected/mixed_symbols_error.txt
+          -- $<TARGET_FILE:ch17_mixed_symbol_failure>)
+set_tests_properties(ch17_mixed_symbols_report_the_valuation_boundary
+  PROPERTIES FIXTURES_REQUIRED ch17_mixed_symbol_failure_fixture)
+
+add_test(NAME ch17_clean_final_backtest_configures_builds_tests_and_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
+          --cmake ${CMAKE_COMMAND}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/project
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/project/expected/sample_backtest.txt
+          --target quant_backtest
+          --argument ${CMAKE_CURRENT_SOURCE_DIR}/project/data/sample.csv
+          --generator "${CMAKE_GENERATOR}"
+          --compiler ${CMAKE_CXX_COMPILER}
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests
+          --config $<CONFIG>
+          --build-all
+          --ctest ${CMAKE_CTEST_COMMAND}
+          --run-ctest)
 
 quant_target(layout_benchmark project/benchmarks/layout_benchmark.cpp)
 add_subdirectory(code/ch11 ch11-snapshot)

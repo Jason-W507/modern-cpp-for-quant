@@ -34,30 +34,25 @@
     {"tex": "chapters/ch07.tex", "source": "code/ch07/lazy_views.cpp", "target": "ch07_lazy_views"},
     {"tex": "chapters/ch07.tex", "source": "code/ch07/src/pipeline.cpp", "target": "ch07_ranges_pipeline"},
     {"tex": "chapters/ch07.tex", "source": "code/ch07/reduction_order.cpp", "target": "ch07_reduction_order"},
-    {"tex": "appendices/solutions.tex", "source": "code/ch07/exercises/top_prices_solution.cpp", "target": "ch07_top_prices_solution"},
     {"tex": "chapters/ch08.tex", "source": "code/ch08/include/quant/ch08/domain.hpp", "target": "ch08_domain_pipeline"},
     {"tex": "chapters/ch08.tex", "source": "code/ch08/include/quant/ch08/strategy.hpp", "target": "ch08_domain_pipeline"},
     {"tex": "chapters/ch08.tex", "source": "code/ch08/include/quant/ch08/execution.hpp", "target": "ch08_domain_pipeline"},
     {"tex": "chapters/ch08.tex", "source": "code/ch08/src/main.cpp", "target": "ch08_domain_pipeline"},
     {"tex": "chapters/ch08.tex", "source": "code/ch08/runtime_strategy.cpp", "target": "ch08_runtime_strategy"},
-    {"tex": "appendices/solutions.tex", "source": "code/ch08/exercises/sell_down_solution.cpp", "target": "ch08_sell_down_solution"},
     {"tex": "chapters/ch09.tex", "source": "code/ch09/ordinary_strategy.cpp", "target": "ch09_ordinary_strategy"},
     {"tex": "chapters/ch09.tex", "source": "code/ch09/function_template.cpp", "target": "ch09_function_template"},
     {"tex": "chapters/ch09.tex", "source": "code/ch09/include/quant/ch09/strategy_runner.hpp", "target": "ch09_constrained_pipeline"},
     {"tex": "chapters/ch09.tex", "source": "code/ch09/src/main.cpp", "target": "ch09_constrained_pipeline"},
     {"tex": "chapters/ch09.tex", "source": "code/ch09/polymorphism_compare.cpp", "target": "ch09_polymorphism_compare"},
-    {"tex": "appendices/solutions.tex", "source": "code/ch09/exercises/maximum_position_solution.cpp", "target": "ch09_maximum_position_solution"},
     {"tex": "chapters/ch10.tex", "source": "code/ch10/error_choices.cpp", "target": "ch10_error_choices"},
     {"tex": "chapters/ch10.tex", "source": "code/ch10/include/quant/ch10/csv_reader.hpp", "target": "ch10_recovery_pipeline"},
     {"tex": "chapters/ch10.tex", "source": "code/ch10/src/portfolio.cpp", "target": "ch10_recovery_pipeline"},
     {"tex": "chapters/ch10.tex", "source": "code/ch10/src/pipeline.cpp", "target": "ch10_recovery_pipeline"},
     {"tex": "chapters/ch10.tex", "source": "code/ch10/src/main.cpp", "target": "ch10_recovery_pipeline"},
-    {"tex": "appendices/solutions.tex", "source": "code/ch10/exercises/error_injection_solution.cpp", "target": "ch10_error_injection_solution"},
     {"tex": "chapters/ch11.tex", "source": "code/ch11/CMakeLists.txt", "target": "ch11_market_report"},
     {"tex": "chapters/ch11.tex", "source": "code/ch11/include/quant/ch11/market_summary.hpp", "target": "ch11_market"},
     {"tex": "chapters/ch11.tex", "source": "code/ch11/app/main.cpp", "target": "ch11_market_report"},
     {"tex": "chapters/ch11.tex", "source": "code/ch11/failures/missing_target_link.cpp", "target": "ch11_missing_target_link_failure"},
-    {"tex": "appendices/solutions.tex", "source": "code/ch11/exercises/notional_report_solution.cpp", "target": "ch11_notional_solution"},
     {"tex": "chapters/ch12.tex", "source": "code/ch12/tests/test_portfolio.cpp", "target": "ch12_portfolio_tests"},
     {"tex": "chapters/ch12.tex", "source": "code/ch12/failures/logic_bug.cpp", "target": "ch12_logic_bug_failure"},
     {"tex": "chapters/ch12.tex", "source": "code/ch12/exercises/logic_fix_solution.cpp", "target": "ch12_logic_fix_solution"},
@@ -70,14 +65,11 @@
     {"tex": "chapters/ch13.tex", "source": "code/ch13/experiments/aos_soa.cpp", "target": "ch13_aos_soa"},
     {"tex": "chapters/ch13.tex", "source": "code/ch13/failures/arena_dangling.cpp", "target": "ch13_arena_dangling_failure"},
     {"tex": "chapters/ch13.tex", "source": "code/ch13/app/quote_scan.cpp", "target": "ch13_quote_scan"},
-    {"tex": "appendices/solutions.tex", "source": "code/ch13/app/quote_scan.cpp", "target": "ch13_quote_scan"},
     {"tex": "chapters/ch14.tex", "source": "code/ch14/experiments/amdahl_report.cpp", "target": "ch14_amdahl_report"},
     {"tex": "chapters/ch14.tex", "source": "code/ch14/failures/checksum_mismatch.cpp", "target": "ch14_checksum_mismatch_failure"},
-    {"tex": "appendices/solutions.tex", "source": "code/ch14/experiments/amdahl_report.cpp", "target": "ch14_amdahl_report"},
     {"tex": "chapters/ch15.tex", "source": "code/ch15/failures/data_race.cpp", "target": "ch15_data_race_failure"},
-    {"tex": "appendices/solutions.tex", "source": "code/ch15/exercises/drop_newest_solution.cpp", "target": "ch15_drop_newest_solution"},
     {"tex": "chapters/ch16.tex", "source": "code/ch16/experiments/stability_report.cpp", "target": "ch16_stability_report"},
-    {"tex": "appendices/solutions.tex", "source": "code/ch16/exercises/return_statistics_solution.cpp", "target": "ch16_return_statistics_solution"}
+    {"tex": "chapters/ch17.tex", "source": "project/benchmarks/backtest_benchmark.cpp", "target": "ch17_backtest_benchmark"}
   ],
   "intentional_failures": [
     {
@@ -219,6 +211,11 @@
       "source": "code/ch16/failures/temporary_buffer_view.cpp",
       "stage": "runtime",
       "diagnostic_category": "AddressSanitizer reports heap-use-after-free after a span outlives its temporary vector owner"
+    },
+    {
+      "source": "project/failures/mixed_symbols.cpp",
+      "stage": "runtime",
+      "diagnostic_category": "the final backtest rejects mixed-symbol valuation with a stable model-boundary diagnostic and exits with status 2"
     }
   ],
   "chapter_snapshots": [
@@ -277,6 +274,10 @@
     {
       "path": "code/ch16",
       "entry_target": "ch16_stability_report"
+    },
+    {
+      "path": "project",
+      "entry_target": "quant_backtest"
     }
   ]
 }

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <concepts>
 #include <optional>
+#include <stdexcept>
 #include <vector>
 
 #include "quant/execution.hpp"
@@ -26,25 +27,46 @@ struct BacktestResult final {
   PerformanceSummary performance;
 };
 
+struct BacktestConfig final {
+  double initial_cash{};
+  ExecutionConfig execution;
+};
+
 class BacktestEngine final {
  public:
-  explicit BacktestEngine(double initial_cash) : initial_cash_(initial_cash) {}
+  explicit BacktestEngine(BacktestConfig config) : config_(config) {}
+
+  explicit BacktestEngine(double initial_cash)
+      : BacktestEngine(
+            BacktestConfig{.initial_cash = initial_cash, .execution = {}}) {}
 
   template <StrategyForMarketEvent Strategy>
   [[nodiscard]] BacktestResult run(const std::vector<MarketEvent>& events,
                                    const Strategy& strategy) const {
-    Portfolio portfolio{initial_cash_};
-    SimulatedExchange exchange;
+    Portfolio portfolio{config_.initial_cash};
+    SimulatedExchange exchange{config_.execution};
     BacktestResult result;
     std::vector<double> equity_curve;
     equity_curve.reserve(events.size());
 
     if (events.empty()) {
-      result.final_portfolio = PortfolioSnapshot{"", 0, initial_cash_,
-                                                  initial_cash_};
+      result.final_portfolio = PortfolioSnapshot{"", 0, config_.initial_cash,
+                                                  config_.initial_cash};
       result.performance =
-          summarize_performance(initial_cash_, equity_curve, result.fills);
+          summarize_performance(config_.initial_cash, equity_curve,
+                                result.fills);
       return result;
+    }
+
+    const std::string& run_symbol = events.front().symbol;
+    const bool has_mixed_symbols =
+        std::any_of(events.begin(), events.end(), [&run_symbol](const auto& event) {
+          return event.symbol != run_symbol;
+        });
+    if (has_mixed_symbols) {
+      throw std::invalid_argument{
+          "single-symbol backtest requires one symbol; define a complete price "
+          "map before enabling multi-asset valuation"};
     }
 
     for (const MarketEvent& event : events) {
@@ -60,12 +82,12 @@ class BacktestEngine final {
     }
 
     result.performance =
-        summarize_performance(initial_cash_, equity_curve, result.fills);
+        summarize_performance(config_.initial_cash, equity_curve, result.fills);
     return result;
   }
 
  private:
-  double initial_cash_;
+  BacktestConfig config_;
 };
 
 }  // namespace quant

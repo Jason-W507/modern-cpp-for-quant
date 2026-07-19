@@ -723,7 +723,53 @@
         ]
       }
     },
-    {"number": 17, "state": "planned"},
+    {
+      "number": 17,
+      "state": "accepted",
+      "evidence": {
+        "tex": "chapters/ch17.tex",
+        "examples": [
+          "project/CMakeLists.txt",
+          "project/include/quant/types.hpp",
+          "project/include/quant/csv.hpp",
+          "project/include/quant/strategy.hpp",
+          "project/include/quant/execution.hpp",
+          "project/include/quant/backtest.hpp",
+          "project/include/quant/statistics.hpp",
+          "project/src/main.cpp",
+          "project/tests/test_csv_reader.cpp",
+          "project/tests/test_strategy.cpp",
+          "project/tests/test_execution_portfolio.cpp",
+          "project/tests/test_backtest.cpp",
+          "project/benchmarks/backtest_benchmark.cpp",
+          "project/failures/mixed_symbols.cpp"
+        ],
+        "failure_experiment": {
+          "source": "project/failures/mixed_symbols.cpp",
+          "diagnostic_category": "the process rejects mixed-symbol valuation with a stable model-boundary error and exits with status 2"
+        },
+        "output_task": "Configure project/ from a clean Release build directory; run all project CTest cases; submit the exact default and configured-cost summaries, four public-seam results, mixed-symbol status-2 diagnostic, and an environment-labeled 11-sample end-to-end benchmark whose hand-ledger gate preserves one fill and 10100 equity.",
+        "self_checks": 8,
+        "feedback": "appendices/solutions.tex",
+        "project_connection": "project/ is the independently configurable final event-driven backtest snapshot; it evolves the preserved analyzer and component snapshots through the same CSV, strategy, execution/portfolio and end-to-end seams, adds explicit cost configuration and valuation rejection, and measures only after the hand ledger passes.",
+        "publication_note": "The rendered Chapter 17 uses five main-text pages against its ten-page guardrail; removing duplicate printed copies of advanced exercise sources keeps the complete book at the 155-page cap while preserving worked reasoning, exact outputs and runnable source paths in the answer appendix.",
+        "checklist_markers": [
+          "prerequisites",
+          "learning-output",
+          "scenario",
+          "syntax-rule",
+          "runnable-example",
+          "guided-explanation",
+          "python-boundary",
+          "failure-diagnosis",
+          "immediate-practice",
+          "code-evidence",
+          "feedback",
+          "project-connection",
+          "publication"
+        ]
+      }
+    },
     {"number": 18, "state": "planned"}
   ]
 }

@@ -127,9 +127,7 @@ CSV 读取层见 \path{code/ch05/src/csv_reader.cpp}，它保留表头、列数�
   \item 浮点加法不满足数学上的结合律，舍入发生在每一步。本章只承诺固定程序与输入下的测试结果，不承诺任意重排逐位相同；稳定求和与容差来源见第 16 章。
 \end{enumerate}
 
-核心编码任务的完整答案如下。它先把惰性筛选结果物化，再排序拥有元素的副本，最后用 \texttt{take(2)} 限制输出：
-
-\lstinputlisting[caption={过滤、降序排序并输出前两笔 AAPL 成交}]{code/ch07/exercises/top_prices_solution.cpp}
+核心编码任务的完整答案位于 \path{code/ch07/exercises/top_prices_solution.cpp}。它先把惰性筛选结果物化，再排序拥有元素的副本，最后用 \texttt{take(2)} 限制输出；运行 \texttt{ch07\_top\_prices\_solution} 应逐行输出 105.00 与 103.00。
 
 项目答案位于 \path{code/ch07/src/pipeline.cpp}，独立构建入口为 \path{code/ch07/CMakeLists.txt}。非法生命周期实验只通过 ASan 的非零退出与栈访问类别，不验收未定义输出。
 
@@ -145,9 +143,7 @@ CSV 读取层见 \path{code/ch05/src/csv_reader.cpp}，它保留表头、列数�
   \item \texttt{virtual} 开启动态分派，\texttt{=0} 声明纯虚接口，\texttt{override} 让编译器核对签名，\texttt{final} 禁止继续派生或覆盖。
 \end{enumerate}
 
-99 元买 25 股后现金为 7525；101 元卖 10 股后现金为 8535、持仓为 15，以 101 元估值的权益为 10050。完整答案如下，独立构建入口为 \path{code/ch08/CMakeLists.txt}。
-
-\lstinputlisting[caption={第 8 章卖出部分持仓练习答案}]{code/ch08/exercises/sell_down_solution.cpp}
+99 元买 25 股后现金为 7525；101 元卖 10 股后现金为 8535、持仓为 15，以 101 元估值的权益为 10050。完整答案位于 \path{code/ch08/exercises/sell_down_solution.cpp}，独立构建入口为 \path{code/ch08/CMakeLists.txt}；输出必须与同目录 expected 快照逐字一致。
 
 \section{第 9 章}
 \begin{enumerate}
@@ -161,9 +157,7 @@ CSV 读取层见 \path{code/ch05/src/csv_reader.cpp}，它保留表头、列数�
   \item 编译期固定类型适合静态方案；运行期配置或插件适合虚接口。模板可能增加编译时间和代码体积，虚接口承担间接调用与 ABI 约束。
 \end{enumerate}
 
-编码任务完整答案如下：
-
-\lstinputlisting[caption={第 9 章最大持仓策略练习答案}]{code/ch09/exercises/maximum_position_solution.cpp}
+编码任务完整答案位于 \path{code/ch09/exercises/maximum_position_solution.cpp}。它把最大持仓作为策略状态，分别验收“允许下单”和“达到上限后无订单”；不要用测试读取私有阈值来代替这两个行为。
 
 \section{第 10 章}
 \begin{enumerate}
@@ -177,9 +171,7 @@ CSV 读取层见 \path{code/ch05/src/csv_reader.cpp}，它保留表头、列数�
   \item 底层只返回或传播错误；掌握跳过、重试或终止策略的边界记录一次，避免 catch-and-rethrow 重复日志。
 \end{enumerate}
 
-编码任务完整答案如下：
-
-\lstinputlisting[caption={第 10 章错误注入与强保证练习答案}]{code/ch10/exercises/error_injection_solution.cpp}
+编码任务完整答案位于 \path{code/ch10/exercises/error_injection_solution.cpp}。验收点是错误注入后公开组合快照完全不变、诊断只在进程边界记录一次；对应 target 为 \texttt{ch10\_error\_injection\_solution}。
 
 \section{第 11 章}
 \begin{enumerate}
@@ -193,9 +185,7 @@ CSV 读取层见 \path{code/ch05/src/csv_reader.cpp}，它保留表头、列数�
   \item 单配置生成器在配置时设置 \texttt{CMAKE\_BUILD\_TYPE}；多配置生成器在 build/ctest 时使用 \texttt{--config} 或 \texttt{-C}，目标图不变。
 \end{enumerate}
 
-编码任务的完整源码如下；在 \path{code/ch11/CMakeLists.txt} 中以 \texttt{add\_executable} 创建目标，再 PRIVATE 链接 \texttt{ch11\_market}，即可继承公共头文件和 C++20 要求：
-
-\lstinputlisting[caption={第 11 章新增消费者目标练习答案}]{code/ch11/exercises/notional_report_solution.cpp}
+编码任务的完整源码位于 \path{code/ch11/exercises/notional_report_solution.cpp}；在 \path{code/ch11/CMakeLists.txt} 中以 \texttt{add\_executable} 创建目标，再 PRIVATE 链接 \texttt{ch11\_market}，即可继承公共头文件和 C++20 要求。干净构建后输出应为 \texttt{rows=3 notional=2525.00}。
 
 \section{第 12 章}
 \begin{enumerate}
@@ -209,9 +199,7 @@ CSV 读取层见 \path{code/ch05/src/csv_reader.cpp}，它保留表头、列数�
   \item 至少保存失败输入、工具链与配置、复现命令、期望/实际与退出码、稳定诊断类别、根因、最小修复和回归结果。
 \end{enumerate}
 
-编码任务答案保留显式非零失败路径，所以 Debug 与 Release 都执行相同检查：
-
-\lstinputlisting[caption={第 12 章逻辑错误诊断与修复答案}]{code/ch12/exercises/logic_fix_solution.cpp}
+编码任务答案位于 \path{code/ch12/exercises/logic_fix_solution.cpp}，并保留显式非零失败路径，所以 Debug 与 Release 都执行相同检查。正确修复只改变费用符号，输出为 \texttt{fixed-cash=799}；若又改输入或 expected，就失去了回归证据。
 
 \section{第 13 章}
 \begin{enumerate}
@@ -225,9 +213,7 @@ CSV 读取层见 \path{code/ch05/src/csv_reader.cpp}，它保留表头、列数�
   \item \texttt{alignas(64)} 只保证源码请求的对齐，64 是实验假设，不是 C++ 对硬件缓存行的承诺。
 \end{enumerate}
 
-核心输出任务的列式行情扫描如下。阈值等于 100 的行情也应入选，因此比较使用 \texttt{>=}；独立手算为 \(100\times3+101.5\times4+102\times1=808\)。
-
-\lstinputlisting[caption={第 13 章证据门控的行情扫描答案}]{code/ch13/app/quote_scan.cpp}
+核心输出任务位于 \path{code/ch13/app/quote_scan.cpp}。阈值等于 100 的行情也应入选，因此比较使用 \texttt{>=}；独立手算为 \(100\times3+101.5\times4+102\times1=808\)，target 输出必须保留 \texttt{selected=3 notional=808.00}。
 
 \section{第 14 章}
 \begin{enumerate}
@@ -241,9 +227,7 @@ CSV 读取层见 \path{code/ch05/src/csv_reader.cpp}，它保留表头、列数�
   \item Amdahl 计算为 $1/(0.4+0.6/4)=1.818\ldots$。未受影响的 40\% 使无限局部加速的整体上限为 $1/0.4=2.5$。
 \end{enumerate}
 
-输出任务没有唯一的性能胜负答案。合格报告应附 \path{ch14_layout_benchmark} 的全部 21 对原始样本，先确认 \texttt{checksum-match=true}，再陈述本机环境下的中心与离散程度；若只运行一个进程，应把结论限制为一次观察。Profiler 部分应保存命令和热点表，并把实测阶段份额代入下面的可运行 Amdahl 模型：
-
-\lstinputlisting[caption={第 14 章端到端收益估算答案}]{code/ch14/experiments/amdahl_report.cpp}
+输出任务没有唯一的性能胜负答案。合格报告应附 \path{ch14_layout_benchmark} 的全部 21 对原始样本，先确认 \texttt{checksum-match=true}，再陈述本机环境下的中心与离散程度；若只运行一个进程，应把结论限制为一次观察。Profiler 部分应保存命令和热点表，并把实测阶段份额代入 \path{code/ch14/experiments/amdahl_report.cpp}；固定输入的输出为局部加速 4 倍、整体加速约 1.818、上限 2.5。
 
 \section{第 15 章}
 \begin{enumerate}
@@ -257,9 +241,7 @@ CSV 读取层见 \path{code/ch05/src/csv_reader.cpp}，它保留表头、列数�
   \item 8 行样本只验证结果。性能报告还需 Release 环境、真实工作量、线程数、启动口径、原始样本以及队列阻塞、满和丢弃指标。
 \end{enumerate}
 
-核心输出任务的 drop-newest 完整答案如下。五个输入必须满足 \texttt{offered=accepted+dropped}，容量 2 时只保留 10 与 20：
-
-\lstinputlisting[caption={第 15 章有界队列 drop-newest 答案}]{code/ch15/exercises/drop_newest_solution.cpp}
+核心输出任务的完整答案位于 \path{code/ch15/exercises/drop_newest_solution.cpp}。五个输入必须满足 \texttt{offered=accepted+dropped}，容量 2 时只保留 10 与 20；精确摘要为 \texttt{offered=5 accepted=2 dropped=3 drained-sum=30}。
 
 \section{第 16 章}
 \begin{enumerate}
@@ -273,6 +255,21 @@ CSV 读取层见 \path{code/ch05/src/csv_reader.cpp}，它保留表头、列数�
   \item 释放 GIL 允许其他 Python 线程推进；它不保护 C++ 共享对象，也不允许在释放区间调用 Python API。C++ 同步仍需第 15 章的所有权与 happens-before 协议。
 \end{enumerate}
 
-三价格 $100\rightarrow125\rightarrow100$ 的两期 simple return 为 0.25 与 $-0.2$，手算均值为 0.025，样本方差为 0.10125。完整答案如下：
+三价格 $100\rightarrow125\rightarrow100$ 的两期 simple return 为 0.25 与 $-0.2$，手算均值为 0.025，样本方差为 0.10125。完整答案位于 \path{code/ch16/exercises/return_statistics_solution.cpp}；target 必须输出 \texttt{periods=2 mean=0.025000 sample-variance=0.101250}，且容差来自程序登记的运算预算。
 
-\lstinputlisting[caption={第 16 章收益率与样本方差答案}]{code/ch16/exercises/return_statistics_solution.cpp}
+\section{第 17 章}
+\begin{enumerate}
+  \item MarketEvent 是已验证市场事实，OrderIntent 是尚未成交的策略请求，Fill 是可入账事实；合并后会让同一字段在不同阶段拥有冲突不变量。
+  \item 10 bps 为 \(10/10000=0.001\)，买单执行价为 \(99(1+0.001)=99.099\)。
+  \item 首笔成交后权益为 9996.525，低于初始峰值 10000；故回撤为
+  \[
+    (10000-9996.525)/10000=0.03475\%.
+  \]
+  \item 四个 seam 分别保护解析、决策、账本与整段结果；私有容器不是调用者契约，重构它不应破坏测试。
+  \item 多资产总权益需要所有非零仓位在估值时刻的完整价格映射和缺失价格政策；最后一个事件的单一价格不够。
+  \item \texttt{nullopt} 只表达本次无成交，不能保存订单 ID、拒绝原因、部分成交量、撤单或重复消息处理。
+  \item clean build 排除旧目标、缓存和生成文件替当前源码补洞，证明项目自身声明了完整依赖图。
+  \item 账本门保护正确性，预热减少首次效应，重复样本显示分布；它仍不覆盖 CSV、磁盘、Python 边界和生产负载。
+\end{enumerate}
+
+核心成本练习的可运行答案位于 \path{project/tests/test_backtest.cpp} 与 \path{project/tests/test_execution_portfolio.cpp}。默认与成本配置的独立 oracle 分别位于 \path{project/expected/sample_backtest.txt} 和 \path{project/expected/sample_backtest_costs.txt}；从空目录运行 \texttt{ctest} 后，两条摘要必须逐字匹配。多资产设计题没有唯一代码答案，但必须先给出价格映射、时间一致性、stale 阈值和缺失政策，再允许修改当前单代码拒绝测试。

@@ -29,6 +29,7 @@ struct Fill final {
   Side side{Side::buy};
   std::int64_t quantity{};
   double price{};
+  double fee{};
 };
 
 struct PortfolioSnapshot final {
