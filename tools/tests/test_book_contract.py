@@ -98,7 +98,20 @@ class BookContractCliTest(unittest.TestCase):
         result = self.run_checker("--main", str(invalid_main))
 
         self.assertNotEqual(0, result.returncode)
-        self.assertIn("main chapter includes must be contiguous 1..18", result.stderr)
+        self.assertIn("main chapter includes must match contract order", result.stderr)
+
+    def test_commented_chapter_include_does_not_count_as_published(self) -> None:
+        invalid_main = (
+            REPOSITORY_ROOT
+            / "tools"
+            / "tests"
+            / "fixtures"
+            / "main-commented-final-chapter.tex"
+        )
+        result = self.run_checker("--main", str(invalid_main))
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("main chapter includes must match contract order", result.stderr)
 
 
 if __name__ == "__main__":

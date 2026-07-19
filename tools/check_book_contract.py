@@ -36,6 +36,25 @@ LISTING_REFERENCE = re.compile(r"\\lstinputlisting(?:\[[^\]]*\])?\{([^}]+)\}")
 CHAPTER_INCLUDE = re.compile(r"\\include\{chapters/ch(\d{2})\}")
 
 
+def strip_tex_comments(text: str) -> str:
+    """Remove unescaped TeX comments while preserving escaped percent signs."""
+    uncommented: list[str] = []
+    for line in text.splitlines():
+        for index, character in enumerate(line):
+            if character != "%":
+                continue
+            backslashes = 0
+            cursor = index - 1
+            while cursor >= 0 and line[cursor] == "\\":
+                backslashes += 1
+                cursor -= 1
+            if backslashes % 2 == 0:
+                line = line[:index]
+                break
+        uncommented.append(line)
+    return "\n".join(uncommented)
+
+
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Validate the second-edition book contract.")
     parser.add_argument(
@@ -341,11 +360,13 @@ def validate_chapter_units(
 def validate_main_chapter_includes(
     text: str, chapter_numbers: set[int], errors: list[str]
 ) -> None:
-    included = [int(number) for number in CHAPTER_INCLUDE.findall(text)]
+    included = [
+        int(number) for number in CHAPTER_INCLUDE.findall(strip_tex_comments(text))
+    ]
     expected = sorted(chapter_numbers)
     if included != expected:
         errors.append(
-            "main chapter includes must be contiguous 1..18, "
+            f"main chapter includes must match contract order {expected}, "
             f"found {included}"
         )
 
