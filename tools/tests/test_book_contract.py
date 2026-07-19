@@ -113,6 +113,19 @@ class BookContractCliTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("main chapter includes must match contract order", result.stderr)
 
+    def test_accepted_appendices_require_complete_learning_recovery_evidence(self) -> None:
+        invalid_appendices = (
+            REPOSITORY_ROOT
+            / "tools"
+            / "tests"
+            / "fixtures"
+            / "incomplete-appendix-units.json"
+        )
+        result = self.run_checker("--appendices", str(invalid_appendices))
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("appendix registry must cover", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

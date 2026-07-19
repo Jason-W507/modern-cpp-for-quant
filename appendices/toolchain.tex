@@ -1,52 +1,103 @@
 \chapter{工具链速查}
 
-\section{本书验证环境}
+% appendix:linux-wsl-mainline
+\section{主线环境：Linux / WSL}
 
-本项目在 Windows 上使用 MiKTeX 26.1、XeLaTeX、latexmk、CMake 3.29、GCC 13.2（MinGW-w64）验证。书稿主线代码以 Linux GCC/Clang 为目标，Windows 命令用于本机复现。
-
-\section{构建 C++}
+本书所有 C++ 命令以 Linux 或 WSL 中的 GCC、CMake、GDB 与 sanitizer 为准。Windows 负责托管 WSL 和编译书稿，不另维护一套平行的 C++ 教程。2026 年 7 月本机复验环境为 Ubuntu 24.04、GCC 13.3.0、CMake 3.28.3；这些版本只是一次可复现实录，不是最低版本承诺。源码契约是 C++20，实际版本以命令输出为准：
 
 \begin{lstlisting}[language=bash,numbers=none]
-cmake -S . -B build-mingw -G "MinGW Makefiles" \
+g++ --version
+cmake --version
+gdb --version
+\end{lstlisting}
+
+Ubuntu / WSL 首次准备可运行：
+
+\begin{lstlisting}[language=bash,numbers=none]
+sudo apt update
+sudo apt install build-essential cmake gdb
+\end{lstlisting}
+
+若系统已有这些工具，不要为了追随书中版本号重复安装。Ninja 可选；正文命令不依赖它。
+
+\section{配置、构建与测试}
+
+从仓库根目录使用独立构建树。Debug 用于逐步调试，Release 用于优化后行为和性能测量；两者不能共享缓存：
+
+\begin{lstlisting}[language=bash,numbers=none]
+cmake -S . -B build-wsl -DCMAKE_BUILD_TYPE=Debug
+cmake --build build-wsl -j2
+ctest --test-dir build-wsl --output-on-failure
+
+cmake -S project -B build-project-release \
       -DCMAKE_BUILD_TYPE=Release
-cmake --build build-mingw
-ctest --test-dir build-mingw --output-on-failure
+cmake --build build-project-release -j2
+ctest --test-dir build-project-release --output-on-failure
 \end{lstlisting}
 
-Linux/Ninja 常用命令：
+\texttt{-S} 指源码树，\texttt{-B} 指生成物树；\texttt{cmake --build} 调用已选择的底层构建工具；CTest 只运行已经登记并构建的测试。所谓 clean build，是让 \texttt{-B} 指向一个原先不存在的目录，而不是在旧缓存上再次点击“构建”。
+
+只验证一个章节时，先进入该章节自己的快照入口，例如：
 
 \begin{lstlisting}[language=bash,numbers=none]
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
-cmake --build build
-ctest --test-dir build --output-on-failure
+cmake -S code/ch08 -B build/ch08 -DCMAKE_BUILD_TYPE=Debug
+cmake --build build/ch08 -j2
+ctest --test-dir build/ch08 --output-on-failure
 \end{lstlisting}
 
-诊断配置可加入 \texttt{-fsanitize=address,undefined -fno-omit-frame-pointer}。ThreadSanitizer 通常单独构建，不与 AddressSanitizer 混用。
+\section{警告、调试与 sanitizer}
 
-\section{构建 PDF}
+遇到失败先按阶段选择工具，不要把所有问题统称为“编译报错”：
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}p{0.18\textwidth}p{0.27\textwidth}X@{}}
+\toprule
+阶段 & 首选证据 & 下一步 \\
+\midrule
+配置 & CMake 首条错误、缓存中的编译器路径 & 检查源码目录、生成器与依赖是否存在 \\
+编译 & 第一条稳定语法/类型诊断 & 修复首个根因，再重新编译单一目标 \\
+链接 & undefined / multiple definition 类别 & 核对定义是否唯一且目标是否真正链接 \\
+运行 & stderr、退出状态、最小失败输入 & 先复现，再用 GDB 或行为测试缩小边界 \\
+内存/UB & ASan、UBSan、TSan 类别与调用栈 & 重建分配、释放、访问或 happens-before 图 \\
+性能 & 正确性 oracle、原始样本、profiler 热点 & 先守住 checksum，再解释环境与测量边界 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+一个常用的诊断构建入口是：
+
+\begin{lstlisting}[language=bash,numbers=none]
+cmake -S . -B build-sanitized \
+      -DCMAKE_BUILD_TYPE=Debug \
+      -DQUANT_ENABLE_SANITIZERS=ON
+cmake --build build-sanitized -j2
+ctest --test-dir build-sanitized --output-on-failure
+\end{lstlisting}
+
+具体开关以对应章节的 CMake 入口为准。AddressSanitizer 与 UndefinedBehaviorSanitizer 常组合使用；ThreadSanitizer 通常单独构建。不要用 \texttt{sleep} 代替同步，也不要把故意 UB 的输出值写成 oracle。
+
+% appendix:miktex-build
+\section{在 Windows / MiKTeX 构建本书}
+
+PDF 在 Windows PowerShell 中由 MiKTeX 26.1、XeLaTeX 与 \texttt{latexmk} 复验。仓库根目录运行：
 
 \begin{lstlisting}[language=bash,numbers=none]
 latexmk -xelatex -interaction=nonstopmode -halt-on-error \
         -outdir=build main.tex
 \end{lstlisting}
 
-若 MiKTeX 为最小安装，可用新版 CLI 显式保证依赖：
+若 MiKTeX 为最小安装，让其包管理器按日志补齐缺失依赖；以日志中的实际包名为准，不要反复删除书稿源码，也不要把一次安装得到的包列表当成跨版本契约。
 
-\begin{lstlisting}[language=bash,numbers=none]
-miktex packages require elegantbook csquotes comment esint mwe \
-  enumitem caption footmisc multirow fancyvrb makecell lipsum \
-  hologo titlesec appendix biblatex pgf apptools bbding tcolorbox \
-  manfnt fancyhdr tocloft siunitx
-\end{lstlisting}
+本项目复制的 ElegantBook 4.7 在 MiKTeX 26.1 上遇到 \texttt{adforn} 的缺失间接依赖；项目内类文件只替换了问题集标题装饰符，原目录 \path{D:/Latex/ElegantBook} 保持不变。
 
-本项目复制的 ElegantBook 4.7 在 MiKTeX 26.1 上遇到 \texttt{adforn} 的缺失间接依赖；本地类文件仅把问题集标题的两个装饰符替换为模板已加载的 pifont 字形。原模板目录未修改。
+\section{发布日志检查}
 
-\section{日志检查}
+编译成功只说明产生了 PDF。发布前还要检查引用、字形、致命错误与溢出，并实际渲染抽查：
 
 \begin{lstlisting}[language=bash,numbers=none]
 rg -n "Undefined|undefined references|Missing character|Fatal error" \
    build/main.log
-rg -n "Overfull|Underfull" build/main.log
+rg -n "Overfull|Rerun to get cross-references right" build/main.log
 \end{lstlisting}
 
-未定义引用、缺字和致命错误必须修复。Overfull 需要逐条检查；Underfull 常是可接受的排版松弛，但不应忽略大段异常。
+以上第一组必须为零；Overfull 逐条定位，不能只看计数。Underfull 可能只是短行排版松弛，但若集中出现在表格或代码页，也要打开对应页面检查可读性。最终稳定产物保存在 \path{output/pdf/python-quant-modern-cpp.pdf}。

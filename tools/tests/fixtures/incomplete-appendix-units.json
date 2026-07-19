@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "state": "accepted",
+  "units": [
+    {
+      "id": "solutions",
+      "tex": "appendices/solutions.tex",
+      "required_markers": ["foundation-runnable"]
+    }
+  ],
+  "foundation_runnable_answers": [],
+  "advanced_core_answers": []
+}

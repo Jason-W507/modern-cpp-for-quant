@@ -34,6 +34,10 @@ MARKER = re.compile(r"<!--\s*contract:([a-z-]+)\s*-->")
 CHAPTER_REFERENCE = re.compile(r"ch(\d{2})")
 LISTING_REFERENCE = re.compile(r"\\lstinputlisting(?:\[[^\]]*\])?\{([^}]+)\}")
 CHAPTER_INCLUDE = re.compile(r"\\include\{chapters/ch(\d{2})\}")
+APPENDIX_INCLUDE = re.compile(r"\\include\{(appendices/[a-z_]+)\}")
+APPENDIX_MARKER = re.compile(r"^\s*%\s*appendix:([a-z-]+)\s*$", re.MULTILINE)
+SOLUTION_SECTION = re.compile(r"^\\section\{第 (\d+) 章\}", re.MULTILINE)
+EXPECTED_APPENDICES = ["toolchain", "glossary", "solutions", "learning_path"]
 
 
 def strip_tex_comments(text: str) -> str:
@@ -82,6 +86,11 @@ def parse_arguments() -> argparse.Namespace:
         "--main",
         type=Path,
         help="Override main.tex (useful for contract tests).",
+    )
+    parser.add_argument(
+        "--appendices",
+        type=Path,
+        help="Override the appendix learning-unit registry (useful for contract tests).",
     )
     return parser.parse_args()
 
@@ -371,6 +380,142 @@ def validate_main_chapter_includes(
         )
 
 
+def validate_answer_evidence(
+    entries: object,
+    expected_chapters: list[int],
+    label: str,
+    root: Path,
+    errors: list[str],
+    *,
+    require_common_error: bool,
+) -> None:
+    if not isinstance(entries, list):
+        errors.append(f"{label} must be a list")
+        return
+
+    chapters = [
+        entry.get("chapter") for entry in entries if isinstance(entry, dict)
+    ]
+    if chapters != expected_chapters:
+        errors.append(
+            f"{label} must cover chapters {expected_chapters}, found {chapters}"
+        )
+
+    for entry in entries:
+        if not isinstance(entry, dict):
+            errors.append(f"{label} entries must be objects")
+            continue
+        chapter = entry.get("chapter", "?")
+        artifacts = entry.get("artifacts")
+        if not isinstance(artifacts, list) or not artifacts:
+            errors.append(f"{label} chapter {chapter} has no runnable artifacts")
+        else:
+            for artifact in artifacts:
+                if not isinstance(artifact, str) or not (root / artifact).is_file():
+                    errors.append(
+                        f"{label} chapter {chapter} has an invalid artifact {artifact!r}"
+                    )
+        required_text = ["guidance", "acceptance"]
+        if require_common_error:
+            required_text.append("common_error")
+        for field in required_text:
+            value = entry.get(field)
+            if (
+                not isinstance(value, str)
+                or not value.strip()
+                or PLACEHOLDER.search(value)
+            ):
+                errors.append(f"{label} chapter {chapter} has invalid {field}")
+
+
+def validate_appendix_units(
+    document: dict[str, object], root: Path, main_text: str, errors: list[str]
+) -> int:
+    units = document.get("units")
+    if not isinstance(units, list):
+        errors.append("appendix units must be a list")
+        units = []
+
+    unit_ids = [unit.get("id") for unit in units if isinstance(unit, dict)]
+    if unit_ids != EXPECTED_APPENDICES:
+        errors.append(
+            f"appendix registry must cover {EXPECTED_APPENDICES}, found {unit_ids}"
+        )
+
+    expected_includes: list[str] = []
+    for unit in units:
+        if not isinstance(unit, dict):
+            errors.append("appendix units must be objects")
+            continue
+        unit_id = unit.get("id", "?")
+        tex = unit.get("tex")
+        expected_tex = (
+            f"appendices/{unit_id}.tex" if isinstance(unit_id, str) else ""
+        )
+        if tex != expected_tex or not isinstance(tex, str) or not (root / tex).is_file():
+            errors.append(f"appendix {unit_id} has an invalid TeX path")
+            continue
+        expected_includes.append(tex.removesuffix(".tex"))
+        required_markers = unit.get("required_markers")
+        if not isinstance(required_markers, list) or not required_markers or not all(
+            isinstance(marker, str) and marker for marker in required_markers
+        ):
+            errors.append(f"appendix {unit_id} has invalid required markers")
+        else:
+            actual_markers = set(APPENDIX_MARKER.findall(read_text(root / tex, errors)))
+            missing = set(required_markers) - actual_markers
+            if missing:
+                errors.append(
+                    f"appendix {unit_id} is missing evidence markers: {sorted(missing)}"
+                )
+        publication_note = unit.get("publication_note")
+        if (
+            not isinstance(publication_note, str)
+            or not publication_note.strip()
+            or PLACEHOLDER.search(publication_note)
+        ):
+            errors.append(f"appendix {unit_id} has invalid publication note")
+
+    included = APPENDIX_INCLUDE.findall(strip_tex_comments(main_text))
+    if included != expected_includes:
+        errors.append(
+            f"main appendix includes must match registry order {expected_includes}, "
+            f"found {included}"
+        )
+
+    validate_answer_evidence(
+        document.get("foundation_runnable_answers"),
+        list(range(1, 7)),
+        "foundation runnable answers",
+        root,
+        errors,
+        require_common_error=False,
+    )
+    validate_answer_evidence(
+        document.get("advanced_core_answers"),
+        list(range(7, 19)),
+        "advanced core answers",
+        root,
+        errors,
+        require_common_error=True,
+    )
+
+    solutions = root / "appendices" / "solutions.tex"
+    solution_sections = [
+        int(number)
+        for number in SOLUTION_SECTION.findall(
+            strip_tex_comments(read_text(solutions, errors))
+        )
+    ]
+    if solution_sections != list(range(1, 19)):
+        errors.append(
+            "solutions appendix must contain chapter sections 1..18 in order, "
+            f"found {solution_sections}"
+        )
+
+    return len(units) if document.get("state") == "accepted" else 0
+
+
 def declared_cmake_target(cmake_text: str, target: str) -> bool:
     declaration = re.compile(
         rf"\b(?:quant_target|quant_project_target|add_executable|add_library)\(\s*"
@@ -493,8 +638,9 @@ def main() -> int:
         contract, errors
     )
     main_path = args.main.resolve() if args.main else root / "main.tex"
+    main_text = read_text(main_path, errors)
     validate_main_chapter_includes(
-        read_text(main_path, errors), chapter_numbers, errors
+        main_text, chapter_numbers, errors
     )
 
     coverage_path = args.coverage.resolve() if args.coverage else authoring / "syntax-coverage.md"
@@ -517,6 +663,16 @@ def main() -> int:
     units = load_json_document(units_path, errors)
     accepted_units = validate_chapter_units(
         units, chapter_numbers, calibration_chapters, root, errors
+    )
+
+    appendices_path = (
+        args.appendices.resolve()
+        if args.appendices
+        else authoring / "appendix-units.json"
+    )
+    appendices = load_json_document(appendices_path, errors)
+    accepted_appendices = validate_appendix_units(
+        appendices, root, main_text, errors
     )
 
     evidence_path = (
@@ -542,7 +698,7 @@ def main() -> int:
         "book-contract: valid "
         f"({chapter_count} chapters, {coverage_count} syntax concepts, "
         f"{listing_count} complete listings, {accepted_units} accepted units, "
-        f"{planned_pages} planned pages)"
+        f"{accepted_appendices} accepted appendices, {planned_pages} planned pages)"
     )
     return 0
 

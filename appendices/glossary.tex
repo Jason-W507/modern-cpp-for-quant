@@ -1,5 +1,8 @@
 \chapter{术语表}
 
+% appendix:project-vocabulary
+本表解释“本书如何使用这个词”，不是替代标准或交易所规范。代码标识保持英文，中文叙述固定使用同一含义；若团队已有更严格定义，以团队契约为准。
+
 \begin{longtable}{p{0.22\textwidth}p{0.68\textwidth}}
 \toprule
 术语 & 本书中的含义 \\
@@ -8,26 +11,59 @@ ABI & 二进制接口约定，包括调用、布局与符号兼容。\\
 AoS / SoA & 结构数组与数组结构，两种字段布局方式。\\
 backpressure & 下游跟不上时，系统对生产者施加的限速、阻塞或丢弃策略。\\
 benchmark & 在定义好的工作负载和环境中测量性能的实验。\\
+borrow / observer & 暂时观察而不负责延长对象寿命；引用、裸指针、\texttt{span} 和 view 常承担此角色。\\
+clean build & 从原先不存在的构建树配置、构建和测试，用来排除旧缓存与旧二进制。\\
+closure / lambda capture & lambda 保存或借用外部状态的方式；按引用捕获不会自动延长被捕获对象寿命。\\
 concept & C++20 对模板参数能力的编译期约束。\\
+CMake target & 带源码、编译选项、头文件路径和链接依赖的构建图节点，不等同于磁盘目录。\\
 data race & 未同步的并发冲突访问，至少一个写入；在 C++ 中属于 UB。\\
+drawdown & 权益相对“不晚于当前时刻”的历史峰值下降；不能使用未来峰值回算过去。\\
+dtype / shape / stride & 数组元素解释、逻辑范围与地址步进；三者共同决定 Python/C++ 数组边界是否有效。\\
 event & 已验证、带时间和代码的市场事实。\\
+exception guarantee & 操作失败时对公开状态的承诺；强保证要求失败后状态保持不变。\\
 fill & 撮合后形成的成交事实，而不是订单意图。\\
+GIL & CPython 的全局解释器锁；释放它允许其他 Python 线程推进，但不会自动同步 C++ 对象。\\
 happens-before & C++ 内存模型中保证效果可见与排序的关系。\\
+invariant & 对象在公开操作前后必须始终满足的跨字段规则。\\
 iterator invalidation & 容器操作使既有迭代器、引用或指针不再有效。\\
 latency tail & 延迟分布高百分位，如 \(p_{99}\) 与 \(p_{99.9}\)。\\
+look-ahead bias & 在历史时点使用当时尚不可获得的信息；例如用未来价格或最终峰值计算过去状态。\\
 market event & 规范化行情事件，包含时间、代码、价格与数量。\\
 move & 从可被转移资源的对象构造/赋值；\texttt{std::move} 仅转换值类别。\\
+object lifetime & 对象从构造完成到析构结束的存在区间；存储仍在不代表对象仍有效。\\
 order intent & 策略产生的买卖意图，尚不是成交。\\
+oracle & 独立于被测实现得到的期望事实，例如手算账本或固定快照。\\
 ownership & 谁负责保持对象存活并最终释放其资源。\\
 PortfolioSnapshot & 组合通过公开接口暴露的只读持仓、现金与权益值。\\
 profiling & 定位程序时间、分配或硬件事件分布的测量。\\
 RAII & 将资源取得与对象初始化绑定、释放与析构绑定。\\
+sanitizer & 编译期插桩并在实际执行路径上报告内存、UB 或竞态类别的动态工具。\\
 seam & 通过公开接口观察行为的测试边界。\\
 slippage & 决策或参考价格与实际模拟/成交价格之间的差异。\\
+translation unit & 一个 \texttt{.cpp} 与其预处理后包含内容形成的独立编译单位。\\
 tracer bullet & 从输入到输出贯通、可独立验证的最小纵向切片。\\
 UB & 未定义行为；语言标准不再约束程序结果。\\
+value category & 表达式在重载与生命周期规则中的分类；\texttt{std::move} 改变表达式类别，不执行搬运。\\
 value semantics & 对象复制后成为具有相同含义的独立值。\\
 view & 通常不拥有元素、惰性描述遍历方式的范围适配器。\\
 zero-cost abstraction & 不使用不付费，使用抽象通常不劣于对应手写底层机制的设计原则。\\
 \bottomrule
 \end{longtable}
+
+% appendix:python-boundary
+\section{Python 经验迁移边界}
+
+\noindent
+\begin{tabularx}{\textwidth}{@{}p{0.20\textwidth}p{0.32\textwidth}X@{}}
+\toprule
+Python 直觉 & 可以迁移 & 不能直接等同 \\
+\midrule
+名称绑定对象 & 先画数据流与可变状态 & C++ 声明同时确定对象、类型、存储与作用域 \\
+\texttt{with} 管理资源 & 让释放跟随作用域 & 普通 Python 对象析构时机不等于 C++ 自动对象确定性析构 \\
+切片与 NumPy view & 区分拥有与借用 & \texttt{span}/view 不自动持有 owner；还须证明 dtype 与 stride \\
+pytest 行为测试 & 从公开接口验证事实 & C++ 测试程序还必须成为 CMake target 并真正链接 \\
+异常与 traceback & 在掌握策略的边界保留上下文 & C++ 栈展开触发析构；重复 catch-and-log 会重复记录 \\
+线程与扩展 & 批量边界可释放 GIL & GIL 不是 C++ 共享状态的 mutex，也不组成复合快照 \\
+向量化与计时 & 先守住业务 oracle & 数组表达式不保证零拷贝，一次 notebook 计时也不是 benchmark \\
+\bottomrule
+\end{tabularx}
