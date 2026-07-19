@@ -1,0 +1,1 @@
+pipeline-ok rows=8 sequential-cents=201100 thread-cents=201100 task-cents=201100 checksum-match=true

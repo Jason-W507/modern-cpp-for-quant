@@ -76,7 +76,9 @@
     {"tex": "appendices/solutions.tex", "source": "code/ch13/app/quote_scan.cpp", "target": "ch13_quote_scan"},
     {"tex": "chapters/ch14.tex", "source": "code/ch14/experiments/amdahl_report.cpp", "target": "ch14_amdahl_report"},
     {"tex": "chapters/ch14.tex", "source": "code/ch14/failures/checksum_mismatch.cpp", "target": "ch14_checksum_mismatch_failure"},
-    {"tex": "appendices/solutions.tex", "source": "code/ch14/experiments/amdahl_report.cpp", "target": "ch14_amdahl_report"}
+    {"tex": "appendices/solutions.tex", "source": "code/ch14/experiments/amdahl_report.cpp", "target": "ch14_amdahl_report"},
+    {"tex": "chapters/ch15.tex", "source": "code/ch15/failures/data_race.cpp", "target": "ch15_data_race_failure"},
+    {"tex": "appendices/solutions.tex", "source": "code/ch15/exercises/drop_newest_solution.cpp", "target": "ch15_drop_newest_solution"}
   ],
   "intentional_failures": [
     {
@@ -208,6 +210,11 @@
       "source": "code/ch14/failures/checksum_mismatch.cpp",
       "stage": "runtime",
       "diagnostic_category": "the benchmark correctness gate reports benchmark-invalid checksum-mismatch and exits with status 2"
+    },
+    {
+      "source": "code/ch15/failures/data_race.cpp",
+      "stage": "runtime",
+      "diagnostic_category": "ThreadSanitizer reports a data race between two unsynchronized writers"
     }
   ],
   "chapter_snapshots": [
@@ -258,6 +265,10 @@
     {
       "path": "code/ch14",
       "entry_target": "ch14_statistics_report"
+    },
+    {
+      "path": "code/ch15",
+      "entry_target": "ch15_pipeline_compare"
     }
   ]
 }

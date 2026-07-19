@@ -1,0 +1,1 @@
+protocol-ok started=true consumer-stop=true producer-stop=true exception-propagated=true queues-closed=true

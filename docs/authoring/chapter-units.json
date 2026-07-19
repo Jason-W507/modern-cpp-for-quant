@@ -638,7 +638,46 @@
         ]
       }
     },
-    {"number": 15, "state": "planned"},
+    {
+      "number": 15,
+      "state": "accepted",
+      "evidence": {
+        "tex": "chapters/ch15.tex",
+        "examples": [
+          "code/ch15/CMakeLists.txt",
+          "code/ch15/experiments/pipeline_compare.cpp",
+          "code/ch15/include/quant/ch15/bounded_queue.hpp",
+          "code/ch15/tests/bounded_queue_behavior.cpp",
+          "code/ch15/experiments/protocol_demo.cpp",
+          "code/ch15/failures/data_race.cpp",
+          "code/ch15/exercises/drop_newest_solution.cpp"
+        ],
+        "failure_experiment": {
+          "source": "code/ch15/failures/data_race.cpp",
+          "diagnostic_category": "ThreadSanitizer reports a data race between two barrier-started unsynchronized writers without using sleep to influence scheduling"
+        },
+        "output_task": "Configure code/ch15 from a clean directory; preserve the independently calculated 201100-cent result across sequential, jthread and async paths; submit the capacity-two drop-newest counts, an ownership and start-stop-close-exception protocol diagram, the stable ThreadSanitizer data-race category, and a bounded measurement plan that records queue overhead rather than pursuing an unrequested lock-free design.",
+        "self_checks": 8,
+        "feedback": "appendices/solutions.tex",
+        "project_connection": "code/ch15 is an independently buildable concurrency lab that keeps the sequential quote-scan oracle, adds partitioned thread and task variants, introduces a mutex-protected bounded queue with explicit full/closed/stopped outcomes, and validates cooperative shutdown and exception propagation before later integration into the final backtest engine.",
+        "publication_note": "The rendered Chapter 15 stays near its 6-page planning budget while keeping ownership and happens-before reasoning, comparable execution models, compound invariants, backpressure choices, deterministic stop protocols, a real ThreadSanitizer failure and a measurement-aware output task together.",
+        "checklist_markers": [
+          "prerequisites",
+          "learning-output",
+          "scenario",
+          "syntax-rule",
+          "runnable-example",
+          "guided-explanation",
+          "python-boundary",
+          "failure-diagnosis",
+          "immediate-practice",
+          "code-evidence",
+          "feedback",
+          "project-connection",
+          "publication"
+        ]
+      }
+    },
     {"number": 16, "state": "planned"},
     {"number": 17, "state": "planned"},
     {"number": 18, "state": "planned"}

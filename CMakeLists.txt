@@ -452,6 +452,31 @@ add_test(NAME ch14_checksum_mismatch_invalidates_benchmark
           --expected-exit 2
           --diagnostic "benchmark-invalid checksum-mismatch")
 
+add_test(NAME ch15_clean_concurrency_lab_configures_builds_and_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
+          --cmake ${CMAKE_COMMAND}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch15
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch15/expected/pipeline_compare.txt
+          --target ch15_pipeline_compare
+          --generator "${CMAKE_GENERATOR}"
+          --compiler ${CMAKE_CXX_COMPILER}
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests/ch15
+          --config $<CONFIG>
+          --build-all
+          --ctest ${CMAKE_CTEST_COMMAND}
+          --run-ctest)
+add_test(NAME ch15_data_race_is_reported_by_thread_sanitizer
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_sanitizer_failure.py
+          --compiler ${CMAKE_CXX_COMPILER}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch15/failures/data_race.cpp
+          --work-dir ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch15-race
+          --sanitizer thread
+          --diagnostic "ThreadSanitizer: data race")
+set_tests_properties(ch15_data_race_is_reported_by_thread_sanitizer
+  PROPERTIES SKIP_RETURN_CODE 77)
+
 add_test(NAME ch08_domain_pipeline_runs
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
@@ -515,6 +540,7 @@ add_subdirectory(code/ch11 ch11-snapshot)
 add_subdirectory(code/ch12 ch12-snapshot)
 add_subdirectory(code/ch13 ch13-snapshot)
 add_subdirectory(code/ch14 ch14-snapshot)
+add_subdirectory(code/ch15 ch15-snapshot)
 add_test(NAME layout_benchmark_smoke COMMAND layout_benchmark)
 set_tests_properties(layout_benchmark_smoke PROPERTIES
   PASS_REGULAR_EXPRESSION "checksum-match=true")

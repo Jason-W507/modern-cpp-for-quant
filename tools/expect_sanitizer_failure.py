@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import os
+import platform
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -20,7 +22,9 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--compiler", type=Path, required=True)
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--work-dir", type=Path, required=True)
-    parser.add_argument("--sanitizer", choices=("address", "undefined"), required=True)
+    parser.add_argument(
+        "--sanitizer", choices=("address", "undefined", "thread"), required=True
+    )
     parser.add_argument("--diagnostic", required=True)
     return parser.parse_args()
 
@@ -54,8 +58,10 @@ def main() -> int:
     environment = os.environ.copy()
     if args.sanitizer == "address":
         environment["ASAN_OPTIONS"] = "detect_leaks=0:halt_on_error=1"
-    else:
+    elif args.sanitizer == "undefined":
         environment["UBSAN_OPTIONS"] = "halt_on_error=1:print_stacktrace=1"
+    else:
+        environment["TSAN_OPTIONS"] = "halt_on_error=1:exitcode=66"
     completed = subprocess.run(
         [str(executable)],
         text=True,
@@ -64,6 +70,22 @@ def main() -> int:
         env=environment,
     )
     diagnostics = completed.stdout + completed.stderr
+    if args.sanitizer == "thread" and "unexpected memory mapping" in diagnostics:
+        setarch = shutil.which("setarch")
+        if setarch is None:
+            print("sanitizer-failure: SKIP: TSan needs setarch on this host")
+            return SKIP
+        completed = subprocess.run(
+            [setarch, platform.machine(), "-R", str(executable)],
+            text=True,
+            capture_output=True,
+            check=False,
+            env=environment,
+        )
+        diagnostics = completed.stdout + completed.stderr
+        if "Operation not permitted" in diagnostics:
+            print("sanitizer-failure: SKIP: host forbids disabling process ASLR")
+            return SKIP
     if completed.returncode == 0:
         print("expected sanitizer execution to fail", file=sys.stderr)
         return 1

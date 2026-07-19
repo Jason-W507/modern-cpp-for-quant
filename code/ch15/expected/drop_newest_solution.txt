@@ -1,0 +1,1 @@
+drop-newest-ok offered=5 accepted=2 dropped=3 drained-sum=30
