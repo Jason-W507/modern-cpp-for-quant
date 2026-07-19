@@ -13,10 +13,15 @@ int main() {
   }
   const quant::ch16::Moments moments =
       quant::ch16::sample_moments(returns);
+  const quant::ch16::TolerancePolicy tolerance_policy =
+      quant::ch16::tolerance_from_budget(0.0, 24, 1.0);
   const bool valid =
-      quant::ch16::almost_equal(moments.mean, 0.025, 1e-15, 1e-12) &&
+      quant::ch16::almost_equal(moments.mean, 0.025,
+                               tolerance_policy.absolute,
+                               tolerance_policy.relative) &&
       quant::ch16::almost_equal(
-          moments.sample_variance, 0.10125, 1e-15, 1e-12);
+          moments.sample_variance, 0.10125, tolerance_policy.absolute,
+          tolerance_policy.relative);
 
   std::cout << "return-stats-ok periods=" << moments.count << std::fixed
             << std::setprecision(6) << " mean=" << moments.mean

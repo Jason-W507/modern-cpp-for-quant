@@ -42,6 +42,20 @@ bool almost_equal(const double lhs, const double rhs,
          std::max(absolute_tolerance, relative_tolerance * scale);
 }
 
+TolerancePolicy tolerance_from_budget(const double input_absolute_error,
+                                      const std::size_t rounded_operations,
+                                      const double scale) {
+  if (!std::isfinite(input_absolute_error) || input_absolute_error < 0.0 ||
+      !std::isfinite(scale) || scale < 0.0) {
+    throw std::invalid_argument{"tolerance budget must be finite and nonnegative"};
+  }
+  const double relative =
+      static_cast<double>(rounded_operations) *
+      std::numeric_limits<double>::epsilon();
+  return {input_absolute_error, rounded_operations, scale,
+          input_absolute_error + relative * scale, relative};
+}
+
 Moments sample_moments(const std::span<const double> values) {
   if (values.size() < 2) {
     throw std::invalid_argument{"sample variance needs at least two values"};
@@ -65,12 +79,14 @@ std::int64_t round_major_to_cents(const double major_units) {
     throw std::invalid_argument{"money amount must be finite"};
   }
   const double scaled = major_units * 100.0;
-  const double limit =
-      static_cast<double>(std::numeric_limits<std::int64_t>::max());
-  if (std::abs(scaled) > limit) {
+  const double rounded = std::round(scaled);
+  const double upper_exclusive =
+      std::ldexp(1.0, std::numeric_limits<std::int64_t>::digits);
+  const double lower_inclusive = -upper_exclusive;
+  if (!(rounded >= lower_inclusive && rounded < upper_exclusive)) {
     throw std::overflow_error{"money amount exceeds int64 cents"};
   }
-  return static_cast<std::int64_t>(std::round(scaled));
+  return static_cast<std::int64_t>(rounded);
 }
 
 double simple_return(const double previous_price,
@@ -82,7 +98,7 @@ double simple_return(const double previous_price,
   return current_price / previous_price - 1.0;
 }
 
-BatchSum sum_batch(const BatchView view) {
+std::optional<BoundaryError> validate_batch(const BatchView view) {
   if (view.dtype != DType::float64) {
     return BoundaryError::wrong_dtype;
   }
@@ -91,6 +107,13 @@ BatchSum sum_batch(const BatchView view) {
   }
   if (view.data == nullptr && view.size != 0) {
     return BoundaryError::null_data;
+  }
+  return std::nullopt;
+}
+
+BatchSum sum_batch(const BatchView view) {
+  if (const auto error = validate_batch(view)) {
+    return *error;
   }
   const auto* data = static_cast<const double*>(view.data);
   return neumaier_sum({data, view.size});
@@ -115,6 +138,8 @@ std::string_view dtype_name(const DType dtype) {
       return "float32";
     case DType::int64:
       return "int64";
+    case DType::unsupported:
+      return "unsupported";
   }
   return "unknown";
 }

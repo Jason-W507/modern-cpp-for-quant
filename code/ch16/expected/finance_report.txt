@@ -1,1 +1,1 @@
-numeric-policy money=int64-cents rounded-cents=1013 return=0.025000 mean=0.006667 sample-variance=0.000633
+numeric-policy money=int64-cents rounded-cents=1013 return=0.025000 mean=0.006667 sample-variance=0.000633 overflow-rejected=true

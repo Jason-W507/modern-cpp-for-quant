@@ -1,1 +1,2 @@
 stability-ok exact-0.1+0.2=false tolerant=true naive=3.0 stable=4.0 oracle=4.0
+tolerance-source input-abs=0.000e+00 operations=2 scale=3.000e-01 abs=1.332e-16 rel=4.441e-16

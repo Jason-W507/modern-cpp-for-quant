@@ -17,7 +17,10 @@ quant::ch16::DType dtype_from(const py::buffer_info& info) {
   if (info.format == py::format_descriptor<float>::format()) {
     return quant::ch16::DType::float32;
   }
-  return quant::ch16::DType::int64;
+  if (info.format == py::format_descriptor<std::int64_t>::format()) {
+    return quant::ch16::DType::int64;
+  }
+  return quant::ch16::DType::unsupported;
 }
 
 quant::ch16::BatchView as_batch_view(const py::buffer_info& info) {
@@ -28,11 +31,7 @@ quant::ch16::BatchView as_batch_view(const py::buffer_info& info) {
           static_cast<std::ptrdiff_t>(info.strides[0])};
 }
 
-double unwrap_sum(const quant::ch16::BatchSum& result) {
-  if (const auto* value = std::get_if<double>(&result)) {
-    return *value;
-  }
-  const auto error = std::get<quant::ch16::BoundaryError>(result);
+[[noreturn]] void throw_boundary_error(const quant::ch16::BoundaryError error) {
   if (error == quant::ch16::BoundaryError::wrong_dtype) {
     throw py::type_error{"expected dtype float64 without implicit forcecast"};
   }
@@ -40,6 +39,19 @@ double unwrap_sum(const quant::ch16::BatchSum& result) {
     throw py::value_error{"expected C-contiguous one-dimensional array"};
   }
   throw py::value_error{quant::ch16::boundary_error_name(error).data()};
+}
+
+double unwrap_sum(const quant::ch16::BatchSum& result) {
+  if (const auto* value = std::get_if<double>(&result)) {
+    return *value;
+  }
+  throw_boundary_error(std::get<quant::ch16::BoundaryError>(result));
+}
+
+void validate_or_throw(const quant::ch16::BatchView view) {
+  if (const auto error = quant::ch16::validate_batch(view)) {
+    throw_boundary_error(*error);
+  }
 }
 
 double sum_returns(const py::array& values) {
@@ -55,9 +67,7 @@ double sum_returns(const py::array& values) {
 
 py::array borrowed_view(const py::array& values) {
   const py::buffer_info info = values.request();
-  const quant::ch16::BatchSum validation =
-      quant::ch16::sum_batch(as_batch_view(info));
-  (void)unwrap_sum(validation);
+  validate_or_throw(as_batch_view(info));
   return py::array{py::dtype::of<double>(), info.shape, info.strides, info.ptr,
                    values};
 }
@@ -65,7 +75,12 @@ py::array borrowed_view(const py::array& values) {
 py::array_t<double> centered_copy(const py::array& values) {
   const py::buffer_info info = values.request();
   const quant::ch16::BatchView view = as_batch_view(info);
-  const double total = unwrap_sum(quant::ch16::sum_batch(view));
+  quant::ch16::BatchSum sum_result;
+  {
+    py::gil_scoped_release release;
+    sum_result = quant::ch16::sum_batch(view);
+  }
+  const double total = unwrap_sum(sum_result);
   if (view.size == 0) {
     return py::array_t<double>{0};
   }

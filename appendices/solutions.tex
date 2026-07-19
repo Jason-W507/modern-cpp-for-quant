@@ -64,8 +64,7 @@
 \end{enumerate}
 
 \subsection*{编码任务反馈}
-CSV 读取与统计函数的完整实现如下；它只接受本章定义的三列方言，任何失败都会清空平行列并保留行号：
-\lstinputlisting{code/ch04/src/csv_stats.cpp}
+CSV 读取与统计函数的完整实现位于 \path{code/ch04/src/csv_stats.cpp}；它只接受本章定义的三列方言，任何失败都会清空平行列并保留行号。该文件由 \texttt{ch04\_csv\_stats} 与行为测试共同编译，读者应以源码而不是附录副本为准。
 
 完整答案如下；使用 \path{code/ch04/data/market_rows.csv} 与参数 \texttt{AAPL} 时，应输出 \texttt{symbol=AAPL rows=2 quantity=15 notional=1505.00}：
 \lstinputlisting{code/ch04/exercises/symbol_summary_solution.cpp}
@@ -86,11 +85,9 @@ CSV 读取与统计函数的完整实现如下；它只接受本章定义的三�
 \end{enumerate}
 
 \subsection*{编码任务反馈}
-行情对象和分析器的完整实现如下；\texttt{add} 拒绝代码不一致，\texttt{summary} 拒绝空序列：
-\lstinputlisting{code/ch05/src/market.cpp}
+行情对象和分析器的完整实现见 \path{code/ch05/src/market.cpp}；\texttt{add} 拒绝代码不一致，\texttt{summary} 拒绝空序列。
 
-CSV 读取层保留表头、列数、数字字段和构造异常的行号上下文：
-\lstinputlisting{code/ch05/src/csv_reader.cpp}
+CSV 读取层见 \path{code/ch05/src/csv_reader.cpp}，它保留表头、列数、数字字段和构造异常的行号上下文。两份完整源码均参加 \texttt{ch05\_market\_analyzer} 构建与精确 stderr 测试，避免在附录维护第二份实现。
 
 价格区间题的完整答案如下，输出应为 \texttt{symbol=AAPL range=1.00 trend=up}：
 \lstinputlisting{code/ch05/exercises/price_range_solution.cpp}

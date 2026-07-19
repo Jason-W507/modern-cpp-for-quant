@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.20)
 project(ch16_numerics_interop_lab LANGUAGES CXX)
 
 include(CTest)
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
+find_package(Python3 REQUIRED COMPONENTS Interpreter
+  OPTIONAL_COMPONENTS Development.Module)
 
 add_library(ch16_project_options INTERFACE)
 target_compile_features(ch16_project_options INTERFACE cxx_std_20)
@@ -16,6 +17,7 @@ endif()
 add_library(ch16_numerics src/numerics.cpp)
 target_include_directories(ch16_numerics PUBLIC include)
 target_link_libraries(ch16_numerics PUBLIC ch16_project_options)
+set_target_properties(ch16_numerics PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 add_executable(ch16_stability_report experiments/stability_report.cpp)
 target_link_libraries(ch16_stability_report PRIVATE ch16_numerics)
@@ -65,6 +67,24 @@ add_test(NAME ch16_temporary_buffer_view_is_reported_by_address_sanitizer
 set_tests_properties(
   ch16_temporary_buffer_view_is_reported_by_address_sanitizer
   PROPERTIES SKIP_RETURN_CODE 77)
+
+if(Python3_Development.Module_FOUND)
+  find_package(Threads REQUIRED)
+  Python3_add_library(ch16_gil_probe MODULE WITH_SOABI failures/gil_probe.cpp)
+  set_target_properties(ch16_gil_probe PROPERTIES
+    OUTPUT_NAME "_quant_ch16_gil_probe")
+  target_link_libraries(ch16_gil_probe PRIVATE
+    ch16_project_options
+    Threads::Threads)
+  add_test(NAME ch16_gil_probe_distinguishes_held_and_released_progress
+    COMMAND ${CMAKE_COMMAND} -E env
+            "PYTHONPATH=$<TARGET_FILE_DIR:ch16_gil_probe>"
+            ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_LIST_DIR}/../../tools/expect_output.py
+            --expected ${CMAKE_CURRENT_LIST_DIR}/expected/gil_probe.txt
+            -- ${Python3_EXECUTABLE}
+               ${CMAKE_CURRENT_LIST_DIR}/python/test_gil_probe.py)
+endif()
 
 option(CH16_BUILD_PYTHON "Build the optional pybind11 module when available" ON)
 if(CH16_BUILD_PYTHON)

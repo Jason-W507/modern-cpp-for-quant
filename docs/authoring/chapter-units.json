@@ -693,6 +693,8 @@
           "code/ch16/bindings/module.cpp",
           "code/ch16/python/test_optional_module.py",
           "code/ch16/failures/temporary_buffer_view.cpp",
+          "code/ch16/failures/gil_probe.cpp",
+          "code/ch16/python/test_gil_probe.py",
           "code/ch16/exercises/return_statistics_solution.cpp"
         ],
         "failure_experiment": {
@@ -703,7 +705,7 @@
         "self_checks": 8,
         "feedback": "appendices/solutions.tex",
         "project_connection": "code/ch16 is an independently buildable numerical and interoperability lab whose dependency-free core owns the algorithms and strict batch contract, while an optional pybind11 module delegates to that same core and preserves dtype, continuity, GIL and buffer-lifetime boundaries before Chapter 17 integrates it with the backtest engine.",
-        "publication_note": "The rendered Chapter 16 uses four main-text pages against its six-page guardrail, with one appendix answer page; it keeps numerical representation, stable reduction, finance-specific rounding, batch-boundary costs and pybind11 ownership protocols together without a trailing blank page.",
+        "publication_note": "The rendered Chapter 16 uses five main-text pages against its six-page guardrail, with its answer spanning two appendix pages; the complete book remains within the 155-page publication cap while keeping numerical representation, stable reduction, finance-specific rounding, batch-boundary costs and pybind11 ownership protocols together without a trailing blank page.",
         "checklist_markers": [
           "prerequisites",
           "learning-output",

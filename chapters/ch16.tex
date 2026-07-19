@@ -28,6 +28,8 @@ ctest --test-dir build/ch16-debug --output-on-failure
 \begin{lstlisting}[numbers=none]
 stability-ok exact-0.1+0.2=false tolerant=true
   naive=3.0 stable=4.0 oracle=4.0
+tolerance-source input-abs=0.000e+00 operations=2
+  scale=3.000e-01 abs=1.332e-16 rel=4.441e-16
 \end{lstlisting}
 
 独立手算 oracle 是 $10^{16}+1-10^{16}+3=4$。程序若只打印“计算完成”或拿同一个函数生成 expected，不能证明算法正确。
@@ -45,9 +47,9 @@ return difference <=
        std::max(absolute_tolerance, relative_tolerance * scale);
 \end{lstlisting}
 
-绝对容差保护接近零的值；相对容差随量级缩放。$10^{-12}$ 不是魔法常量：测试必须从输入最小报价单位、允许舍入次数、算法误差预算或参考实现精度推导它。容差过小制造假失败，过大则会吞掉真实回归；NaN 与无穷还要按接口另行拒绝。
+绝对容差保护接近零的值；相对容差随量级缩放。可运行的 \texttt{tolerance\_from\_budget} 接收输入绝对误差、预计舍入操作数和结果尺度。本例输入误差为 0、加法含两次舍入、尺度为 0.3，按 \texttt{double} epsilon 导出上面的绝对与相对界限。报价精度或参考实现已有误差时，应计入 input-abs；容差过大仍会吞掉真实回归。
 
-Python 的 \texttt{math.isclose} 也使用相对与绝对容差，但默认值、NaN 规则和调用点不会自动成为 C++ 合约。失败可由直接断言 \texttt{simple\_return(100, 102.5) == 0.025} 触发；诊断是值只在末位不同，根因是两次舍入，修复是给出业务来源的容差并保留独立 expected。立即练习：只把绝对容差从 $10^{-12}$ 改为 0，仍保留相对容差；解释接近零的 $10^{-15}$ 与 0 为何不再通过，并把结果写成一个行为断言。
+Python 的 \texttt{math.isclose} 也使用相对与绝对容差，但默认值、NaN 规则和调用点不会自动成为 C++ 合约。失败可由直接断言 \texttt{simple\_return(100, 102.5) == 0.025} 触发；诊断是值只在末位不同，根因是两次舍入，修复是给出业务来源的容差并保留独立 expected。立即练习：只把 input-abs 从 0 改为 $10^{-4}$；输出 absolute 应约为 $10^{-4}$，并解释这代表输入精度变化而非“为了过测试”。
 
 \section{求和顺序、补偿项与在线方差}
 
@@ -70,6 +72,7 @@ Python 的 \texttt{math.fsum} 提供高精度求和工具，NumPy 的归约还�
 \begin{lstlisting}[numbers=none]
 numeric-policy money=int64-cents rounded-cents=1013
   return=0.025000 mean=0.006667 sample-variance=0.000633
+  overflow-rejected=true
 \end{lstlisting}
 
 Python 的整数也能无损保存 cents，\texttt{decimal.Decimal} 能表达十进制规则且整数不会溢出；C++ 固定宽度整数必须检查范围，标准库也没有金融 decimal 的直接替代品。失败可由向金额入口传 NaN、无穷或超出 \texttt{int64\_t} 的值触发；稳定类别分别是 invalid input 与 overflow，根因是表示域不匹配，修复是边界拒绝而不是静默截断。立即练习：只把金额改为 $-10.125$，按本章口径应得到 $-1013$ 分；再写一句说明退款是否允许为负属于领域规则而非浮点规则。
@@ -115,9 +118,11 @@ Python 调入扩展时当前线程持有 GIL。长时间纯 C++ 循环若一直�
 
 Python 的线程同样受 GIL 约束，但 NumPy 或其他扩展是否释放、释放多久属于各函数实现契约。失败触发是两个 Python 线程调用长 C++ 循环却完全串行；profiler 显示第二线程没有 Python 进展，根因通常是持锁计算。修复是在纯 C++ 且对象寿命已固定的最小区间释放，并用 ThreadSanitizer/行为测试另证 C++ 线程安全。立即练习：只把 \texttt{gil\_scoped\_release} 移出数据指针取得之前，指出为什么此时访问 \texttt{py::array} 元数据不再安全；正确答案不是“多加一个锁”，而是缩回释放作用域。
 
+无需 pybind11 的 \path{gil_probe.cpp} 还用 CPython 扩展 API 建立可运行诊断：新 C++ 线程必须取得 GIL 后才设置原子进度。调用方持有 GIL 等待时进度稳定为 false；仅在等待区间释放后才为 true，测试输出 \texttt{gil-diagnostic held-progress=false released-progress=true}。探针以 deadline 防止故障无限挂起，但不靠 sleep 猜测调度。
+
 \section{输出任务与自测}
 
-输出任务：提交 \path{code/ch16} 的 clean-build 命令、三组精确输出和一页边界说明。说明须给出容差来源、金额舍入口径、收益与方差定义；比较逐元素、批量复制和零拷贝；列出 dtype、stride、所有者与 GIL 的前置条件。附 ASan 的稳定 \texttt{heap-use-after-free} 类别。环境有 pybind11 时再提交可选模块测试输出；没有时提交“dependency-free core only”配置证据，不得下载依赖冒充核心要求。
+输出任务：提交 \path{code/ch16} 的 clean-build 命令、容差预算与三组精确输出，以及一页边界说明。说明须给出金额舍入口径、收益与方差定义；比较逐元素、批量复制和零拷贝；列出 dtype、stride、所有者与 GIL 的前置条件。附 ASan 的 \texttt{heap-use-after-free} 与 GIL probe 两类稳定证据。环境有 pybind11 时再提交可选模块输出；没有时提交“dependency-free core only”配置证据。
 
 自测：
 \begin{enumerate}
