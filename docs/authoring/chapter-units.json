@@ -447,7 +447,46 @@
         ]
       }
     },
-    {"number": 11, "state": "planned"},
+    {
+      "number": 11,
+      "state": "accepted",
+      "evidence": {
+        "tex": "chapters/ch11.tex",
+        "examples": [
+          "code/ch11/CMakeLists.txt",
+          "code/ch11/include/quant/ch11/market_summary.hpp",
+          "code/ch11/src/market_summary.cpp",
+          "code/ch11/app/main.cpp",
+          "code/ch11/examples/market_example.cpp",
+          "code/ch11/tests/test_market_summary.cpp",
+          "code/ch11/exercises/notional_report_solution.cpp"
+        ],
+        "failure_experiment": {
+          "source": "code/ch11/failures/missing_target_link.cpp",
+          "diagnostic_category": "the source compiles before linking reports a missing definition caused by an absent target dependency"
+        },
+        "output_task": "Configure code/ch11 from a clean Debug build directory, build its library, application, example and test targets, run CTest, and print exactly rows=3 quantity=25 notional=2525.00 vwap=101.00; repeat the report target in a clean sanitizer-enabled build.",
+        "self_checks": 8,
+        "feedback": "appendices/solutions.tex",
+        "project_connection": "code/ch11 is an independently buildable target-based evolution of the market analyzer; the root project reuses the same CMake target graph through add_subdirectory while clean-build tests verify Debug and Sanitized configurations.",
+        "publication_note": "The rendered Chapter 11 spans 7 pages rather than the 6-page planning budget because the self-study unit keeps the complete target graph, real usage-requirement propagation, a link-stage failure experiment, three build configurations and a runnable consumer exercise together.",
+        "checklist_markers": [
+          "prerequisites",
+          "learning-output",
+          "scenario",
+          "syntax-rule",
+          "runnable-example",
+          "guided-explanation",
+          "python-boundary",
+          "failure-diagnosis",
+          "immediate-practice",
+          "code-evidence",
+          "feedback",
+          "project-connection",
+          "publication"
+        ]
+      }
+    },
     {"number": 12, "state": "planned"},
     {"number": 13, "state": "planned"},
     {"number": 14, "state": "planned"},

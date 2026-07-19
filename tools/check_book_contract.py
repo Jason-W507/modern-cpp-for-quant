@@ -334,7 +334,7 @@ def validate_chapter_units(
 
 def declared_cmake_target(cmake_text: str, target: str) -> bool:
     declaration = re.compile(
-        rf"\b(?:quant_target|quant_project_target|add_executable)\(\s*"
+        rf"\b(?:quant_target|quant_project_target|add_executable|add_library)\(\s*"
         rf"{re.escape(target)}(?:\s|\))"
     )
     return declaration.search(cmake_text) is not None
@@ -376,7 +376,8 @@ def validate_code_evidence(
     if stale:
         errors.append(f"registered listings are not referenced by TeX: {sorted(stale)}")
 
-    cmake_text = read_text(root / "CMakeLists.txt", errors)
+    cmake_files = [root / "CMakeLists.txt", *sorted((root / "code").glob("**/CMakeLists.txt"))]
+    cmake_text = "\n".join(read_text(path, errors) for path in cmake_files)
     for index, entry in enumerate(listings, start=1):
         if not isinstance(entry, dict):
             errors.append(f"complete listing {index} must be an object")

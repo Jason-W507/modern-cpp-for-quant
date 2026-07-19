@@ -67,7 +67,10 @@
     "class-templates",
     "concepts-requires",
     "variant-result",
-    "assertions"
+    "assertions",
+    "cmake-targets",
+    "dependency-visibility",
+    "build-configurations"
   ],
   "parts": [
     {

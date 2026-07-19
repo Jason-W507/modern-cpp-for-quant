@@ -23,6 +23,10 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--compiler", type=Path, required=True)
     parser.add_argument("--work-root", type=Path, required=True)
     parser.add_argument("--config", default="")
+    parser.add_argument("--cmake-argument", action="append", default=[])
+    parser.add_argument("--build-all", action="store_true")
+    parser.add_argument("--ctest", type=Path)
+    parser.add_argument("--run-ctest", action="store_true")
     return parser.parse_args()
 
 
@@ -40,18 +44,18 @@ def main() -> int:
     if run([str(args.cmake), "-E", "remove_directory", str(build)]).returncode != 0:
         return 1
 
-    configure = run(
-        [
-            str(args.cmake),
-            "-S",
-            str(args.source),
-            "-B",
-            str(build),
-            "-G",
-            args.generator,
-            f"-DCMAKE_CXX_COMPILER={args.compiler}",
-        ]
-    )
+    configure_command = [
+        str(args.cmake),
+        "-S",
+        str(args.source),
+        "-B",
+        str(build),
+        "-G",
+        args.generator,
+        f"-DCMAKE_CXX_COMPILER={args.compiler}",
+    ]
+    configure_command.extend(args.cmake_argument)
+    configure = run(configure_command)
     if configure.returncode != 0:
         return 1
 
@@ -59,13 +63,23 @@ def main() -> int:
         str(args.cmake),
         "--build",
         str(build),
-        "--target",
-        args.target,
     ]
+    if not args.build_all:
+        build_command.extend(["--target", args.target])
     if args.config:
         build_command.extend(["--config", args.config])
     if run(build_command).returncode != 0:
         return 1
+
+    if args.run_ctest:
+        if args.ctest is None:
+            print("--run-ctest requires --ctest", file=sys.stderr)
+            return 1
+        test_command = [str(args.ctest), "--test-dir", str(build), "--output-on-failure"]
+        if args.config:
+            test_command.extend(["-C", args.config])
+        if run(test_command).returncode != 0:
+            return 1
 
     executable_name = (
         f"{args.target}.exe" if sys.platform == "win32" else args.target

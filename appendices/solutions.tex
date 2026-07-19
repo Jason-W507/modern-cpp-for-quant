@@ -186,11 +186,19 @@ CSV 读取层保留表头、列数、数字字段和构造异常的行号上下�
 
 \section{第 11 章}
 \begin{enumerate}
-  \item 按资产分区输入，每线程只写自己的结果 map，join 后合并。
-  \item 阻塞传播背压；丢最新损失新信息；覆盖最旧损失历史，均需指标和业务许可。
-  \item 先停接收，再通知消费者排空/取消，唤醒阻塞，join，最后释放依赖。
-  \item TSan 报告定位冲突访问；修复应建立所有权分片或明确同步，而非加随机 sleep。
+  \item 配置读取项目并检测工具链，生成写出底层构建文件，构建才调用编译器和链接器，CTest 运行已登记且已构建的测试。
+  \item 旧二进制和缓存可能来自旧源码或旧选项；只有全新构建树能证明当前提交的配置路径完整。
+  \item 公共头文件目录同时供库与消费者使用，故为 PUBLIC；实现宏只供库自身使用，故为 PRIVATE。
+  \item INTERFACE 目标没有编译产物，但其 usage requirements 沿链接边进入消费者的编译与链接命令。
+  \item \texttt{add\_test} 只登记运行命令；测试程序仍须由 \texttt{add\_executable} 或其他目标创建。
+  \item 头文件不可见通常在编译期暴露；声明可见但定义未链接通常在链接期暴露。
+  \item Debug 支持逐步诊断，Sanitized 提供内存与 UB 证据，Release 验证优化配置；独立目录避免缓存串味。
+  \item 单配置生成器在配置时设置 \texttt{CMAKE\_BUILD\_TYPE}；多配置生成器在 build/ctest 时使用 \texttt{--config} 或 \texttt{-C}，目标图不变。
 \end{enumerate}
+
+编码任务的完整源码如下；在 \path{code/ch11/CMakeLists.txt} 中以 \texttt{add\_executable} 创建目标，再 PRIVATE 链接 \texttt{ch11\_market}，即可继承公共头文件和 C++20 要求：
+
+\lstinputlisting[caption={第 11 章新增消费者目标练习答案}]{code/ch11/exercises/notional_report_solution.cpp}
 
 \section{第 12 章}
 \begin{enumerate}

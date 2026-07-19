@@ -276,6 +276,44 @@ add_test(NAME ch10_clean_recovery_pipeline_configures_builds_and_runs
           --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests
           --config $<CONFIG>)
 
+add_test(NAME ch11_clean_target_graph_configures_builds_and_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
+          --cmake ${CMAKE_COMMAND}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch11
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch11/expected/market_report.txt
+          --target ch11_market_report
+          --generator "${CMAKE_GENERATOR}"
+          --compiler ${CMAKE_CXX_COMPILER}
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests
+          --config $<CONFIG>
+          --build-all
+          --ctest ${CMAKE_CTEST_COMMAND}
+          --run-ctest)
+add_test(NAME ch11_missing_target_dependency_fails_during_linking
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_link_failure.py
+          --compiler ${CMAKE_CXX_COMPILER}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch11/failures/missing_target_link.cpp
+          --work-dir ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch11-link
+          --diagnostic "undefined reference|unresolved external symbol")
+add_test(NAME ch11_sanitized_configuration_builds_and_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
+          --cmake ${CMAKE_COMMAND}
+          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch11
+          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch11/expected/market_report.txt
+          --target ch11_market_report
+          --generator "${CMAKE_GENERATOR}"
+          --compiler ${CMAKE_CXX_COMPILER}
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests
+          --config $<CONFIG>
+          --cmake-argument=-DCMAKE_BUILD_TYPE=Debug
+          --cmake-argument=-DCH11_ENABLE_SANITIZERS=ON
+          --build-all
+          --ctest ${CMAKE_CTEST_COMMAND}
+          --run-ctest)
+
 add_test(NAME ch08_domain_pipeline_runs
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_output.py
@@ -335,15 +373,12 @@ set_tests_properties(sample_backtest_runs PROPERTIES
   PASS_REGULAR_EXPRESSION "fills=1 equity=10100 return=1%")
 
 quant_target(layout_benchmark project/benchmarks/layout_benchmark.cpp)
-quant_target(ch11_parallel_sum code/ch11/parallel_sum.cpp)
+add_subdirectory(code/ch11 ch11-snapshot)
 quant_target(ch12_numerical_stability code/ch12/numerical_stability.cpp)
 quant_target(ch12_pybind_boundary code/ch12/pybind11_boundary.cpp)
 add_test(NAME layout_benchmark_smoke COMMAND layout_benchmark)
 set_tests_properties(layout_benchmark_smoke PROPERTIES
   PASS_REGULAR_EXPRESSION "checksum-match=true")
-add_test(NAME ch11_parallel_sum_runs COMMAND ch11_parallel_sum)
-set_tests_properties(ch11_parallel_sum_runs PROPERTIES
-  PASS_REGULAR_EXPRESSION "sum=5000050000")
 add_test(NAME ch12_numerical_stability_runs COMMAND ch12_numerical_stability)
 set_tests_properties(ch12_numerical_stability_runs PROPERTIES
   PASS_REGULAR_EXPRESSION "naive=0 compensated=1")

@@ -56,7 +56,11 @@
     {"tex": "chapters/ch10.tex", "source": "code/ch10/src/pipeline.cpp", "target": "ch10_recovery_pipeline"},
     {"tex": "chapters/ch10.tex", "source": "code/ch10/src/main.cpp", "target": "ch10_recovery_pipeline"},
     {"tex": "appendices/solutions.tex", "source": "code/ch10/exercises/error_injection_solution.cpp", "target": "ch10_error_injection_solution"},
-    {"tex": "chapters/ch11.tex", "source": "code/ch11/parallel_sum.cpp", "target": "ch11_parallel_sum"},
+    {"tex": "chapters/ch11.tex", "source": "code/ch11/CMakeLists.txt", "target": "ch11_market_report"},
+    {"tex": "chapters/ch11.tex", "source": "code/ch11/include/quant/ch11/market_summary.hpp", "target": "ch11_market"},
+    {"tex": "chapters/ch11.tex", "source": "code/ch11/app/main.cpp", "target": "ch11_market_report"},
+    {"tex": "chapters/ch11.tex", "source": "code/ch11/failures/missing_target_link.cpp", "target": "ch11_missing_target_link_failure"},
+    {"tex": "appendices/solutions.tex", "source": "code/ch11/exercises/notional_report_solution.cpp", "target": "ch11_notional_solution"},
     {"tex": "chapters/ch12.tex", "source": "code/ch12/numerical_stability.cpp", "target": "ch12_numerical_stability"},
     {"tex": "chapters/ch12.tex", "source": "code/ch12/pybind11_boundary.cpp", "target": "ch12_pybind_boundary"},
     {"tex": "chapters/ch13.tex", "source": "project/include/quant/statistics.hpp", "target": "test_backtest"}
@@ -146,6 +150,11 @@
       "source": "code/ch10/data/fills.csv",
       "stage": "runtime",
       "diagnostic_category": "malformed quantity produces one line-and-field contextual error while processing continues"
+    },
+    {
+      "source": "code/ch11/failures/missing_target_link.cpp",
+      "stage": "link",
+      "diagnostic_category": "compilation succeeds before the linker reports an undefined reference caused by a missing target dependency"
     }
   ],
   "chapter_snapshots": [
@@ -180,6 +189,10 @@
     {
       "path": "code/ch10",
       "entry_target": "ch10_recovery_pipeline"
+    },
+    {
+      "path": "code/ch11",
+      "entry_target": "ch11_market_report"
     }
   ]
 }

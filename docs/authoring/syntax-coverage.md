@@ -64,5 +64,8 @@
 | concepts-requires | `concept`、`requires` 表达式、复合要求与约束失败 | ch09 | ch09 | ch16, ch17 |
 | variant-result | `std::variant`、备选类型、`holds_alternative` 与 `get` | ch10 | ch10 | ch17 |
 | assertions | `assert`、内部不变量与 `NDEBUG` 边界 | ch10 | ch10 | ch12, ch17 |
+| cmake-targets | `add_library`、`add_executable`、目标属性与依赖图 | ch11 | ch11 | ch12, ch17 |
+| dependency-visibility | `PRIVATE`、`PUBLIC`、`INTERFACE` 与使用要求传播 | ch11 | ch11 | ch12, ch17 |
+| build-configurations | Debug、Sanitized、Release 与单/多配置生成器 | ch11 | ch11 | ch12, ch14 |
 
 维护规则：新增基础语法必须增加一行；若某概念第一次出现的章节提前，必须同时移动首次教学与立即练习，不能只改后续引用。

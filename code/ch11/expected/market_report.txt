@@ -1,0 +1,1 @@
+rows=3 quantity=25 notional=2525.00 vwap=101.00

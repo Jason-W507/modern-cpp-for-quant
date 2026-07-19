@@ -142,11 +142,11 @@ Work the **frontier**: any ticket whose blockers are all done.
 
 **Blocked by:** 第 5 章：类与行情分析器.
 
-- [ ] 可执行文件、库、测试和示例的目标关系由逐步重构建立。
-- [ ] `PRIVATE`、`PUBLIC` 与 `INTERFACE` 通过真实传播行为解释。
-- [ ] Debug、Sanitized 与 Release 配置各有明确用途和命令。
-- [ ] 从干净目录配置和构建成功，不依赖未记录的本机状态。
-- [ ] Windows 生成器差异不改变 Linux/WSL 主线心智模型。
+- [x] 可执行文件、库、测试和示例的目标关系由逐步重构建立。
+- [x] `PRIVATE`、`PUBLIC` 与 `INTERFACE` 通过真实传播行为解释。
+- [x] Debug、Sanitized 与 Release 配置各有明确用途和命令。
+- [x] 从干净目录配置和构建成功，不依赖未记录的本机状态。
+- [x] Windows 生成器差异不改变 Linux/WSL 主线心智模型。
 
 ## 第 12 章：测试与调试工具
 
