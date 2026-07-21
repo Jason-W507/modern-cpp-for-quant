@@ -24,7 +24,7 @@ quant-cpp-ready
 
 \subsection{场景：让操作系统找到程序入口}
 
-Python 文件可以从第一条顶层语句开始执行。C++ 可执行程序需要一个约定入口，操作系统启动进程后由运行时进入名为 \texttt{main} 的函数。先完整保存下面的真实源码，不要省略标点：
+Python 文件可以从第一条顶层语句开始执行。C++ 可执行程序需要一个约定入口，操作系统启动进程后由运行时进入名为 \texttt{main} 的函数。先完整保存下面的真实源码，所有标点都要保留：
 
 \lstinputlisting[caption={第一个可运行的 C++ 程序}]{code/ch01/first_program.cpp}
 
@@ -34,7 +34,7 @@ Python 文件可以从第一条顶层语句开始执行。C++ 可执行程序需
 
 \texttt{int main()} 声明程序入口。这里先把 \texttt{int} 理解为“该入口会交回一个整数状态”，\texttt{main} 是标准规定的名称，空圆括号表示本版本暂不接收命令行参数。左花括号 \texttt{\{} 开始函数体，匹配的右花括号 \texttt{\}} 结束函数体；缩进帮助人阅读，但花括号才决定结构。
 
-\texttt{//} 从当前位置开始一行注释；\texttt{/*} 与 \texttt{*/} 则界定可以跨行的块注释。编译器不会把注释内容当作要执行的语句，但块注释不能嵌套：遇到第一个 \texttt{*/} 就已经结束，因此不要用它包住一段本身含块注释的代码。\texttt{std::cout} 是标准输出流；\texttt{std::} 指明名称属于标准库命名空间，双冒号是作用域解析符。\texttt{<<} 把右侧内容送入输出流，双引号包住要输出的文本，\texttt{\textbackslash n} 表示换行。字符串和数字的正式类型留到第 2 章，本章只要求能正确识读这条输出语句。
+\texttt{//} 从当前位置开始一行注释；\texttt{/*} 与 \texttt{*/} 则界定可以跨行的块注释。编译器不会把注释内容当作要执行的语句，但块注释不能嵌套：遇到第一个 \texttt{*/} 就已经结束，因此它不适合包住本身含块注释的代码。\texttt{std::cout} 是标准输出流；\texttt{std::} 指明名称属于标准库命名空间，双冒号是作用域解析符。\texttt{<<} 把右侧内容送入输出流，双引号包住要输出的文本，\texttt{\textbackslash n} 表示换行。字符串和数字的正式类型留到第 2 章，本章只要求能正确识读这条输出语句。
 
 行尾的分号结束一条 C++ 语句。\texttt{return 0;} 把成功状态交回运行环境；在 Linux/WSL 中，状态 0 约定为成功，非零表示失败。分号、圆括号、花括号和引号都是语法的一部分，不能像 Python 中某些可选标点那样随意删去。
 
@@ -44,7 +44,7 @@ Python 的缩进同时承担语法结构，\texttt{print()} 由运行时按名�
 
 \subsection{立即练习}
 
-先只把源码中的 \texttt{//} 注释改成单行的 \texttt{/* ... */} 注释，预测输出应逐字符不变，再构建运行；不要嵌套块注释。然后只把输出文本改为 \texttt{quant-cpp-learning}，预测哪一行会变化并再次运行。若只改文本却出现语法错误，优先检查成对双引号、末尾分号和 \texttt{\textbackslash n} 是否仍在；完成后恢复章首约定输出，确保精确测试重新通过。
+先只把源码中的 \texttt{//} 注释改成单行的 \texttt{/* ... */} 注释，预测输出应逐字符不变，再构建运行；块注释须保持非嵌套。然后只把输出文本改为 \texttt{quant-cpp-learning}，预测哪一行会变化并再次运行。若只改文本却出现语法错误，优先检查成对双引号、末尾分号和 \texttt{\textbackslash n} 是否仍在；完成后恢复章首约定输出，确保精确测试重新通过。
 
 \section{单文件命令与构建流水线}
 
@@ -61,7 +61,7 @@ g++ -std=c++20 -Wall -Wextra -Wpedantic \
 echo $?
 \end{lstlisting}
 
-\texttt{g++} 是 GCC 的 C++ 驱动程序；\texttt{-std=c++20} 选择本书语言版本；三个警告选项要求编译器报告常见可疑代码；\texttt{-o first\_program} 指定输出文件名。反斜杠位于 shell 行末时表示命令在下一行继续，它不是源文件内容。\texttt{./} 明确运行当前目录中的文件，\texttt{echo \$?} 查看刚结束程序的状态，应为 0。
+\texttt{g++} 是 GCC 的 C++ 驱动程序；\texttt{-std=c++20} 选择本书语言版本；三个警告选项要求编译器报告常见可疑代码；\texttt{-o first\_program} 指定输出文件名。反斜杠位于 shell 行末时表示命令在下一行继续，不属于源文件内容。\texttt{./} 明确运行当前目录中的文件，\texttt{echo \$?} 查看刚结束程序的状态，应为 0。
 
 一条 \texttt{g++} 命令隐藏了多步流水线：
 \[
@@ -82,7 +82,7 @@ g++ first_program.o -o first_program
 \texttt{-c} 表示只编译、不链接，所以第一条命令成功只能证明目标文件已经生成，不能证明最终程序的所有名称都有定义。
 
 \begin{pythonbridge}
-导入 Python 模块也可能失败，但普通 Python 工作流不会先生成目标文件再调用链接器。C++ 的阶段边界使一部分错误更早暴露，也要求你看清究竟是哪条命令失败，而不是把所有诊断统称为“编译不过”。
+导入 Python 模块也可能失败，但普通 Python 工作流不会先生成目标文件再调用链接器。C++ 的阶段边界使一部分错误更早暴露，也要求你看清究竟是哪条命令失败，不能把所有诊断笼统归为“编译不过”。
 \end{pythonbridge}
 
 \section{三个故障实验：先分类，再修复}
@@ -115,7 +115,7 @@ double expected_notional();  // declaration only
 g++ missing_definition.o -o missing_definition
 \end{lstlisting}
 
-链接器应报告 \texttt{undefined reference} 类别。函数声明与定义会在第 3 章从零教学；此处只建立诊断规则：能产生 \texttt{.o} 但不能产生可执行文件，问题就在链接阶段。修复是提供且参与链接的唯一定义，而不是反复修改编译警告选项。立即练习：分别记录两条命令的退出状态，确认前者为 0、后者非零。
+链接器应报告 \texttt{undefined reference} 类别。函数声明与定义会在第 3 章从零教学；此处只建立诊断规则：能产生 \texttt{.o} 但不能产生可执行文件，问题就在链接阶段。修复方式是提供唯一定义并让它参与链接；反复修改编译警告选项无助于补齐定义。立即练习：分别记录两条命令的退出状态，确认前者为 0、后者非零。
 
 \subsection{运行期失败：程序主动报告启动错误}
 
@@ -126,9 +126,9 @@ std::cerr << "startup-error: market-data path is required\n";
 return 2;
 \end{lstlisting}
 
-这模拟量化程序在启动检查中发现缺少行情路径。\texttt{std::cerr} 是标准错误流，便于把诊断与正常结果分开；状态 2 是本实验定义的失败协议。若可执行文件已经启动并打印上述消息，故障阶段就是运行期，不是链接。立即练习：只把状态改为 3，运行后用 \texttt{echo \$?} 验证；随后恢复为 2，使自动验收重新通过。
+这模拟量化程序在启动检查中发现缺少行情路径。\texttt{std::cerr} 是标准错误流，便于把诊断与正常结果分开；状态 2 是本实验定义的失败协议。若可执行文件已经启动并打印上述消息，故障就发生在运行期，链接阶段此前已经完成。立即练习：只把状态改为 3，运行后用 \texttt{echo \$?} 验证；随后恢复为 2，使自动验收重新通过。
 
-\subsection{诊断记录模板：不要从最后一行猜原因}
+\subsection{诊断记录模板：从首个根因开始}
 
 编译器和链接器可能在一个根因后产生许多级联消息。可靠记录按固定顺序写五项：当前目录与完整命令；第一条非零退出的命令；失败前最后生成的产物；第一条能够解释后续消息的诊断；修复后重跑的命令和结果。只截取终端末尾一句，常会丢掉真正的文件名、行号和阶段。
 
@@ -155,14 +155,14 @@ cmake --build build --target ch01_first_program
 \texttt{-S .} 指定源目录，\texttt{-B build} 指定目录外构建树；源码与生成文件因此不会混在一起。第一次运行前 \path{build/} 不应存在，这叫干净构建。若只删除可执行文件而保留旧缓存，不能证明项目从零可配置。验收完成后可删除整个 \path{build/}，再重复三条命令。
 
 \begin{pythonbridge}
-Python 项目常用 \path{pyproject.toml} 描述包、用虚拟环境隔离依赖，并由解释器直接运行入口；这里的 \path{CMakeLists.txt} 描述原生构建目标。\texttt{cmake -S . -B build} 只读取项目并生成当前平台的构建系统，不会运行程序；\texttt{cmake --build build} 才调用编译器与链接器。CMake 因而更像跨平台的构建描述层，不是 C++ 解释器或包管理器。
+Python 项目常用 \path{pyproject.toml} 描述包、用虚拟环境隔离依赖，并由解释器直接运行入口；这里的 \path{CMakeLists.txt} 描述原生构建目标。\texttt{cmake -S . -B build} 只读取项目并生成当前平台的构建系统，不会运行程序；\texttt{cmake --build build} 才调用编译器与链接器。CMake 因而是跨平台的构建描述层，与 C++ 解释器或包管理器承担不同职责。
 \end{pythonbridge}
 
-做一次只有一个变量的失败练习：在项目副本里只把 \texttt{add\_executable} 中的 \path{first_program.cpp} 改为不存在的 \path{missing.cpp}，并把配置输出写入全新的 \path{build-broken/}。预期 \texttt{cmake -S . -B build-broken} 在配置或生成阶段以非零状态结束，稳定类别是 \texttt{Cannot find source file}，而且不会产生可运行目标。把文件名恢复后删除 \path{build-broken/}，从空构建目录重跑配置、构建和程序；若仍失败，先核对源目录是否同时包含清单中的两个文件，再读第一条 CMake 诊断，而不是改编译器选项。
+做一次只有一个变量的失败练习：在项目副本里只把 \texttt{add\_executable} 中的 \path{first_program.cpp} 改为不存在的 \path{missing.cpp}，并把配置输出写入全新的 \path{build-broken/}。预期 \texttt{cmake -S . -B build-broken} 在配置或生成阶段以非零状态结束，稳定类别是 \texttt{Cannot find source file}，而且不会产生可运行目标。把文件名恢复后删除 \path{build-broken/}，从空构建目录重跑配置、构建和程序；若仍失败，先核对源目录是否同时包含清单中的两个文件，再读第一条 CMake 诊断。此类配置错误与编译器选项无关。
 
 \subsection{Windows 差异只放在命令边缘}
 
-正文主线使用 Linux/WSL 与 GCC。在 PowerShell 中，CMake 的前两条命令保持不变；单配置生成器的程序通常写作 \path{.\build\ch01_first_program.exe}，Visual Studio 等多配置生成器可能位于 \path{build\Debug}。直接使用 MSVC 时警告选项是 \texttt{/W4 /permissive-}，而不是 GCC 的 \texttt{-Wall -Wextra -Wpedantic}。不要维护两套教学流程：以 \texttt{cmake --build} 屏蔽生成器细节，需要 Linux sanitizer 或书中精确 shell 命令时使用 WSL。
+正文主线使用 Linux/WSL 与 GCC。在 PowerShell 中，CMake 的前两条命令保持不变；单配置生成器的程序通常写作 \path{.\build\ch01_first_program.exe}，Visual Studio 等多配置生成器可能位于 \path{build\Debug}。直接使用 MSVC 时警告选项是 \texttt{/W4 /permissive-}；MSVC 不接受 GCC 的 \texttt{-Wall -Wextra -Wpedantic}。本书只维护一套教学主线：以 \texttt{cmake --build} 屏蔽生成器细节，需要 Linux sanitizer 或书中精确 shell 命令时使用 WSL。
 
 \section{自测、编码任务与面试表达}
 

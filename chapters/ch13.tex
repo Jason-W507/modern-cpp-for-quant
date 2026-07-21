@@ -70,7 +70,7 @@ Array of Structures（AoS）把一条记录的全部字段放在一起，适合�
 
 立即练习：为两种循环都增加 venue 过滤，列出现在实际读取的字段。先保持 checksum 相同，再更新“模型字节”；不要计时，先解释为什么原来的冷热字段判断已经变化。
 
-\section{预分配：减少搬迁，不等于增加元素}
+\section{预分配：减少搬迁而不增加元素}
 
 \texttt{vector::reserve(n)} 只保证容量至少为 \texttt{n}，\texttt{size()} 不变；\texttt{resize(n)} 会真正创建或销毁元素。容量不足时，vector 申请新存储，把现有元素复制或移动过去，再释放旧存储；指针、引用和迭代器因而失效。
 
@@ -88,7 +88,7 @@ quotes.emplace_back(100.0);     // now size becomes 1
 
 立即练习：\texttt{reserve(3)} 后插入 3 个元素，记录实际 \texttt{capacity()} 和移动计数；继续插入到 \texttt{size()} 超过该容量，再记录两者。容量一旦改变，先前元素地址便全部失效，不要读取或比较旧指针。
 
-\section{Arena 与 \texttt{std::pmr}：分配策略不是所有权策略}
+\section{Arena 与 \texttt{std::pmr}：区分分配与所有权}
 
 大量同寿命小对象可从 arena 顺序取存储并批量释放。\texttt{std::pmr} 容器把资源从容器类型中解耦。本章用栈上 4096 字节缓冲构造 \path{monotonic_buffer_resource}，upstream 设为 \path{null_memory_resource()}；容量不足会明确抛出。
 

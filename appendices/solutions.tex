@@ -76,7 +76,7 @@ CSV 读取与统计函数的完整实现位于 \path{code/ch04/src/csv_stats.cpp
 \section{第 5 章}
 \subsection*{自测答案}
 \begin{enumerate}
-  \item \texttt{struct} 默认公开，\texttt{class} 默认私有；两者都能声明访问标签、构造函数和成员函数，不是两套对象模型。选择应表达“透明记录”还是“维护不变量的抽象”。
+  \item \texttt{struct} 默认公开，\texttt{class} 默认私有；两者都能声明访问标签、构造函数和成员函数，共享同一套对象模型。选择应表达“透明记录”还是“维护不变量的抽象”。
   \item 作用域枚举把枚举项保留在类型作用域并阻止静默整数转换，因此写 \texttt{Trend::up}。分支直接 \texttt{return} 或 \texttt{throw} 时不需 \texttt{break}；仍要继续执行函数时，\texttt{break} 防止贯穿下一标签。
   \item 构造函数建立对象，没有单独返回值。成员初始化列表在进入函数体前构造成员；函数体随后检查字段组合，不满足时抛出且对象不交付。
   \item \texttt{price() const} 的尾随 \texttt{const} 约束当前对象不被成员函数修改；\texttt{const std::string\&} 约束调用者通过返回引用只读观察字符串，并要求借用不超过对象寿命。

@@ -29,7 +29,7 @@ symbol=AAPL rows=2 first=100.00 last=101.00 return=1.00% low=100.00 high=101.00 
 
 \texttt{enum class Trend \{ down, flat, up \};} 定义三个互斥的命名值。\texttt{enum class} 不把 \texttt{up} 泄漏到外层作用域，使用时必须写 \texttt{Trend::up}；它也不会静默当作整数参与计算。\texttt{switch} 对枚举值分派，每个 \texttt{case} 后有冒号。本例在每个分支直接 \texttt{return}，因此不需要 \texttt{break}；若只执行语句而不离开，忘记 \texttt{break} 会继续贯穿下一标签。
 
-该程序故意把公开价格改成 \(-1\)，并稳定输出 \texttt{price=-1}。这不是未定义行为，而是一个设计缺口的证据：语法上有效的赋值制造了业务上无效的行情。
+该程序故意把公开价格改成 \(-1\)，并稳定输出 \texttt{price=-1}。程序没有触发未定义行为，却暴露了设计缺口：语法上有效的赋值制造了业务上无效的行情。
 
 \begin{pythonbridge}
 Python 的 \texttt{dataclass} 与 C++ 聚合都适合透明记录，但 Python 属性可在运行期重新绑定为不同类型；C++ 字段类型在编译期固定。两者的公开字段都不能自行阻止 \texttt{price=-1}，需要在创建或更新边界加入不变量。
@@ -113,7 +113,7 @@ Python 方法显式写 \texttt{self} 参数；C++ 非静态成员函数隐式获
 Python 常在命令行入口捕获 \texttt{Exception} 并转换退出码；C++ 同样应在有能力决定协议的边界捕获。不要在每一层重复记录，也不要把文件打不开、CSV 语法错误和对象不变量错误都改写成同一句“分析失败”。
 \end{pythonbridge}
 
-失败诊断：价格文本 \texttt{not-a-price} 最初泄漏了标准库实现消息 \texttt{stod}。这不是稳定领域契约。修复是在 CSV 层完整消费文本并固定为 \texttt{invalid number: price}，再附加行号。
+失败诊断：价格文本 \texttt{not-a-price} 最初泄漏了标准库实现消息 \texttt{stod}，因而无法充当稳定的领域契约。修复是在 CSV 层完整消费文本并固定为 \texttt{invalid number: price}，再附加行号。
 
 立即练习：把正常文件的第 2 行数量改为 \texttt{ten}。预期 stdout 为空、stderr 为 \texttt{error=line 2: invalid number: quantity}、退出状态为 2；恢复后输出任务必须重新逐字匹配。
 

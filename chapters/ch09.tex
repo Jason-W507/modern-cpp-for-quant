@@ -25,7 +25,7 @@ threshold_orders=1 hold_orders=0
 
 \lstinputlisting[caption={只接受阈值策略的普通函数}]{code/ch09/ordinary_strategy.cpp}
 
-\texttt{decide\_threshold} 不是模板。它只接受 \texttt{ThresholdStrategy} 的只读引用，调用方传入 \texttt{HoldStrategy} 会在重载选择阶段失败。这个限制在只有一种策略时完全合理：签名清楚、诊断直接、实现放在源文件也容易保持 ABI 边界。
+\texttt{decide\_threshold} 是一个只接受具体策略类型的普通函数。它只接受 \texttt{ThresholdStrategy} 的只读引用，调用方传入 \texttt{HoldStrategy} 会在重载选择阶段失败。这个限制在只有一种策略时完全合理：签名清楚、诊断直接、实现放在源文件也容易保持 ABI 边界。
 
 程序用固定事件和空仓快照调用它，精确输出 \texttt{ordinary=buy}。先保存这条可运行行为，再泛化接口；否则直接面对 concept 最终代码，读者无法判断每个语法元素解决了什么重复。
 
@@ -33,7 +33,7 @@ threshold_orders=1 hold_orders=0
 Python 的函数通常不声明具体参数类型，只要传入对象在运行到该行时具有 \texttt{on\_event} 就能继续。C++ 普通函数把类型要求写在签名里，因此编译器在调用前就能拒绝其他类型。两者都可以从最具体实现开始，不应为了“以后可能有很多策略”预先设计复杂层次。
 \end{pythonbridge}
 
-失败诊断：若调用 \texttt{decide\_threshold(hold, event, flat)}，编译器会报告无法把 \texttt{HoldStrategy} 绑定到 \texttt{const ThresholdStrategy\&}。根因不是持有策略缺少方法，而是函数签名点名了另一种类型。若确实需要复用同一算法，下一步才引入模板。
+失败诊断：若调用 \texttt{decide\_threshold(hold, event, flat)}，编译器会报告无法把 \texttt{HoldStrategy} 绑定到 \texttt{const ThresholdStrategy\&}。根因是函数签名点名了另一种类型，并非持有策略缺少方法。若确实需要复用同一算法，下一步才引入模板。
 
 立即练习：把事件价格从 99 改为 101，其他代码不变。输出应变为 \texttt{ordinary=none}；若仍为 buy，先检查阈值比较而不是模板语法。
 
@@ -52,10 +52,10 @@ Python 的函数通常不声明具体参数类型，只要传入对象在运行�
 编译器实例化时必须看到模板定义，不能像普通非模板函数那样只在头文件留声明、把通用定义藏进一个无人可见的源文件。常见做法是把模板定义放在头文件；大型项目也可显式实例化已知类型，但会限制可用类型集合并增加构建设计成本。
 
 \begin{pythonbridge}
-Python 只保留一份函数对象，运行时对不同对象执行相同字节码；C++ 模板通常为实际类型分别实例化机器代码。Python 类型提示不会自动生成新函数，C++ 模板参数也不是运行时变量，不能在程序执行中突然换成另一种类型。
+Python 只保留一份函数对象，运行时对不同对象执行相同字节码；C++ 模板通常为实际类型分别实例化机器代码。Python 类型提示不会自动生成新函数，C++ 模板参数同样不属于运行时变量，程序执行期间不能突然换成另一种类型。
 \end{pythonbridge}
 
-失败诊断：传入整数 42 时，模板推导成功，因为任何类型都能先成为 \texttt{Strategy}；错误直到实例化函数体中的 \texttt{strategy.on\_event} 才出现。根因是模板参数没有说明所需能力，不是推导失败。
+失败诊断：传入整数 42 时，模板推导成功，因为任何类型都能先成为 \texttt{Strategy}；错误直到实例化函数体中的 \texttt{strategy.on\_event} 才出现。根因是模板参数没有说明所需能力；模板推导本身已经成功。
 
 立即练习：删除 \texttt{HoldStrategy} 调用并重新构建。输出只剩阈值结果，同时编译器不再需要持有策略对应的 \texttt{decide} 实例；源码模板仍然存在。
 
@@ -73,7 +73,7 @@ Python 只保留一份函数对象，运行时对不同对象执行相同字节�
 
 类模板声明把 \texttt{MarketStrategy} 用作类型参数约束。以 \texttt{ThresholdStrategy} 作为 \texttt{StrategyRunner} 的显式模板实参时，尖括号中的类型决定成员 \texttt{strategy\_} 的真实类型。两个不同策略会得到两个不同的运行器特化，彼此不能直接赋值。
 
-构造函数按值接收策略并移动到成员，运行器拥有策略对象。\texttt{count\_orders} 负责遍历一批事件、调用所持策略并汇总订单数；调用方提供同一持仓快照，因而这里刻意不模拟成交后的仓位变化。类模板既固定一种编译期策略，也封装批处理职责，不是只转发一个成员函数的空包装。
+构造函数按值接收策略并移动到成员，运行器拥有策略对象。\texttt{count\_orders} 负责遍历一批事件、调用所持策略并汇总订单数；调用方提供同一持仓快照，因而这里刻意不模拟成交后的仓位变化。类模板既固定一种编译期策略，也封装批处理职责，所做工作超过转发一个成员函数。
 
 \begin{pythonbridge}
 Python 的 \texttt{typing.Protocol} 也能描述“具有某方法并返回某类型”的结构化能力，但主要由静态检查器使用，运行时不一定强制。C++ concept 直接参与模板候选选择；不满足时该重载或特化不可用。两者都不能证明方法的业务语义，只能约束可表达的接口形状。

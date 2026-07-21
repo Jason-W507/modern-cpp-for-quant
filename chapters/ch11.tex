@@ -36,10 +36,10 @@ rows=3 quantity=25 notional=2525.00 vwap=101.00
 
 \texttt{cmake -S ... -B ...} 先读取 \path{CMakeLists.txt}、检测编译器和依赖，再生成 Ninja 或 Make 等底层构建文件。它通常不编译 C++。\texttt{cmake --build ...} 才按依赖图调用编译器与链接器；\texttt{ctest --test-dir ...} 运行已经登记且已经构建的测试。若只运行最后一步，旧二进制可能让错误源码看起来仍然通过。
 
-CMakeCache.txt 保存编译器路径、选项和检测结果，所以“删除一个目标文件”不等于干净配置。验证可复现性时应换用从未存在的构建目录；切换编译器、生成器或 sanitizer 时也优先使用新目录，而不是反复修改同一个缓存。
+CMakeCache.txt 保存编译器路径、选项和检测结果，所以仅删除一个目标文件无法得到干净配置。验证可复现性时应换用从未存在的构建目录；切换编译器、生成器或 sanitizer 时也优先使用新目录，反复修改同一个缓存容易残留旧状态。
 
 \begin{pythonbridge}
-Python 直接执行源码时，安装与运行边界常被解释器隐藏；原生项目把配置、生成、编译、链接和测试明确分开。CMake 类似“生成构建系统的项目模型”，不是编译器，也不是等价于 pip 的包管理器。先判断命令停在哪个阶段，才能决定检查 CMake 目标、C++ 源码、链接库还是运行行为。
+Python 直接执行源码时，安装与运行边界常被解释器隐藏；原生项目把配置、生成、编译、链接和测试明确分开。CMake 更接近“生成构建系统的项目模型”，既不承担编译器职责，也不能等同于 pip 包管理器。先判断命令停在哪个阶段，才能决定检查 CMake 目标、C++ 源码、链接库还是运行行为。
 \end{pythonbridge}
 
 立即练习：只运行配置命令，确认构建目录中已有缓存和生成文件但还没有 \texttt{ch11\_market\_report}；再构建该单一目标，观察静态库先于应用生成；最后运行 CTest，解释为何未构建测试目标时测试可能显示“找不到可执行文件”。
@@ -77,7 +77,7 @@ target_link_libraries(ch11_market_report PRIVATE ch11_market)
 
 \lstinputlisting[caption={由库目标公开的行情汇总接口}]{code/ch11/include/quant/ch11/market_summary.hpp}
 
-该接口使用 \texttt{std::span}，所以消费者也必须以 C++20 编译。正确做法不是要求每个应用记住 \texttt{-std=c++20}，而是让库目标传播这一使用要求。
+该接口使用 \texttt{std::span}，所以消费者也必须以 C++20 编译。应让库目标传播这一使用要求，免去每个应用分别记住 \texttt{-std=c++20}。
 
 \section{PRIVATE、PUBLIC 与 INTERFACE 是传播方向}
 

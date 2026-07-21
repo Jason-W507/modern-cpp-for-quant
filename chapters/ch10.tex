@@ -25,7 +25,7 @@ error line=3 field=quantity message=expected a positive integer
 
 \section{先给失败分类，再选择机制}
 
-\subsection{场景：四种“不成功”并不是同一件事}
+\subsection{场景：区分四种“不成功”}
 
 找不到 MSFT 最新价可能只是当前数据集中没有该代码；坏 CSV 行是调用方需要检查的可恢复结果；文件系统拒绝打开属于环境失败；负持仓则违反组合内部不变量。若全部返回 \texttt{bool}，上下文会丢失；若全部抛异常，正常缺席也会变成昂贵而喧闹的控制流。
 
@@ -90,7 +90,7 @@ Python 常返回 \texttt{(value, error)} 或抛自定义异常。若元组允许
 
 \subsection{场景：批次第二笔失败，第一笔不能残留}
 
-异常安全讨论的是异常发生后对象仍承诺什么。基本保证要求对象可析构且不变量成立；强保证进一步要求操作像事务一样，要么全部成功，要么公开状态不变；不抛保证则承诺操作不会抛异常。不是每个函数都需要强保证，但组合批次非常适合：半批成交会产生难以解释的仓位。
+异常安全讨论的是异常发生后对象仍承诺什么。基本保证要求对象可析构且不变量成立；强保证进一步要求操作像事务一样，要么全部成功，要么公开状态不变；不抛保证则承诺操作不会抛异常。强保证并非每个函数的必需品，却很适合组合批次：半批成交会产生难以解释的仓位。
 
 \lstinputlisting[caption={候选状态、验证与无异常提交点}]{code/ch10/src/portfolio.cpp}
 
@@ -98,7 +98,7 @@ Python 常返回 \texttt{(value, error)} 或抛自定义异常。若元组允许
 
 提交前还必须排除算术本身破坏不变量：买入数量先与固定宽度整数上限比较，名义金额和下一现金都必须保持 finite。测试先建立接近 \texttt{INT64\_MAX} 的仓位，再注入一股买单；实现必须抛出 \texttt{overflow\_error}，且异常前后的公开快照不变。不能依赖 Debug assert 在溢出后补救，因为有符号溢出本身是未定义行为。
 
-这不是“catch 后手工撤销”。撤销代码也可能漏字段或再次失败；先构造完整新状态再提交，更容易审查。代价是复制时间与内存，因此大型订单簿可改用预验证、写前日志或专门事务结构，但必须由同一公开快照测试保护语义。
+这里采用先构造后提交的事务式更新，并未在 catch 后手工撤销。撤销代码也可能漏字段或再次失败；先构造完整新状态再提交，更容易审查。代价是复制时间与内存，因此大型订单簿可改用预验证、写前日志或专门事务结构，但必须由同一公开快照测试保护语义。
 
 \path{code/ch10/tests/test_atomic_portfolio.cpp} 先建立 10 股 AAPL，再注入“买 5 股 AAPL 后买 1 股 MSFT”的批次。测试捕获 \texttt{logic\_error}，并逐字段比较异常前后 quantity、cash、equity。它不检查 candidate 或私有成员，所以实现可替换。
 
@@ -170,7 +170,7 @@ fatal context=missing.csv message=cannot open input file
 编码任务：向一个已有 AAPL 持仓注入“两笔组成的失败批次”，第一笔合法，第二笔超卖；捕获异常后必须用公开快照断言 quantity、cash、equity 全部不变，并精确输出 \texttt{injected=1 rolled\_back=1 unchanged=1}。完整答案位于 \path{code/ch10/exercises/error_injection_solution.cpp}。
 
 \begin{interviewcheck}
-回答“交易系统怎么做错误处理”时，不要只说 try/catch。先分类正常缺席、可恢复错误、外部失败和内部 bug；再说明错误上下文、异常安全级别与提交点；最后给出日志只记一次、指标聚合、追踪关联和热路径成本边界。
+回答“交易系统怎么做错误处理”时，只谈 try/catch 还不够。先分类正常缺席、可恢复错误、外部失败和内部 bug；再说明错误上下文、异常安全级别与提交点；最后给出日志只记一次、指标聚合、追踪关联和热路径成本边界。
 \end{interviewcheck}
 
 \section{本章小结}

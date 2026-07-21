@@ -18,7 +18,7 @@ sudo apt update
 sudo apt install build-essential cmake gdb
 \end{lstlisting}
 
-若系统已有这些工具，不要为了追随书中版本号重复安装。Ninja 可选；正文命令不依赖它。
+若系统已有这些工具，无须为了追随书中版本号重复安装。Ninja 可选；正文命令不依赖它。
 
 \section{配置、构建与测试}
 
@@ -51,7 +51,7 @@ Windows 原生构建只补充差异，不改变 WSL 主线。MinGW Makefiles 通
 
 \section{警告、调试与 sanitizer}
 
-遇到失败先按阶段选择工具，不要把所有问题统称为“编译报错”：
+遇到失败先按阶段选择工具，把所有问题统称为“编译报错”会丢失关键边界：
 
 \begin{center}
 \begin{tabularx}{\textwidth}{@{}p{0.18\textwidth}p{0.27\textwidth}X@{}}
@@ -78,7 +78,7 @@ cmake --build build/ch11-sanitized -j2
 ctest --test-dir build/ch11-sanitized --output-on-failure
 \end{lstlisting}
 
-具体开关以对应章节的 CMake 入口为准。AddressSanitizer 与 UndefinedBehaviorSanitizer 常组合使用；ThreadSanitizer 通常单独构建。不要用 \texttt{sleep} 代替同步，也不要把故意 UB 的输出值写成 oracle。
+具体开关以对应章节的 CMake 入口为准。AddressSanitizer 与 UndefinedBehaviorSanitizer 常组合使用；ThreadSanitizer 通常单独构建。\texttt{sleep} 无法代替同步，故意 UB 的输出值也不能充当 oracle。
 
 % appendix:miktex-build
 \section{在 Windows / MiKTeX 构建本书}
@@ -89,7 +89,7 @@ PDF 在 Windows PowerShell 中由 MiKTeX 26.1、XeLaTeX 与 \texttt{latexmk} 复
 latexmk -xelatex -interaction=nonstopmode -halt-on-error -outdir=build main.tex
 \end{lstlisting}
 
-若 MiKTeX 为最小安装，让其包管理器按日志补齐缺失依赖；以日志中的实际包名为准，不要反复删除书稿源码，也不要把一次安装得到的包列表当成跨版本契约。
+若 MiKTeX 为最小安装，让其包管理器按日志补齐缺失依赖；以日志中的实际包名为准。反复删除书稿源码无助于补包，一次安装得到的包列表也不能视为跨版本契约。
 
 本项目复制的 ElegantBook 4.7 在 MiKTeX 26.1 上遇到 \texttt{adforn} 的缺失间接依赖；项目内类文件只替换了问题集标题装饰符，原目录 \path{D:/Latex/ElegantBook} 保持不变。
 

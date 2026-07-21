@@ -11,7 +11,7 @@
 
 \section{本章输出：一份可复核的故障诊断报告}
 
-量化系统最危险的失败不一定崩溃。手续费符号写反仍会生成看似合理的净值；悬空指针可能在测试机上“碰巧可用”；只含 \texttt{assert} 的测试会在 Release 中安静通过。本章交付的不是一串调试命令，而是一份包含六项证据的诊断报告：症状与期望、最小复现命令、失败层级、工具输出中的稳定类别、根因、修复后的回归测试。
+量化系统最危险的失败不一定崩溃。手续费符号写反仍会生成看似合理的净值；悬空指针可能在测试机上“碰巧可用”；只含 \texttt{assert} 的测试会在 Release 中安静通过。本章最终交付一份包含六项证据的诊断报告，调试命令只是取得证据的工具：症状与期望、最小复现命令、失败层级、工具输出中的稳定类别、根因、修复后的回归测试。
 
 仓库已有四条公开行为 seam，可作为测试先例：\path{project/tests/test_csv_reader.cpp} 保护行情输入，\path{project/tests/test_strategy.cpp} 保护策略决策，\path{project/tests/test_execution_portfolio.cpp} 保护成交与组合，\path{project/tests/test_backtest.cpp} 保护端到端手算账本。它们只观察输入、返回值、状态和输出，不断言某个私有成员或某次内部调用，因此重构实现时仍有价值。
 
@@ -19,7 +19,7 @@
 
 \lstinputlisting[caption={Release 中仍执行真实分支检查的组合行为测试}]{code/ch12/tests/test_portfolio.cpp}
 
-测试使用 \texttt{if (!correct)} 返回非零状态。它不是为了绕开测试框架，而是让最小快照不引入外部依赖，同时展示测试程序最基本的协议：零表示通过，非零表示失败，标准错误流解释差异。完整快照可独立验证：
+测试使用 \texttt{if (!correct)} 返回非零状态。这样设计是为了让最小快照不引入外部依赖，同时展示测试程序最基本的协议：零表示通过，非零表示失败，标准错误流解释差异。完整快照可独立验证：
 
 \begin{lstlisting}[language=bash,numbers=none]
 cmake -S code/ch12 -B build/ch12-debug -DCMAKE_BUILD_TYPE=Debug
@@ -38,11 +38,11 @@ portfolio-fee-ok cash=799.00 equity=1019.00
 
 \subsection{先写能失败的账本事实}
 
-测试驱动开发的第一步不是提前设计所有类，而是选择一个可观察事实。若实现把手续费加回现金，错误程序会报告 \texttt{observed-cash=801 expected-cash=799} 并以状态 2 退出：
+测试驱动开发从选择一个可观察事实开始，暂不提前设计所有类。若实现把手续费加回现金，错误程序会报告 \texttt{observed-cash=801 expected-cash=799} 并以状态 2 退出：
 
 \lstinputlisting[caption={红灯：手续费符号写反的最小逻辑错误}]{code/ch12/failures/logic_bug.cpp}
 
-这条红灯有三个质量条件。第一，它因目标行为尚未满足而失败，不是因源文件不存在或测试本身无法编译。第二，期望值来自独立手算 \(1000-100\times2-1=799\)，不是复制实现表达式。第三，输出同时给出 observed 与 expected，失败后无需先打开测试源码猜测。
+这条红灯有三个质量条件。第一，它因目标行为尚未满足而失败；源文件不存在或测试本身无法编译属于环境故障。第二，期望值来自独立手算 \(1000-100\times2-1=799\)，不能复制实现表达式。第三，输出同时给出 observed 与 expected，失败后无需先打开测试源码猜测。
 
 最小修复只把 \texttt{+ fee} 改为 \texttt{- fee}，并保留同一个行为检查：
 
@@ -56,7 +56,7 @@ pytest 的 \texttt{assert observed == expected} 会由 pytest 改写并生成丰
 
 立即练习：把正确实现中的费用暂改为 0，先写下你预测的现金和权益，再运行测试。确认失败来自数值差异后恢复代码；若你先改期望值让测试变绿，就失去了手续费需求的独立 oracle。
 
-\section{Release 陷阱：\texttt{assert} 不是测试框架}
+\section{Release 陷阱：\texttt{assert} 无法替代测试框架}
 
 \texttt{assert(condition)} 适合表达程序员认为不可能被合法输入破坏的内部不变量。条件为假时，Debug 程序终止并报告位置；定义 \texttt{NDEBUG} 后，整个表达式通常不再求值。下面的故障测试故意让实际成交数为 1、期望为 2，却只用 \texttt{assert} 检查：
 
@@ -76,7 +76,7 @@ cmake --build build/ch12-release --target ch12_assert_only_release
 
 Debug 运行会被断言终止；Release 却输出 \texttt{assertion-check-disappeared} 并返回成功。更隐蔽的错误是把有副作用的操作写进 \texttt{assert(place\_order())}：Release 中连下单调用也会消失。因此断言表达式应无副作用，测试判定必须来自测试框架或显式检查。
 
-本章自动验收还会从全新 Release 构建树运行 \texttt{ch12\_portfolio\_tests}。其错误分支没有被预处理器删除，错误费用仍会令进程返回 1。这才是“Release 测试通过”的真实含义，而不是“测试可执行文件返回了 0”。
+本章自动验收还会从全新 Release 构建树运行 \texttt{ch12\_portfolio\_tests}。其错误分支没有被预处理器删除，错误费用仍会令进程返回 1。只有这样才能说明“Release 测试通过”；单看测试可执行文件返回 0，可能只是检查已被删除。
 
 \section{逻辑错误：用 GDB 检查数据流}
 
@@ -137,7 +137,7 @@ g++ -std=c++20 -fanalyzer -c \
 
 \section{Sanitizer：让未定义行为留下运行证据}
 
-C++ 的越界、释放后使用和有符号溢出属于未定义行为。程序可能崩溃、输出旧值、污染别处，也可能看似正常；“运行十次都没事”不是正确性证据。Sanitizer 在编译时插入检查并在运行时报告类别，适合用能覆盖缺陷路径的小输入触发。
+C++ 的越界、释放后使用和有符号溢出属于未定义行为。程序可能崩溃、输出旧值、污染别处，也可能看似正常；“运行十次都没事”无法证明程序正确。Sanitizer 在编译时插入检查并在运行时报告类别，适合用能覆盖缺陷路径的小输入触发。
 
 \subsection{ASan：越界与悬空}
 
@@ -158,7 +158,7 @@ g++ -std=c++20 -O0 -g -fsanitize=address \
 
 \lstinputlisting[caption={ASan 目标：释放后使用}]{code/ch12/failures/dangling_pointer.cpp}
 
-这里的稳定类别是 \texttt{heap-use-after-free}。ASan 给出的读取位置、释放位置和分配位置共同构成生命周期证据。修复不是“把指针设为 nullptr”这么简单：若别处还保存副本，仍可能悬空；优先让对象按值存在、由容器拥有，或用 \texttt{unique\_ptr} 表达唯一所有权。
+这里的稳定类别是 \texttt{heap-use-after-free}。ASan 给出的读取位置、释放位置和分配位置共同构成生命周期证据。修复不能止于“把指针设为 nullptr”：若别处还保存副本，仍可能悬空；优先让对象按值存在、由容器拥有，或用 \texttt{unique\_ptr} 表达唯一所有权。
 
 \subsection{UBSan：合法内存上的非法运算}
 
@@ -175,10 +175,10 @@ g++ -std=c++20 -O0 -g -fsanitize=undefined \
 
 预期类别是 \texttt{signed integer overflow}。量化代码中的数量乘价格、时间单位换算和累计计数都应在运算前检查范围；把溢出后的结果再转成更宽类型已经太迟。若确实需要模运算，使用无符号类型并在接口中明确语义，不要依赖有符号回绕。
 
-ASan 和 UBSan 应在 Debug/Sanitized 配置中编译并链接相同选项；它们增加内存与时间开销，不用于性能结论。MSVC 近年支持 AddressSanitizer，但选项和覆盖范围与 GCC/Clang 不同；本章自动故障类别测试在不支持的编译器上显式跳过，而不是伪造通过。
+ASan 和 UBSan 应在 Debug/Sanitized 配置中编译并链接相同选项；它们增加内存与时间开销，不用于性能结论。MSVC 近年支持 AddressSanitizer，但选项和覆盖范围与 GCC/Clang 不同；本章自动故障类别测试会在不支持的编译器上显式跳过，避免伪造通过。
 
 \begin{pythonbridge}
-Python 列表越界通常抛出 \texttt{IndexError}，整数自动扩展，普通对象由运行时维持生命周期；这会降低一类内存错误，却不会阻止 NumPy/C 扩展、ctypes 或原生库中的 UB。C++ sanitizer 更像“带观测器的特殊构建”，不是异常处理机制：发现错误后应修复所有权、边界或范围，并留下行为回归测试。
+Python 列表越界通常抛出 \texttt{IndexError}，整数自动扩展，普通对象由运行时维持生命周期；这会降低一类内存错误，却不会阻止 NumPy/C 扩展、ctypes 或原生库中的 UB。C++ sanitizer 更像“带观测器的特殊构建”，其职责与异常处理机制不同：发现错误后应修复所有权、边界或范围，并留下行为回归测试。
 \end{pythonbridge}
 
 \section{症状决定工具，工具不能代替根因}
@@ -202,7 +202,7 @@ Python 列表越界通常抛出 \texttt{IndexError}，整数自动扩展，普�
 
 实际故障循环可固定为六步：保存失败输入与命令；用最小公开行为稳定复现；按错误阶段和症状选择工具；记录稳定类别及首个用户栈帧；提出能解释全部证据的根因；做最小修复并增加回归测试。若修复只让症状消失却不能解释证据，诊断仍未完成。
 
-\section{输出任务：诊断而不是照抄命令}
+\section{输出任务：用命令形成诊断}
 
 从 \path{code/ch12/failures/logic_bug.cpp} 开始，不先查看练习答案。提交一份短报告并满足以下验收：
 

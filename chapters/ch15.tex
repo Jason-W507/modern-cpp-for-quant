@@ -11,7 +11,7 @@
 
 \section{本章输出：同一结果，三种执行模型}
 
-量化流水线常把行情批次分片计算，但“开两个线程”不是完成判据。\path{code/ch15/experiments/pipeline_compare.cpp} 先用 8 条整数分行情建立顺序 oracle，再让两个 \texttt{std::jthread} 和两个 \texttt{std::async} 任务计算同一分区。独立手算为 201100 分；三条路径不一致时，任何吞吐比较立即作废。
+量化流水线常把行情批次分片计算，但完成判据必须落在结果和协议上，不能只写“开两个线程”。\path{code/ch15/experiments/pipeline_compare.cpp} 先用 8 条整数分行情建立顺序 oracle，再让两个 \texttt{std::jthread} 和两个 \texttt{std::async} 任务计算同一分区。独立手算为 201100 分；三条路径不一致时，任何吞吐比较立即作废。
 
 从项目根目录构建独立快照：
 
@@ -29,11 +29,11 @@ pipeline-ok rows=8 sequential-cents=201100
   thread-cents=201100 task-cents=201100 checksum-match=true
 \end{lstlisting}
 
-这里验证的是结果，不是“并发更快”。8 条数据远小于线程启动和调度成本，发布构建也不能让微小工作自动获得收益。立即练习：只把最后一条数量从 2 改为 3，先手算新 oracle 211150，再修改常量并要求三条路径同时通过。
+这里验证三条路径的结果一致；“并发更快”仍待独立测量。8 条数据远小于线程启动和调度成本，发布构建也不能让微小工作自动获得收益。立即练习：只把最后一条数量从 2 改为 3，先手算新 oracle 211150，再修改常量并要求三条路径同时通过。
 
 \section{所有权与 happens-before}
 
-线程启动后可以与创建者交错执行。若两个线程访问同一内存位置、至少一个是写入，并且冲突访问之间没有 happens-before，就形成 data race；C++ 对此给出的不是“偶尔少算”，而是未定义行为。先问谁拥有数据、谁只读、谁写入，再选同步工具。
+线程启动后可以与创建者交错执行。若两个线程访问同一内存位置、至少一个是写入，并且冲突访问之间没有 happens-before，就形成 data race；C++ 将这种情况定义为未定义行为，后果远不止“偶尔少算”。先问谁拥有数据、谁只读、谁写入，再选同步工具。
 
 线程版把只读 \texttt{quotes} 借给两个工作线程，每个线程只写 \texttt{partials} 的不同数组元素：
 
@@ -54,7 +54,7 @@ std::array<std::int64_t, 2> partials{};
 CPython 的 GIL 不等于业务对象的复合操作具有事务性，也不代表 C++ 移植后仍安全。Python 名称捕获常延长对象引用；C++ 的 \texttt{[\&]} 只是借用，任务若越过局部对象寿命便会悬空。两边都应明确所有权和完成协议。
 \end{pythonbridge}
 
-立即练习：把线程作用域后的求和移动到作用域内部，解释它为何可能与写入并发；修复不是加 \texttt{sleep}，而是恢复明确的 join 边。
+立即练习：把线程作用域后的求和移动到作用域内部，解释它为何可能与写入并发；正确修复要恢复明确的 join 边，\texttt{sleep} 无法建立同步关系。
 
 \section{任务、future 与异常传播}
 
@@ -68,7 +68,7 @@ CPython 的 GIL 不等于业务对象的复合操作具有事务性，也不代�
 
 \section{mutex、条件变量与复合不变量}
 
-有界队列的状态不是一个整数，而是 \texttt{\{items, closed\}}：关闭后不得再写，关闭前容量不得超限，关闭后已有元素仍可排空。\path{code/ch15/include/quant/ch15/bounded_queue.hpp} 用同一 \texttt{std::mutex} 保护这组字段；每次检查和修改都在一段临界区内完成。
+有界队列的完整状态由 \texttt{\{items, closed\}} 共同组成，单个整数无法表达：关闭后不得再写，关闭前容量不得超限，关闭后已有元素仍可排空。\path{code/ch15/include/quant/ch15/bounded_queue.hpp} 用同一 \texttt{std::mutex} 保护这组字段；每次检查和修改都在一段临界区内完成。
 
 阻塞读取的核心如下，省略了类声明、写入、关闭和查询成员：
 
@@ -169,4 +169,4 @@ ctest --test-dir build/ch15-root -R ch15_data_race \
 
 \section{本章小结}
 
-并发正确性来自所有权与明确同步，不来自一次正确输出；背压和停止是接口协议，不是队列实现细节。先保留顺序 oracle，用 join、mutex、future 和 stop-aware 等待建立可推理边界，再用 sanitizer 与受控测量补证据，才能安全地把并发带入量化系统。
+并发正确性来自所有权与明确同步，一次正确输出不足为证；背压和停止属于接口协议，不能降格为队列实现细节。先保留顺序 oracle，用 join、mutex、future 和 stop-aware 等待建立可推理边界，再用 sanitizer 与受控测量补证据，才能安全地把并发带入量化系统。

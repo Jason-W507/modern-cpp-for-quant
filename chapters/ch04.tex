@@ -61,7 +61,7 @@ Python 字符串和列表也有 \texttt{len} 与零起点索引，但 Python 越
 Python 常直接迭代对象而不显式暴露 iterator 类型；在迭代列表时修改列表同样容易产生跳项等逻辑错误。C++ 还多一层内存有效性：\texttt{vector} 搬迁后，旧迭代器可能指向已经释放的存储。
 \end{pythonbridge}
 
-故意失败的 \path{code/ch04/failures/stale_iterator.cpp} 保存旧迭代器，强制扩容后再解引用。它不进入绿色目标；AddressSanitizer 应非零退出并报告 \texttt{heap-use-after-free}。根因不是“vector 不可靠”，而是程序违反了失效规则。修复可在取得迭代器前预留足够容量，或在修改后重新取得迭代器。
+故意失败的 \path{code/ch04/failures/stale_iterator.cpp} 保存旧迭代器，强制扩容后再解引用。它不进入绿色目标；AddressSanitizer 应非零退出并报告 \texttt{heap-use-after-free}。程序违反失效规则才是根因，不能据此认定“vector 不可靠”。修复可在取得迭代器前预留足够容量，或在修改后重新取得迭代器。
 
 立即练习：把安全实验改为先 \texttt{reserve(64)}，取得迭代器后只追加一个元素。记录容量是否改变；若没有改变，原迭代器仍指向第一个元素。随后恢复“持续追加直到扩容”的版本，比较两个条件而不是死记某个容量数值。
 
@@ -105,7 +105,7 @@ Python 的 \texttt{sum}、\texttt{sorted}、\texttt{filter} 和推导式也能�
 Python 常写 \texttt{with open(path) as input}；C++ 文件流对象也拥有文件句柄，并在对象离开作用域时关闭。第 6 章会把这种确定性清理归纳为 RAII。本章先记住：必须检查打开状态，且不要让解析函数偷偷重新打开另一个路径。
 \end{pythonbridge}
 
-失败诊断：给出不存在的路径时，工具应精确打印 \texttt{error=cannot open input file} 并返回 2。根因属于文件边界，不是 CSV 行内容；修复是检查路径、权限和工作目录，而不是修改解析规则。
+失败诊断：给出不存在的路径时，工具应精确打印 \texttt{error=cannot open input file} 并返回 2。根因位于文件边界，与 CSV 行内容无关；应检查路径、权限和工作目录，修改解析规则不会解决问题。
 
 立即练习：不带参数运行一次，再传入不存在的文件运行一次。两次状态都应为 2，但诊断分别是 usage 与 cannot open；这证明启动参数错误和外部文件错误没有被混成同一类别。
 
@@ -137,7 +137,7 @@ Python 常写 \texttt{with open(path) as input}；C++ 文件流对象也拥有�
 边界回归还使用内存流验证 CRLF 输入、读取中途故障和不等长统计参数；三者不依赖“恰好在当前机器上没出错”。成功路径同时断言状态为 0、标准输出逐字匹配且标准错误为空。
 
 \begin{pythonbridge}
-Python 的 \texttt{csv} 模块能处理引号和转义，本章的手写切分器不能；这不是语言能力差异，而是当前接口刻意缩小了输入协议。两种实现都必须在把字符串转成业务对象前检查列数、空字段、数值范围和来源行号。
+Python 的 \texttt{csv} 模块能处理引号和转义，本章的手写切分器不能；这一差异来自当前接口刻意缩小的输入协议，并非语言能力。两种实现都必须在把字符串转成业务对象前检查列数、空字段、数值范围和来源行号。
 \end{pythonbridge}
 
 失败诊断：把数量写成 \texttt{10.5} 或 \texttt{ten} 会得到 \texttt{invalid number: quantity}。直接读取为 \texttt{double} 再静默转成整数会隐藏数据错误；修复是按目标字段类型完整消费文本，并拒绝尾随字符与非正数。

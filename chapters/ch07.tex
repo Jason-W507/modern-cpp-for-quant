@@ -27,7 +27,7 @@ symbol=AAPL trades=3 first_sell=102.00 low=100.00 high=102.00 gross=2520.00 net_
 
 \texttt{vector} 拥有元素并提供连续存储、常数时间索引和高效尾部追加，是批量行情的默认候选；扩容仍会使指向旧元素的迭代器、指针和引用失效。\texttt{map} 也拥有键和值，按键排序并提供对数时间查找。它的下标运算在键缺失时先插入值初始化的整数，再执行复合赋值；只查询已有键时用 \texttt{at}，拼错键会抛出异常而不会悄悄插入。范围循环遍历 \texttt{map} 时按键顺序得到 AAPL、MSFT，因此输出末尾为 \texttt{order=AAPL,MSFT}。
 
-若只关心平均常数时间查找且不需要键序，可考虑 \texttt{unordered\_map}；若频繁在两端插入可考虑 \texttt{deque}。选择依据是访问与失效规则，不是背诵容器名称。原始 \texttt{trades} 保持时间顺序，副本 \texttt{sorted} 才交给 \texttt{ranges::sort}；这样“首笔卖出”和“最低价格”不会争夺同一个顺序。
+只关心平均常数时间查找且无须键序时，可考虑 \texttt{unordered\_map}；频繁在两端插入时，可考虑 \texttt{deque}。容器选择取决于访问模式和失效规则。原始 \texttt{trades} 保持时间顺序，只有副本 \texttt{sorted} 交给 \texttt{ranges::sort}。这样“首笔卖出”和“最低价格”各自使用合适的顺序。
 
 \texttt{ranges::find\_if(trades, predicate)} 直接接收范围，返回指向首个匹配元素的迭代器；没有匹配时等于 \texttt{trades.end()}。本例已知存在卖出才使用 \texttt{first\_sell->price}，项目版本会显式检查末端。
 
@@ -39,7 +39,7 @@ Python \texttt{list} 与 C++ \texttt{vector} 都保持顺序，\texttt{dict} 与
 
 立即练习：把第一笔 AAPL 的代码改为 MSFT。预期 \texttt{aapl\_position=5}，最低价变为 \texttt{MSFT@100.00}，而行数、代码数、首笔 AAPL 卖出及 \texttt{order=AAPL,MSFT} 不变。
 
-\section{view 是惰性借用，不是新容器}
+\section{view：惰性借用而非新容器}
 
 \subsection{场景：先描述筛选，再决定何时遍历}
 
@@ -47,7 +47,7 @@ Python \texttt{list} 与 C++ \texttt{vector} 都保持顺序，\texttt{dict} 与
 
 \lstinputlisting[caption={filter 与 transform 的惰性管道}]{code/ch07/lazy_views.cpp}
 
-管道运算符 \texttt{|} 把左侧范围交给右侧 adaptor。\texttt{filter} 保存谓词并跳过不满足条件的元素；\texttt{transform} 在解引用时计算新值。\texttt{selected} 不是新 \texttt{vector}，没有复制价格。它借用 \texttt{prices}，所以 view 创建后把首价从 99 改为 110，稍后的遍历会看到 110，并输出 \texttt{selected=220.00,202.00}。
+管道运算符 \texttt{|} 把左侧范围交给右侧 adaptor。\texttt{filter} 保存谓词并跳过不满足条件的元素；\texttt{transform} 在解引用时计算新值。\texttt{selected} 只是一个 view，没有新建 \texttt{vector} 或复制价格。它借用 \texttt{prices}，所以 view 创建后把首价从 99 改为 110，稍后的遍历会看到 110，并输出 \texttt{selected=220.00,202.00}。
 
 借用也意味着源范围必须覆盖 view 的所有使用。view 自身按值保存并不延长底层 \texttt{vector} 的生命；同时，若源容器发生使迭代器失效的修改，已有 view 的遍历同样可能失效。
 
@@ -55,7 +55,7 @@ Python \texttt{list} 与 C++ \texttt{vector} 都保持顺序，\texttt{dict} 与
 Python 生成器表达式同样惰性，但生成器通常持有对源对象的 Python 引用，垃圾回收会延长对象生命。本例由左值 \texttt{vector} 建立的 C++ view 只借用源容器，不能替它保活数据；其他 view 是否拥有底层范围，取决于它包装的 range 或 view。两者都可能在迭代时看到源数据的后续修改。
 \end{pythonbridge}
 
-故意失败的 \path{code/ch07/failures/dangling_view.cpp} 从函数返回借用局部 \texttt{vector} 的 view。它不进入绿色目标；ASan 执行必须非零退出并报告 stack-use-after-return、stack-use-after-scope 或等价的栈访问类别。根因不是 filter，而是源范围先结束生命。修复是让调用者拥有源容器、在源仍存活时消费 view，或把结果物化为拥有元素的容器。
+故意失败的 \path{code/ch07/failures/dangling_view.cpp} 从函数返回借用局部 \texttt{vector} 的 view。它不进入绿色目标；ASan 执行必须非零退出并报告 stack-use-after-return、stack-use-after-scope 或等价的栈访问类别。根因在于源范围过早结束生命，与 filter 本身无关。修复是让调用者拥有源容器、在源仍存活时消费 view，或把结果物化为拥有元素的容器。
 
 立即练习：把过滤阈值从 100 改为 105。首价修改后仍通过，101 被排除，精确输出应变为 \texttt{selected=220.00}。
 

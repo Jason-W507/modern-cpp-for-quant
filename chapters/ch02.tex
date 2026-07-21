@@ -31,7 +31,7 @@
 selected=2 rejected=3 buy_notional=1035.75 average=517.875
 \end{lstlisting}
 
-这就是本章的验收标准：不是“看懂语法”，而是能在不复制最终答案的前提下重写程序、解释每个对象的状态变化，并用给定数据复现输出。
+本章以可执行能力验收：读者应在不复制最终答案的前提下重写程序、解释每个对象的状态变化，并用给定数据复现输出；仅仅“看懂语法”还不够。
 
 \section{对象、类型与初始化}
 
@@ -41,13 +41,13 @@ selected=2 rejected=3 buy_notional=1035.75 average=517.875
 
 \subsection{语法规则与最小实验}
 
-最常见的声明由“类型、对象名、初始化器、分号”组成。下面不是省略外壳的片段，而是参与 C++20 构建并由 CTest 检查输出的完整程序：
+最常见的声明由“类型、对象名、初始化器、分号”组成。下面给出完整程序，会参与 C++20 构建并由 CTest 检查输出：
 
 \lstinputlisting[caption={对象、字面量与独立复制}]{code/ch02/objects_and_literals.cpp}
 
 \texttt{int} 保存整数，\texttt{double} 保存双精度浮点数，\texttt{bool} 只有 \texttt{true} 和 \texttt{false} 两种逻辑状态，\texttt{char} 保存一个字符。\texttt{std::int64\_t} 来自 \texttt{<cstdint>}，在提供它的平台上恰有 64 位；当数量或时间戳需要明确位宽时，它比“希望 \texttt{long} 足够大”更可检查。
 
-花括号 \texttt{\{\}} 同时标记对象从这里开始生命周期，并拒绝一部分会丢信息的窄化。空花括号执行值初始化：\texttt{int selected\{\};} 得到零，\texttt{bool is\_buy\{\};} 得到 \texttt{false}。相反，局部基础类型 \texttt{int selected;} 没有可靠的业务初值；读取它不是“随机但可用”，而是程序错误。
+花括号 \texttt{\{\}} 同时标记对象从这里开始生命周期，并拒绝一部分会丢信息的窄化。空花括号执行值初始化：\texttt{int selected\{\};} 得到零，\texttt{bool is\_buy\{\};} 得到 \texttt{false}。相反，局部基础类型 \texttt{int selected;} 没有可靠的业务初值；读取它属于程序错误，不能把所得值视为“随机但可用”。
 
 字面量本身也有类型。\texttt{1} 通常是 \texttt{int}，\texttt{1.0} 是 \texttt{double}，\texttt{true} 是 \texttt{bool}，单引号中的 \texttt{'X'} 是字符字面量，双引号中的 \texttt{"side="} 是字符串字面量。\texttt{'\textbackslash n'} 表示换行字符，它与包含两个可见字符的 \texttt{"\textbackslash\textbackslash n"} 不同。因此 \texttt{double price\{100\};} 可以精确表示该值，而 \texttt{int price\{100.5\};} 会在编译阶段被拒绝。
 
@@ -80,7 +80,7 @@ print(b[0])          # 11
 int rounded_price{100.5};  // intentional compile failure
 \end{lstlisting}
 
-用 \texttt{g++ -std=c++20 code/ch02/failures/narrowing.cpp} 单独触发它。预期的是“列表初始化拒绝窄化转换”这一诊断类别，而不是某一版 GCC 的完整英文措辞。根因是从 \texttt{double} 字面量到 \texttt{int} 会丢掉小数；修复不是换成圆括号躲开检查，而是先决定业务舍入规则，再显式转换。
+用 \texttt{g++ -std=c++20 code/ch02/failures/narrowing.cpp} 单独触发它。预期诊断类别是“列表初始化拒绝窄化转换”，具体英文措辞可随 GCC 版本变化。根因是从 \texttt{double} 字面量到 \texttt{int} 会丢掉小数；正确修复需要先决定业务舍入规则，再显式转换，换成圆括号只会绕开检查。
 
 立即练习：分别编译 \texttt{double price\{10\};} 与 \texttt{int quantity\{10.0\};}。前者的整数常量 10 能被 \texttt{double} 精确表示，可以通过；后者从浮点类型转为整数，即使写成 10.0 也属于列表初始化禁止的窄化，必须被拒绝。再把它改成 10.5，说明同一诊断规则，而不是误记成“没有小数部分就可以”。
 

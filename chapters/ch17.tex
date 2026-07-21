@@ -27,7 +27,7 @@
 Python 的 generator 或事件循环同样能分阶段处理数据；差异不在语法是否有 class，而在契约是否可被绕过。C++ 的 \texttt{const PortfolioSnapshot\&} 表达只读借用，值类型 \texttt{OrderIntent} 表达独立结果；Python 需要靠不可变对象、类型检查和团队约定达到相似效果。
 \end{pythonbridge}
 
-\section{配置是领域输入，不是散落常量}
+\section{把配置视为领域输入}
 
 旧引擎以报价立即成交且没有成本。第 17 章加入两个小配置值：每笔固定费用和以 basis points 表示的滑点。它们先进入 \texttt{ExecutionConfig}，再随 \texttt{BacktestConfig} 传给引擎；策略阈值和下单量仍属于策略对象，不混入撮合配置。
 
@@ -70,7 +70,7 @@ ctest --test-dir build -R \
   "market_data_input|strategy_decision|execution_portfolio|end_to_end"
 \end{lstlisting}
 
-Python 的 pytest fixture 可以建立相同 seam；C++ 额外需要决定测试程序如何成为 CMake target。测试名描述“成本进入现金账本”，而不是“调用了 match”；容器从 \texttt{unordered\_map} 改成别的实现时，公开事实没有变化，测试就不应失败。立即练习：先把成本账本的期望权益故意改错 1 元，确认测试因事实不符而红，再恢复独立值。
+Python 的 pytest fixture 可以建立相同 seam；C++ 额外需要决定测试程序如何成为 CMake target。测试名描述“成本进入现金账本”，不绑定“调用了 match”这类实现步骤；容器从 \texttt{unordered\_map} 改成别的实现时，公开事实没有变化，测试就不应失败。立即练习：先把成本账本的期望权益故意改错 1 元，确认测试因事实不符而红，再恢复独立值。
 
 \section{多资产与缺失价格：先拒绝错误答案}
 
@@ -80,7 +80,7 @@ Portfolio 已能按代码保存多个仓位，但当前 \texttt{snapshot(symbol,
 model-boundary-error single-symbol backtest requires one symbol; define a complete price map before enabling multi-asset valuation
 \end{lstlisting}
 
-故意失败源 \path{project/failures/mixed_symbols.cpp} 不进入默认 \texttt{all}，CTest 先单独构建它，再验收状态 2 与上面的诊断。根因不是“vector 不能放两个代码”，而是估值契约缺少完整价格映射。
+故意失败源 \path{project/failures/mixed_symbols.cpp} 不进入默认 \texttt{all}，CTest 先单独构建它，再验收状态 2 与上面的诊断。根因是估值契约缺少完整价格映射，与 vector 能否容纳两个代码无关。
 
 真正的多资产 tracer bullet 至少要增加 \texttt{map<Symbol, Price>}，并在三种缺失价格政策中明确选择：拒绝本次估值；使用不晚于估值时刻的最近价格并报告 stale age；或把缺失仓位排除且把结果标记为不完整。直接填零会把未知价格伪装成资产归零，静默沿用未来价格则会引入 look-ahead bias。立即练习：为三种政策各写一个输入、可观察输出和风险，暂时不要修改引擎。
 
