@@ -531,7 +531,7 @@ def validate_appendix_units(
 
 def declared_cmake_target(cmake_text: str, target: str) -> bool:
     declaration = re.compile(
-        rf"\b(?:quant_target|quant_project_target|add_executable|add_library)\(\s*"
+        rf"\b(?:quant_target|quant_project_target|add_executable|add_library|pybind11_add_module)\(\s*"
         rf"{re.escape(target)}(?:\s|\))"
     )
     return declaration.search(cmake_text) is not None

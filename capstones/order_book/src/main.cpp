@@ -1,4 +1,5 @@
 #include <iostream>
+#include <stdexcept>
 
 #include "quant/capstone/order_book.hpp"
 
@@ -28,6 +29,9 @@ int main() {
       case quant::capstone::ReplayStatus::gap:
         ++gap;
         break;
+      case quant::capstone::ReplayStatus::decode_error:
+      case quant::capstone::ReplayStatus::book_rejected:
+        throw std::logic_error{"sequence gate returned a transport status"};
     }
   }
 

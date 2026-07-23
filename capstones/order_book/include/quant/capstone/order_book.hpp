@@ -130,7 +130,13 @@ class LimitOrderBook final {
   std::unordered_set<std::uint64_t> seen_ids_;
 };
 
-enum class ReplayStatus { accepted, duplicate_or_stale, gap };
+enum class ReplayStatus {
+  accepted,
+  duplicate_or_stale,
+  gap,
+  decode_error,
+  book_rejected
+};
 
 class SequenceGate final {
  public:

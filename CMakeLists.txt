@@ -568,6 +568,7 @@ add_test(NAME ch08_clean_domain_pipeline_configures_builds_and_runs
 
 add_subdirectory(project ch17-project)
 add_subdirectory(capstones/order_book order-book-capstone)
+add_subdirectory(capstones/factor_kernel factor-kernel-capstone)
 
 add_test(NAME ch17_clean_final_backtest_configures_builds_tests_and_runs
   COMMAND ${Python3_EXECUTABLE}

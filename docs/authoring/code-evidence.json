@@ -72,7 +72,12 @@
     {"tex": "chapters/ch17.tex", "source": "project/benchmarks/backtest_benchmark.cpp", "target": "ch17_backtest_benchmark"},
     {"tex": "appendices/advanced_concurrency.tex", "source": "code/appendix_concurrency/spsc_demo.cpp", "target": "appendix_spsc_demo"},
     {"tex": "appendices/capstones.tex", "source": "capstones/order_book/include/quant/capstone/order_book.hpp", "target": "capstone_order_book_demo"},
-    {"tex": "appendices/interview_algorithms.tex", "source": "code/appendix_algorithms/interview_algorithms.cpp", "target": "appendix_interview_algorithms"}
+    {"tex": "appendices/interview_algorithms.tex", "source": "code/appendix_algorithms/interview_algorithms.cpp", "target": "appendix_interview_algorithms"},
+    {"tex": "appendices/capstones.tex", "source": "capstones/factor_kernel/include/quant/capstone/factor_kernel.hpp", "target": "capstone_factor_kernel"},
+    {"tex": "appendices/capstones.tex", "source": "capstones/factor_kernel/src/factor_kernel.cpp", "target": "capstone_factor_kernel"},
+    {"tex": "appendices/capstones.tex", "source": "capstones/factor_kernel/bindings/module.cpp", "target": "quant_factor_kernel"},
+    {"tex": "appendices/capstones.tex", "source": "capstones/order_book/include/quant/capstone/market_replay.hpp", "target": "capstone_market_replay"},
+    {"tex": "appendices/capstones.tex", "source": "capstones/order_book/src/market_replay.cpp", "target": "capstone_market_replay"}
   ],
   "intentional_failures": [
     {

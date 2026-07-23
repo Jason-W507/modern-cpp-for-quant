@@ -1,6 +1,7 @@
 % appendix:cpp23-map
 % appendix:adoption-boundary
 \chapter{C++20 之后的版本地图}
+\index{C++23}\index{std::expected}\index{std::print}\index{std::mdspan}\index{modules}
 
 本书以 C++20 为最低基线，因为语言、标准库、CMake 和量化基础设施需要共同可用。版本号本身不会自动改善设计；新特性只有在编译器、标准库、依赖、ABI、部署镜像和团队工具全部允许时，才成为可交付能力。本附录给出 2026 年求职与工作中的识读地图，不改变正文代码的 C++20 构建契约。
 
@@ -66,4 +67,3 @@ Modules 旨在减少文本包含和宏污染，并改善依赖表达。现实项
 \end{center}
 
 面试中被问“会不会 C++23”时，可靠回答应包含一个已经理解的特性、一个采用前置条件和一个团队边界。例如：“我会用 expected 表达高频可恢复错误，但会先确认最低标准库版本，并避免直接穿过稳定 C ABI。”这比罗列特性名称更接近工作能力。
-

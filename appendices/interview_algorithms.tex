@@ -1,6 +1,7 @@
 % appendix:algorithm-drills
 % appendix:complexity-evidence
 \chapter{量化 C++ 面试算法题集}
+\index{binary search}\index{heap}\index{LRU cache}\index{sliding window}\index{top-k}
 
 本附录把常见算法题放回量化语境。每题先冻结输入、输出和非法边界，再给手算例、状态不变量、复杂度与 cache-aware 延伸。面试中先写清楚且可测的版本，只有在数据规模或追问要求时才进一步优化。
 
@@ -95,4 +96,3 @@ order book & \(O(\log L)\) 插入 & \(O(orders)\) & cancel 索引、序号、快
   \item \textbf{性能：}比较 vector 排序与 heap top-k，在多个 \(n,k\) 组合中保存原始配对样本和业务 oracle。
   \item \textbf{系统：}把 merge sorted streams 接入 sequence gate，定义重复、gap 与恢复后的确定性顺序。
 \end{enumerate}
-

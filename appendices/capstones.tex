@@ -1,6 +1,7 @@
 % appendix:role-capstones
 % appendix:order-book-evidence
 \chapter{岗位分流 Capstone}
+\index{factor kernel}\index{market replay}\index{limit order book}\index{binary protocol}
 
 贯穿正文的回测器用于教学组件边界，但相似项目很多。作品集需要根据目标岗位增加一条更有辨识度的证据链。本附录提供 Research Engineer 与 Quant Developer 两条路线；读者只需优先完成一条，另一条保留为系统设计材料。
 
@@ -39,6 +40,30 @@ Arrow 的“零拷贝”只在缓冲布局、对齐、生命周期和消费者�
 
 一个可信简历描述可以写成：“实现 C++20 批量 factor kernel，以 Python/NumPy 独立结果验证数值一致性；绑定层拒绝错误 dtype 与非连续输入，报告不同 batch size 下的复制次数和配对延迟。”具体库名、倍数和数据规模只能来自实际报告。
 
+\subsection{仓库中的可构建 Research 基线}
+
+\path{capstones/factor_kernel} 已把上述路线落成一个不依赖 Python API 的最小核心。输入是连续 row-major 矩阵视图和一维权重；每行忽略 NaN，把可观察值的加权和除以本行实际出现权重的绝对值之和。整行缺失时返回 NaN；shape 不闭合、无穷输入或非有限权重稳定失败。这个口径不是唯一的因子缺失政策，但它足够具体，可以被 Python 独立实现反驳。
+
+\begin{lstlisting}[language=bash,numbers=none]
+cmake -S capstones/factor_kernel -B build/factor -DBUILD_TESTING=ON
+cmake --build build/factor
+ctest --test-dir build/factor --output-on-failure
+\end{lstlisting}
+
+公开批量接口没有持有调用者内存，因而只在函数调用期间借用 span：
+
+\lstinputlisting[caption={连续批量因子核的公开接口}]{capstones/factor_kernel/include/quant/capstone/factor_kernel.hpp}
+
+\lstinputlisting[caption={缺失值与形状政策的核心实现}]{capstones/factor_kernel/src/factor_kernel.cpp}
+
+CTest 的固定四行矩阵先由手算验收，再由 \path{python/test_numpy_consistency.py} 使用 NumPy 独立计算。当前固定输出是三行有限值和一行 NaN；比较使用明确的绝对/相对容差和 \texttt{equal\_nan=True}，不会从 C++ 结果反推 expected。
+
+找到 pybind11 的 CMake package 时，项目额外生成 \texttt{quant\_factor\_kernel}。绑定要求二维/一维 float64 C-contiguous 数组，并通过 \texttt{noconvert} 拒绝隐式 dtype 转换；核心计算期间只借用输入，返回数组拥有自己的副本：
+
+\lstinputlisting[caption={可选 pybind11 批量边界}]{capstones/factor_kernel/bindings/module.cpp}
+
+这份基线没有假装已经使用 Arrow、Parquet、Eigen 或 BLAS。合理的下一步是把文件解码适配成同一 \path{FactorBatchView}，再以独立 target 引入矩阵库；报告分别记录读取、解码、边界复制、kernel 与分配时间。只有布局和所有权允许时，Arrow 缓冲才能作为零拷贝观察者接入。
+
 \section{Quant Developer：限价订单簿与 replay}
 
 仓库中的 \path{capstones/order_book} 是可独立构建的最小版本：整数 tick 表示价格，整数表示数量；bid 按价格降序，ask 按价格升序；同一价位使用 deque 保存到达顺序；主动单按 resting price 成交。构建命令为：
@@ -57,6 +82,36 @@ ctest --test-dir build/order-book --output-on-failure
 固定场景先挂出 101 的六单位卖单和 100 的五单位买单，再提交 102 的四单位买单。成交价采用 resting order 的 101，maker 为 1，taker 为 3；卖一剩余两单位，买一仍为 100。测试还拒绝重复订单 ID。
 
 \texttt{SequenceGate} 将消息序号 1、2、2、4 分类为两次 accepted、一次 duplicate/stale 和一次 gap，next expected 保持 3。它没有自行跳过缺口，因为恢复政策属于 feed handler：可以请求重传、切换快照并重放，或终止本次结果。静默接受 4 会让之后盘口缺少不可见的消息。
+
+\subsection{32 字节协议与可回放入口}
+
+仓库进一步提供固定大端序 add-order 消息。协议布局刻意简单，却仍把网络边界必须冻结的事实写完整：
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+字段 & 偏移 & 字节 & 规则 \\
+\midrule
+version/type & 0 & 2 & 当前均为 1 \\
+length & 2 & 2 & 大端序，必须为 32 \\
+sequence & 4 & 8 & 从 1 连续递增 \\
+order id & 12 & 8 & 全流唯一 \\
+side/reserved & 20 & 4 & 1=buy，2=sell，保留位为 0 \\
+price/quantity & 24 & 8 & 两个大端序有符号 32 位整数 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\texttt{MarketReplay::apply} 是协议测试的公开 seam。解码错误不推进序号；旧序号计为 duplicate/stale；未来序号计为 gap 且保持 next expected；只有恰好命中的消息进入订单簿。结果与累计统计都可从公开接口观察：
+
+\lstinputlisting[caption={replay 公开结果、统计与入口}]{capstones/order_book/include/quant/capstone/market_replay.hpp}
+
+\lstinputlisting[caption={大端序解码、序号门与订单簿提交}]{capstones/order_book/src/market_replay.cpp}
+
+固定回放先拒绝 3 字节坏消息，再处理序号 1、2、重复 2、缺口 4 和恢复到 3。验收结果是 accepted=3、duplicate=1、gap=1、decode=1、trades=1、next=4；最终买一仍为 100 的五单位，卖一为 101 的两单位。
+
+\path{benchmarks/replay_benchmark.cpp} 预先编码 10000 条消息，计时区域只包含 \texttt{apply}，排序真实样本后报告 p50/p99/p99.9 和吞吐。测试只锁 messages 与 accepted 均为 10000，不锁纳秒值。单次本机数字不进入简历；提交报告时还需记录 CPU、编译器、优化、affinity、频率策略、原始样本和独立进程重复结果。
 
 \section{从教学订单簿演化到作品集}
 
@@ -89,4 +144,3 @@ data/                   tiny redistributable fixtures and hashes
 \end{lstlisting}
 
 评审者应能在十分钟内找到范围、构建命令、测试数量、一个成功样例、一个失败样例、性能口径和明确非目标。文件数量不是完成判据，证据入口才是。
-
