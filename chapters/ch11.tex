@@ -41,9 +41,9 @@ CMakeCache.txt 保存编译器路径、选项和检测结果，所以仅删除�
 
 \begin{pythonbridge}
 Python 直接执行源码时，安装与运行边界常被解释器隐藏；原生项目把配置、生成、编译、链接和测试明确分开。CMake 更接近“生成构建系统的项目模型”，既不承担编译器职责，也不能等同于 pip 包管理器。先判断命令停在哪个阶段，才能决定检查 CMake 目标、C++ 源码、链接库还是运行行为。
-\end{pythonbridge}
 
-立即练习：只运行配置命令，确认构建目录中已有缓存和生成文件但还没有 \texttt{ch11\_market\_report}；再构建该单一目标，观察静态库先于应用生成；最后运行 CTest，解释为何未构建测试目标时测试可能显示“找不到可执行文件”。
+\pythoncompare{Python 常直接执行源码；CMake 显式分开配置、构建、链接和测试。}{Python 环境拥有包；原生 target 拥有编译选项和传递依赖。}{Python 导入时才暴露部分问题；CMake 生成和编译阶段分层检查。}{失败分别落在配置、编译、链接或运行，不能统称为构建失败。}
+\end{pythonbridge}
 
 \section{用目标表达库、应用、测试与示例}
 
@@ -117,8 +117,6 @@ g++ -std=c++20 code/ch11/failures/missing_target_link.cpp \
 
 源文件能通过编译，但链接器报告 undefined reference；恢复方法是链接提供定义的目标，而不是在声明后再写一份临时实现。
 
-立即练习：把 \texttt{ch11\_market} 对 \texttt{ch11\_project\_options} 的 PUBLIC 暂改为 PRIVATE，在全新构建树中观察消费者能否继续使用 \texttt{std::span}；恢复后再把私有编译定义改为 PUBLIC，确认失败位置和第一条稳定诊断不同。
-
 \section{Debug、Sanitized 与 Release 各自回答什么}
 
 单配置生成器通过 \texttt{CMAKE\_BUILD\_TYPE} 选择一组配置。Debug 保留调试信息并适合逐步定位；Sanitized 在 Debug 基础上增加 AddressSanitizer 与 UndefinedBehaviorSanitizer，用运行期开销换取内存和 UB 证据；Release 启用优化并常定义 \texttt{NDEBUG}，适合最终行为与性能验收，不能代替前两者。
@@ -160,7 +158,7 @@ ctest --preset linux-debug
 
 \section{依赖锁定、测试框架与 fuzzing 的采用边界}
 
-Conan 或 vcpkg 都可以把外部库解析为 CMake imported target，但可复现性还需要提交 manifest、版本约束和 lockfile/baseline。二者不应同时成为同一项目的默认依赖来源。GoogleTest 或 Catch2 适合 fixture、参数化测试和更清楚的失败差异；本书前半部继续使用无依赖测试程序展示“退出码就是最小测试协议”，后半部项目迁移框架时，四个公开行为边界与独立期望值仍保持不变。
+Conan 或 vcpkg 都可以把外部库解析为 CMake imported target，但可复现性还需要提交 manifest、版本约束和 lockfile/baseline。二者不应同时成为同一项目的默认依赖来源。本仓库的 \path{examples/dependency-locking/vcpkg.json} 锁定 baseline，并声明 Catch2、Eigen3 和 pybind11；\path{capstones/factor_kernel} 的可选 target 则真实构建 Catch2 参数化测试与 Eigen kernel。前半部仍使用无依赖程序展示最小测试协议；后半部引入框架时，公开行为边界与独立期望值仍保持不变。
 
 解析器适合用 coverage-guided fuzzing 补充手写样例。根项目的可选目标 \texttt{quant\_csv\_fuzzer} 只在显式设置 \texttt{-DQUANT\_BUILD\_FUZZERS=ON} 且使用 Clang/libFuzzer 时生成：
 
@@ -186,9 +184,17 @@ target_link_libraries(ch11_market_report PRIVATE fmt::fmt)
 
 故障诊断按顺序进行：配置期找不到包，检查工具链文件、前缀路径和版本；编译期找不到头文件，检查是否链接了正确 imported target 及其可见性；链接期缺符号，检查库目标和 ABI/配置是否匹配；运行期找不到动态库，再检查部署路径。把所有路径塞进全局 \texttt{include\_directories} 或 \texttt{link\_directories} 会让无关目标偶然成功，并隐藏真实依赖。
 
-立即练习：在纸上为“CSV 库、回测库、命令行应用、单元测试”画目标图。逐条标出公共头文件、仅实现使用的编译定义、消费者必须继承的 C++ 标准和外部库，随后为每条属性选择 PRIVATE、PUBLIC 或 INTERFACE；若某属性没有明确消费者，先不要传播。
+\section{章末三层练习}
 
-\section{独立快照、输出任务与验收}
+\subsection*{随堂验证汇总}
+
+\begin{enumerate}
+  \item 只运行配置命令，确认构建目录中已有缓存和生成文件但还没有 \texttt{ch11\_market\_report}；再构建该单一目标，观察静态库先于应用生成；最后运行 CTest，解释为何未构建测试目标时测试可能显示“找不到可执行文件”。
+  \item 把 \texttt{ch11\_market} 对 \texttt{ch11\_project\_options} 的 PUBLIC 暂改为 PRIVATE，在全新构建树中观察消费者能否继续使用 \texttt{std::span}；恢复后再把私有编译定义改为 PUBLIC，确认失败位置和第一条稳定诊断不同。
+  \item 在纸上为“CSV 库、回测库、命令行应用、单元测试”画目标图。逐条标出公共头文件、仅实现使用的编译定义、消费者必须继承的 C++ 标准和外部库，随后为每条属性选择 PRIVATE、PUBLIC 或 INTERFACE；若某属性没有明确消费者，先不要传播。
+\end{enumerate}
+
+复现层从干净目录构建既有 target；修改层新增下述名义金额目标；开放层为一个真实依赖写出固定版本、可替换边界与离线失败政策。
 
 本章遵循 ADR 0001，把 \path{code/ch11} 保留为可独立配置的阶段快照。整书根项目通过 \texttt{add\_subdirectory} 复用同一目标声明；自动验收还会删除旧测试构建树，从空目录分别构建普通与 Sanitized 配置下的全部正常目标、运行该快照自己的 CTest，再核对报告程序输出。这样 PDF 清单、读者命令与 CI 使用同一份 CMake 事实源。
 
@@ -213,9 +219,6 @@ exercise-notional=200.00
   \item 单配置与多配置生成器选择 Release 的命令差异是什么，哪些目标模型不变？
 \end{enumerate}
 
-\begin{interviewcheck}
-解释 PUBLIC、PRIVATE、INTERFACE 时，先说它们控制某项使用要求是否作用于当前目标及消费者，再给出本章头文件目录、C++20 要求和私有宏三个例子。若被问“怎样让 CMake 项目可复现”，回答干净构建树、明确编译器/生成器/配置、目标化依赖、固定外部版本和可运行验收，而不是只说“提交 CMakeLists.txt”。
-\end{interviewcheck}
 
 \section{本章小结}
 

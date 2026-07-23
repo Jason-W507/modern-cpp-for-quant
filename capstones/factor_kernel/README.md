@@ -16,11 +16,24 @@ cmake --build build/factor
 ctest --test-dir build/factor --output-on-failure
 ```
 
-When NumPy is installed, CTest runs an independent Python reference. When a
-CMake package for pybind11 is available, the optional `quant_factor_kernel`
-module is also built. Its input arguments require float64, C-contiguous arrays
-without implicit conversion; the returned array owns a copy of the result.
+When the locked Python environment is active, CTest imports the built
+`quant_factor_kernel` module and checks an Arrow fixed-size-list batch against
+an independent NumPy formula. Its inputs require float64 C-contiguous arrays
+without implicit conversion; the returned array owns its result.
 
-Arrow/Parquet decoding and Eigen/BLAS kernels are deliberate next seams, not
-claims of the current dependency-free baseline. A portfolio report should
-measure decode, boundary copy, kernel, and allocation time separately.
+```sh
+uv sync --python 3.12
+cmake --preset windows-mingw-python-release
+cmake --build --preset windows-mingw-python-release
+ctest --preset windows-mingw-python-release -R capstone_factor_kernel
+```
+
+`python/benchmark_factor.py` retains every kernel sample, environment metadata
+and checksum in `reports/factor-benchmark.json`. Parquet decode remains outside
+the timed kernel boundary. An Eigen/BLAS replacement must preserve the same
+public result and checksum before comparing performance.
+
+The optional `capstone_factor_compare` target writes paired scalar/Eigen samples
+to `reports/factor-eigen-comparison.json`. `reports/OPTIMIZATION.md` records the
+GCC vectorization diagnostics, allocation/copy inventory and the decision not
+to adopt the slower materializing Eigen candidate on the report host.

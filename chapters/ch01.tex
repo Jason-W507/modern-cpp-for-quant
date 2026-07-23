@@ -41,9 +41,11 @@ Python 文件可以从第一条顶层语句开始执行。C++ 可执行程序需
 
 \begin{pythonbridge}
 Python 的缩进同时承担语法结构，\texttt{print()} 由运行时按名称查找。C++ 用花括号划分函数体，用分号结束语句，并在编译阶段解析 \texttt{std::cout}。两者都能向终端输出文本，但程序如何到达“可运行”状态并不等价。
+
+\pythoncompare{Python 用缩进和 print；C++ 用花括号、分号与 std::cout。}{本例没有借用输入；标准流由运行时管理，局部对象按作用域结束。}{Python 在执行到名称时检查；C++ 在编译期解析名称与表达式类型。}{Python 可能运行到此才报 NameError；C++ 先给编译或链接诊断。}
 \end{pythonbridge}
 
-\subsection{立即练习}
+\subsection{动手验证}
 
 先只把源码中的 \texttt{//} 注释改成单行的 \texttt{/* ... */} 注释，预测输出应逐字符不变，再构建运行；块注释须保持非嵌套。然后只把输出文本改为 \texttt{quant-cpp-learning}，预测哪一行会变化并再次运行。若只改文本却出现语法错误，优先检查成对双引号、末尾分号和 \texttt{\textbackslash n} 是否仍在；完成后恢复章首约定输出，确保精确测试重新通过。
 
@@ -82,9 +84,8 @@ g++ first_program.o -o first_program
 
 \texttt{-c} 表示只编译、不链接，所以第一条命令成功只能证明目标文件已经生成，不能证明最终程序的所有名称都有定义。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 导入 Python 模块也可能失败，但普通 Python 工作流不会先生成目标文件再调用链接器。C++ 的阶段边界使一部分错误更早暴露，也要求你看清究竟是哪条命令失败，不能把所有诊断笼统归为“编译不过”。
-\end{pythonbridge}
 
 \section{三个故障实验：先分类，再修复}
 
@@ -99,7 +100,7 @@ std::cout << "quant-cpp-ready\n"
 return 0;
 \end{lstlisting}
 
-运行 \path{g++ -std=c++20 -c code/ch01/failures/missing_semicolon.cpp}。编译器会在读到 \texttt{return} 附近报告“期望分号”类别；箭头位置可能落在下一行，因为解析器直到看到下一个记号才确认上一条语句没有结束。根因是语法不完整，修复是在输出语句后恢复分号。立即练习：只删除 \texttt{return 0;} 后的分号，比较首个诊断位置，然后恢复文件。
+运行 \path{g++ -std=c++20 -c code/ch01/failures/missing_semicolon.cpp}。编译器会在读到 \texttt{return} 附近报告“期望分号”类别；箭头位置可能落在下一行，因为解析器直到看到下一个记号才确认上一条语句没有结束。根因是语法不完整，修复是在输出语句后恢复分号。
 
 \subsection{链接失败：声明存在，定义缺失}
 
@@ -116,7 +117,7 @@ double expected_notional();  // declaration only
 g++ missing_definition.o -o missing_definition
 \end{lstlisting}
 
-链接器应报告 \texttt{undefined reference} 类别。函数声明与定义会在第 3 章从零教学；此处只建立诊断规则：能产生 \texttt{.o} 但不能产生可执行文件，问题就在链接阶段。修复方式是提供唯一定义并让它参与链接；反复修改编译警告选项无助于补齐定义。立即练习：分别记录两条命令的退出状态，确认前者为 0、后者非零。
+链接器应报告 \texttt{undefined reference} 类别。函数声明与定义会在第 3 章从零教学；此处只建立诊断规则：能产生 \texttt{.o} 但不能产生可执行文件，问题就在链接阶段。修复方式是提供唯一定义并让它参与链接；反复修改编译警告选项无助于补齐定义。
 
 \subsection{运行期失败：程序主动报告启动错误}
 
@@ -127,15 +128,13 @@ std::cerr << "startup-error: market-data path is required\n";
 return 2;
 \end{lstlisting}
 
-这模拟量化程序在启动检查中发现缺少行情路径。\texttt{std::cerr} 是标准错误流，便于把诊断与正常结果分开；状态 2 是本实验定义的失败协议。若可执行文件已经启动并打印上述消息，故障就发生在运行期，链接阶段此前已经完成。立即练习：只把状态改为 3，运行后用 \texttt{echo \$?} 验证；随后恢复为 2，使自动验收重新通过。
+这模拟量化程序在启动检查中发现缺少行情路径。\texttt{std::cerr} 是标准错误流，便于把诊断与正常结果分开；状态 2 是本实验定义的失败协议。若可执行文件已经启动并打印上述消息，故障就发生在运行期，链接阶段此前已经完成。
 
 \subsection{诊断记录模板：从首个根因开始}
 
 编译器和链接器可能在一个根因后产生许多级联消息。可靠记录按固定顺序写五项：当前目录与完整命令；第一条非零退出的命令；失败前最后生成的产物；第一条能够解释后续消息的诊断；修复后重跑的命令和结果。只截取终端末尾一句，常会丢掉真正的文件名、行号和阶段。
 
 阶段也能由产物反推：没有目标文件，先查预处理或编译；已有 \texttt{.o} 而没有可执行文件，查链接；已有可执行文件并且程序已经输出诊断，查运行期输入或业务状态。若旧产物仍在，先删除它或换用全新构建目录，避免把昨日成功生成的文件误当成今日命令的证据。
-
-立即练习：为三个实验各写一行“命令 → 最后产物 → 退出状态 → 稳定类别”。三行应分别停在源码、目标文件和已启动进程处；若分类只写“报错”，还没有完成诊断。
 
 \section{最小 CMake 目标与干净构建}
 
@@ -155,9 +154,8 @@ cmake --build build --target ch01_first_program
 
 \texttt{-S .} 指定源目录，\texttt{-B build} 指定目录外构建树；源码与生成文件因此不会混在一起。第一次运行前 \path{build/} 不应存在，这叫干净构建。若只删除可执行文件而保留旧缓存，不能证明项目从零可配置。验收完成后可删除整个 \path{build/}，再重复三条命令。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 项目常用 \path{pyproject.toml} 描述包、用虚拟环境隔离依赖，并由解释器直接运行入口；这里的 \path{CMakeLists.txt} 描述原生构建目标。\texttt{cmake -S . -B build} 只读取项目并生成当前平台的构建系统，不会运行程序；\texttt{cmake --build build} 才调用编译器与链接器。CMake 因而是跨平台的构建描述层，与 C++ 解释器或包管理器承担不同职责。
-\end{pythonbridge}
 
 做一次只有一个变量的失败练习：在项目副本里只把 \texttt{add\_executable} 中的 \path{first_program.cpp} 改为不存在的 \path{missing.cpp}，并把配置输出写入全新的 \path{build-broken/}。预期 \texttt{cmake -S . -B build-broken} 在配置或生成阶段以非零状态结束，稳定类别是 \texttt{Cannot find source file}，而且不会产生可运行目标。把文件名恢复后删除 \path{build-broken/}，从空构建目录重跑配置、构建和程序；若仍失败，先核对源目录是否同时包含清单中的两个文件，再读第一条 CMake 诊断。此类配置错误与编译器选项无关。
 
@@ -165,7 +163,16 @@ Python 项目常用 \path{pyproject.toml} 描述包、用虚拟环境隔离依�
 
 正文主线使用 Linux/WSL 与 GCC。在 PowerShell 中，CMake 的前两条命令保持不变；单配置生成器的程序通常写作 \path{.\build\ch01_first_program.exe}，Visual Studio 等多配置生成器可能位于 \path{build\Debug}。直接使用 MSVC 时警告选项是 \texttt{/W4 /permissive-}；MSVC 不接受 GCC 的 \texttt{-Wall -Wextra -Wpedantic}。本书只维护一套教学主线：以 \texttt{cmake --build} 屏蔽生成器细节，需要 Linux sanitizer 或书中精确 shell 命令时使用 WSL。
 
-\section{自测、编码任务与面试表达}
+\section{章末三层练习}
+
+\subsection*{随堂验证汇总}
+
+\begin{enumerate}
+  \item 只删除 \texttt{return 0;} 后的分号，比较首个诊断位置，然后恢复文件。
+  \item 分别记录两条命令的退出状态，确认前者为 0、后者非零。
+  \item 只把状态改为 3，运行后用 \texttt{echo \$?} 验证；随后恢复为 2，使自动验收重新通过。
+  \item 为三个实验各写一行“命令 → 最后产物 → 退出状态 → 稳定类别”。三行应分别停在源码、目标文件和已启动进程处；若分类只写“报错”，还没有完成诊断。
+\end{enumerate}
 
 \begin{enumerate}
   \item \texttt{\#include <iostream>} 在哪一阶段处理？为什么行末没有分号？
@@ -185,9 +192,6 @@ Python 项目常用 \path{pyproject.toml} 描述包、用虚拟环境隔离依�
   \item 在第一个程序中分别增加一行 \texttt{//} 注释和一段不嵌套的 \texttt{/* ... */} 注释，证明输出完全不变；再故意删除输出语句的分号并恢复。
 \end{enumerate}
 
-\begin{interviewcheck}
-用 90 秒回答：“从 \texttt{first\_program.cpp} 到正在运行的进程发生了什么？”回答必须按预处理、编译、链接、启动排序，并各给一个可观察产物或失败类别；最后说明为什么“编译成功”不一定意味着“程序可运行且业务成功”。
-\end{interviewcheck}
 
 \section{本章小结}
 

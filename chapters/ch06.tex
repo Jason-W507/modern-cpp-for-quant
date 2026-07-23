@@ -49,13 +49,13 @@ Trace moved{std::move(original)};
 
 \begin{pythonbridge}
 Python 的 \texttt{b = a} 通常让两个名称指向同一对象；C++ 的 \texttt{Trace b\{a\}} 调用复制构造并产生独立对象。Python 对象何时回收不应依赖某个实现的引用计数时机；C++ 自动对象离开作用域时按语言规则确定性析构。
+
+\pythoncompare{Python 赋值通常复制引用；C++ 拷贝构造创建新对象。}{Python 回收时机依实现；C++ 自动对象按作用域确定析构。}{Python 在执行特殊方法时检查；C++ 在编译期选择拷贝或移动操作。}{Python 可能在运行期暴露协议错误；C++ 被删除的拷贝操作会编译失败。}
 \end{pythonbridge}
 
-\subsection{失败诊断与立即练习}
+\subsection{关键失败实验}
 
 常见错误是把“移动后仍有效”误读成“移动后仍保持原值”。对标准库类型，通常应按“有效但未指定”理解：析构总是安全，其他操作必须满足该对象当前状态的前置条件；某个具体类型可能额外保证空状态或支持重新赋值，但那是该类型的契约。诊断时先查契约，再检查是否在移动后依赖了业务值。
-
-立即练习：把内部两次声明交换顺序，先预测构造和析构行的顺序，再运行 \texttt{ch06\_lifetime\_trace}。只改这一处，并解释为什么析构顺序随构造顺序反转。
 
 \section{RAII：把释放变成结构性结果}
 
@@ -71,15 +71,12 @@ Python 的 \texttt{b = a} 通常让两个名称指向同一对象；C++ 的 \tex
 
 如果一个类型的 \texttt{string}、\texttt{vector}、文件流和智能指针成员都能自行管理资源，外层类型通常不应手写析构、复制或移动操作，这就是 Rule of Zero。组合可靠值类型，比维护裸句柄、布尔“是否已关闭”标记和多条清理路径更容易验证。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 的 \texttt{with open(path) as f:} 是最接近的资源边界：\texttt{\_\_exit\_\_} 在离开块时运行。垃圾回收解决不可达对象的回收，不是及时关闭外部资源的跨实现契约；\texttt{\_\_del\_\_} 还会受到循环引用、解释器退出和异常处理限制。C++ 自动对象的析构由词法作用域确定，但动态共享对象仍要等最后一个拥有者消失。
-\end{pythonbridge}
 
-\subsection{失败诊断与立即练习}
+\subsection{关键失败实验}
 
 析构函数不应让异常逃逸；如果栈展开期间又抛出异常，进程会终止。可能失败的提交或关闭应提供显式操作报告错误，析构只做不抛的尽力清理。另一个常见失败是给已经 Rule of Zero 的类型补一个无必要析构，从而意外影响隐式移动操作。
-
-立即练习：在写入作用域中加入一个条件 \texttt{return 0;}，预测文件流是否仍会析构。不要永久保留提前返回；用调试输出或单独实验确认后恢复完整程序。
 
 \section{值、唯一所有权与共享所有权}
 
@@ -95,15 +92,12 @@ Python 的 \texttt{with open(path) as f:} 是最接近的资源边界：\texttt{
 
 读取弱观察时不能先检查 \texttt{expired()} 再稍后解引用，因为并发环境中对象可能在两步之间销毁；应调用 \texttt{lock()} 一次取得临时 \texttt{shared\_ptr}，再判断它是否为空。\texttt{shared\_ptr} 的控制块操作通常是线程安全的，但被管理对象的字段并不会自动获得同步。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 名称共享对象更像隐式共享引用，但没有在类型中区分唯一、共享和弱观察。\texttt{weakref} 与 \texttt{weak\_ptr} 都可观察而不延寿；C++ 则要求接口把所有权意图写得更显式。
-\end{pythonbridge}
 
-\subsection{失败诊断与立即练习}
+\subsection{关键失败实验}
 
 两个对象互相保存 \texttt{shared\_ptr} 会形成强引用环，计数永远不能归零；把不负责延寿的一侧改为 \texttt{weak\_ptr}。另一个设计味道是所有参数和成员都改成 \texttt{shared\_ptr}：这隐藏了自然所有者、增加原子计数成本，也让对象可能活得远超预期。
-
-立即练习：在输出任务中复制一个 \texttt{shared\_ptr} 到内部作用域，预测作用域内外的 \texttt{use\_count()}，再运行验证。离开作用域后计数应恢复，不要把具体计数当成并发同步机制。
 
 \subsection{整合补充：把所有权意图写进函数接口}
 
@@ -144,15 +138,12 @@ Python 的参数名称和常规类型标注不会在语言层面区分借用、�
 
 \texttt{new int\{10\}} 在动态存储期创建整数并返回拥有它的裸指针；\texttt{delete heap\_quantity} 结束对象生命周期并释放存储。数组形式 \texttt{new T[n]} 必须与 \texttt{delete[]} 配对，混用释放形式属于未定义行为。这里展示手动配对，只为帮助读者读懂底层代码，并不建议将其作为默认方案。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 名称没有直接的“可空地址并手动解引用”语法。切片和容器通常携带长度；C++ 裸指针不携带长度或所有权。Python 的对象引用也可能让对象继续存活，而 C++ 裸引用和裸指针不会延寿。
-\end{pythonbridge}
 
-\subsection{失败诊断与立即练习}
+\subsection{关键失败实验}
 
 离开被指对象的作用域后继续解引用会悬空；释放后继续读取是 use-after-free；对同一地址再次 \texttt{delete} 是 double-free。把指针设为空只能防止该变量再次误用，不能修复其他别名。根因分析必须回到唯一的拥有者和销毁时刻。
-
-立即练习：把 \texttt{observer = nullptr;} 后面增加条件分支，只在非空时读取；分别用空与非空观察者验证。不要直接写 \texttt{*observer} 来“看看会发生什么”，未定义行为没有可接受的固定输出。
 
 \section{失败实验：让 AddressSanitizer 证明悬空}
 
@@ -177,7 +168,16 @@ ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 ./use_after_free
 
 本项目的 CTest 在 Windows 上通过 WSL GCC 取得真实 ASan 证据；受限环境无法启动 WSL 时测试以明确的 skip 状态退出，而发布验收必须在可用的 Linux/WSL 环境实际通过。
 
-\section{自测、练习与面试表达}
+\section{章末三层练习}
+
+\subsection*{随堂验证汇总}
+
+\begin{enumerate}
+  \item 把内部两次声明交换顺序，先预测构造和析构行的顺序，再运行 \texttt{ch06\_lifetime\_trace}。只改这一处，并解释为什么析构顺序随构造顺序反转。
+  \item 在写入作用域中加入一个条件 \texttt{return 0;}，预测文件流是否仍会析构。不要永久保留提前返回；用调试输出或单独实验确认后恢复完整程序。
+  \item 在输出任务中复制一个 \texttt{shared\_ptr} 到内部作用域，预测作用域内外的 \texttt{use\_count()}，再运行验证。离开作用域后计数应恢复，不要把具体计数当成并发同步机制。
+  \item 把 \texttt{observer = nullptr;} 后面增加条件分支，只在非空时读取；分别用空与非空观察者验证。不要直接写 \texttt{*observer} 来“看看会发生什么”，未定义行为没有可接受的固定输出。
+\end{enumerate}
 
 \begin{enumerate}
   \item 对象生命周期的开始和结束分别需要什么事件？为什么存储仍有旧比特不等于对象仍存在？
@@ -199,9 +199,6 @@ ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 ./use_after_free
   \item 单独运行 ASan 失败实验，记录非零退出和稳定诊断类别，不把未定义输出当作答案。
 \end{enumerate}
 
-\begin{interviewcheck}
-给定“策略异步保存一条行情供稍后读取”，先问谁拥有行情、异步任务最长活多久、能否按值复制，再决定值、唯一所有权或共享所有权。回答必须包含一个悬空失败路径、一个 RAII 清理边界和拒绝滥用 \texttt{shared\_ptr} 的理由。
-\end{interviewcheck}
 
 \section{本章小结}
 

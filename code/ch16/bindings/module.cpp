@@ -84,7 +84,7 @@ py::array_t<double> centered_copy(const py::array& values) {
   if (view.size == 0) {
     return py::array_t<double>{0};
   }
-  py::array_t<double> output{view.size};
+  py::array_t<double> output{static_cast<py::ssize_t>(view.size)};
   py::buffer_info output_info = output.request();
   const auto* input_data = static_cast<const double*>(view.data);
   auto* output_data = static_cast<double*>(output_info.ptr);

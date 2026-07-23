@@ -71,9 +71,11 @@ print(b[0])          # 11
 
 \begin{pythonbridge}
 两种语言都允许把已有值用于新变量；边界在于 Python 名称通常保存对象引用，而本章的 C++ 基础类型声明创建独立对象。Python 类型标注通常不改变运行期绑定规则，C++ 对象类型则直接限制初始化、运算和存储表示。
+
+\pythoncompare{Python 名称可重新绑定；C++ 声明同时创建固定类型对象。}{Python 名称共享对象引用；基础 C++ 值默认是独立对象。}{Python 类型标注通常由外部工具检查；C++ 初始化和运算由编译器检查。}{Python 常在运行期遇到类型错误；C++ 窄化可在编译期被拒绝。}
 \end{pythonbridge}
 
-\subsection{失败诊断与立即练习}
+\subsection{关键失败实验}
 
 故意失败文件 \path{code/ch02/failures/narrowing.cpp} 包含如下核心语句：
 
@@ -82,8 +84,6 @@ int rounded_price{100.5};  // intentional compile failure
 \end{lstlisting}
 
 用 \path{g++ -std=c++20 code/ch02/failures/narrowing.cpp} 单独触发它。预期诊断类别是“列表初始化拒绝窄化转换”，具体英文措辞可随 GCC 版本变化。根因是从 \texttt{double} 字面量到 \texttt{int} 会丢掉小数；正确修复需要先决定业务舍入规则，再显式转换，换成圆括号只会绕开检查。
-
-立即练习：分别编译 \texttt{double price\{10\};} 与 \texttt{int quantity\{10.0\};}。前者的整数常量 10 能被 \texttt{double} 精确表示，可以通过；后者从浮点类型转为整数，即使写成 10.0 也属于列表初始化禁止的窄化，必须被拒绝。再把它改成 10.5，说明同一诊断规则，而不是误记成“没有小数部分就可以”。
 
 \section{表达式、\texttt{auto} 与显式转换}
 
@@ -105,15 +105,12 @@ int rounded_price{100.5};  // intentional compile failure
 
 复合赋值 \texttt{buy\_notional += notional;} 等价于按该运算规则更新左侧对象；\texttt{++selected;} 把整数加一。二者都会修改左侧对象；如何声明只读对象留到第 3 章。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 的 \texttt{/} 总是产生浮点除法，\texttt{//} 才是向下取整除法；C++ 的 \texttt{/} 取决于两侧类型，两个整数相除先得到整数结果。\texttt{auto} 只省略静态类型拼写，不允许对象之后换类型。
-\end{pythonbridge}
 
-\subsection{失败诊断与立即练习}
+\subsection{关键失败实验}
 
 若平均值意外变成 \texttt{602}，先打印或说明除法两侧的类型，不要先怀疑格式化。另一个常见失败是选中数为零时仍做除法；浮点除零可能得到无穷而继续污染结果，整数除零则是更严重的运行期错误。正确做法是在控制流中显式保护分母。
-
-立即练习：分别预测并运行 \texttt{7 / 3}、\texttt{7.0 / 3}、\texttt{static\_cast<double>(7) / 3}。写出实际结果，并指出哪一步发生类型转换。
 
 \section{条件表达式、\texttt{if} 与 \texttt{switch}}
 
@@ -133,15 +130,12 @@ Python 的 \texttt{/} 总是产生浮点除法，\texttt{//} 才是向下取整�
 
 方向代码是少量离散整数，适合用清单中的 \texttt{switch} 明确列出分支。\texttt{case} 标签必须是可在编译期确定的离散值。\texttt{break} 离开当前 \texttt{switch}；漏写时会继续执行下一标签，这叫贯穿，除非有明确意图和注释，否则通常是缺陷。\texttt{default} 接住未列出的代码，使新出现的脏数据不会悄悄被当成买单。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 的 \texttt{if}/\texttt{elif}/\texttt{else} 与 C++ 分支目标相似，但 C++ 用圆括号和花括号界定结构，并要求条件可转换为布尔值。C++ \texttt{switch} 不是 Python \texttt{match} 的完整对应物：这里只把它当作离散整数分派，不期待结构模式匹配。
-\end{pythonbridge}
 
-\subsection{失败诊断与立即练习}
+\subsection{关键失败实验}
 
 \texttt{if (side\_code = 1)} 是赋值，不是比较；对象被改成 \texttt{1}，条件随后为真。高警告级别通常会提示这一可疑写法。修复为 \texttt{==}，并保持 \texttt{-Wall -Wextra -Wpedantic}。另一个边界是把 \texttt{price >= 0.0} 写成有效规则，这会错误接纳零价格；先从业务条件写出真值表，再翻译成表达式。
-
-立即练习：把有效规则改成“买单且价格至少 10，数量在 1 到 100（含端点）”。用恰好位于 10、1、100 的三条记录验证端点，再用价格 9.99 验证拒绝路径。
 
 \section[循环与作用域]{\texttt{for}、\texttt{while} 与作用域}
 
@@ -167,15 +161,12 @@ Python 的 \texttt{if}/\texttt{elif}/\texttt{else} 与 C++ 分支目标相似，
 
 初始预算 3200；四轮后剩 200，第五轮开始前 \texttt{200 >= 750} 为假，因此接纳数为 4、剩余预算为 200。循环体必须让条件朝终止方向变化；若忘记扣减预算，就会形成无限循环。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 两种语言的 \texttt{while} 都在每轮前检查条件。Python 常写 \texttt{for row in range(n)}；C++ 的经典 \texttt{for} 把初始化、条件和更新显式放在一处。本章还没有容器，所以暂不使用范围 \texttt{for}，它会在第 4 章教学。
-\end{pythonbridge}
 
-\subsection{失败诊断与立即练习}
+\subsection{关键失败实验}
 
 循环结果差一条时，手工列出“进入本轮前的 \texttt{row}、条件结果、本轮后的 \texttt{row}”三列，比盯着代码更快。程序长时间不结束时，检查每条分支是否都会更新终止状态，以及输入失败后是否还在重复使用旧值。
-
-立即练习：把风险预算改为 2999、每笔风险改为 1000。先预测循环次数与余数，再运行验证，结果应为 \texttt{accepted\_trades=2 remaining\_budget=999}。
 
 \section{整合：读取、筛选并汇总固定行情}
 
@@ -205,7 +196,16 @@ ctest --test-dir build -R ch02_ --output-on-failure
 
 Windows 的生成器可能把程序放到配置子目录，或在文件名后加 \texttt{.exe}；源码行为和测试期望不变。CTest 的预期字符串是独立写入的已知结果，不调用被测程序的算法重新计算自己。
 
-\section{自测、练习与面试表达}
+\section{章末三层练习}
+
+\subsection*{随堂验证汇总}
+
+\begin{enumerate}
+  \item 分别编译 \texttt{double price\{10\};} 与 \texttt{int quantity\{10.0\};}。前者的整数常量 10 能被 \texttt{double} 精确表示，可以通过；后者从浮点类型转为整数，即使写成 10.0 也属于列表初始化禁止的窄化，必须被拒绝。再把它改成 10.5，说明同一诊断规则，而不是误记成“没有小数部分就可以”。
+  \item 分别预测并运行 \texttt{7 / 3}、\texttt{7.0 / 3}、\texttt{static\_cast<double>(7) / 3}。写出实际结果，并指出哪一步发生类型转换。
+  \item 把有效规则改成“买单且价格至少 10，数量在 1 到 100（含端点）”。用恰好位于 10、1、100 的三条记录验证端点，再用价格 9.99 验证拒绝路径。
+  \item 把风险预算改为 2999、每笔风险改为 1000。先预测循环次数与余数，再运行验证；输出分两项核对：\path{accepted_trades=2} 与 \path{remaining_budget=999}。
+\end{enumerate}
 
 先不看答案，逐项给出定义、使用时机、代价或失败例子：
 
@@ -226,9 +226,6 @@ Windows 的生成器可能把程序放到配置子目录，或在文件名后加
   \item 单独编译窄化失败实验，记录失败阶段和诊断类别；然后提出两种修复：改变目标类型，或在明确舍入政策后显式转换。不要把关闭警告当成修复。
 \end{enumerate}
 
-\begin{interviewcheck}
-用 90 秒回答：“Python 名称绑定与 C++ 对象初始化有何不同？为什么花括号、显式类型和短路条件对行情入口有价值？”答案至少包含一个可观察输出、一个编译期失败和一个循环边界，而不是只罗列术语。
-\end{interviewcheck}
 
 \section{本章小结}
 

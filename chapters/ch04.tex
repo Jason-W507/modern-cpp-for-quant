@@ -38,11 +38,11 @@ Python 的 \texttt{list} 可以混放不同种类对象；行情列通常不该�
 
 \begin{pythonbridge}
 Python 字符串和列表也有 \texttt{len} 与零起点索引，但 Python 越界会稳定抛出 \texttt{IndexError}；C++ 的 \texttt{operator[]} 以调用者已经证明范围为前提。Python 列表增长不暴露元素引用失效规则，\texttt{vector} 扩容却可能搬迁整段连续存储。
+
+\pythoncompare{Python list 与 C++ vector 都可索引；C++ 还暴露容量和迭代器。}{Python 引用通常不因 list 扩容失效；vector 扩容会搬迁元素。}{Python 在操作发生时检查；C++ 迭代器类型静态，但有效性依赖运行期状态。}{Python 越界抛 IndexError；C++ operator[] 越界是未定义行为。}
 \end{pythonbridge}
 
 失败诊断：把输出中的 \texttt{header[2]} 改为 \texttt{header[3]}，编译器不必拒绝它，运行结果也没有可靠契约。根因是索引没有满足 \(0 \leq index < size\)。修复是使用范围循环，或在索引前显式证明范围；不要把一次“看似正常”的输出当成安全证据。
-
-立即练习：把 \texttt{reserve(8)} 改为 \texttt{resize(8)}，预测 \texttt{push\_back} 后 \texttt{prices\_size} 变为 9，而总和仍为 400.5，因为新增元素值初始化为零。运行验证后恢复 \texttt{reserve}，说明“容量”和“元素数”为什么不能互换。
 
 再只改固定数组：把 \texttt{header} 的第三项从 \texttt{"quantity"} 改为 \texttt{"volume"}，先预测精确输出中的 \texttt{header\_last}，再编译运行，确认它变为 \texttt{header\_last=volume}，而 \texttt{header.size()} 仍为 3。恢复原值，并说明修改元素与修改 \texttt{std::array} 的编译期长度是两件不同的事。
 
@@ -58,13 +58,10 @@ Python 字符串和列表也有 \texttt{len} 与零起点索引，但 Python 越
 
 对 \texttt{vector}，引发重新分配的插入会使全部指针、引用和迭代器失效；未重新分配时，插入点之前的位置可保持有效，但插入点及其后位置仍可能失效。删除也会使删除点及其后位置失效。最稳妥的规则是：改变容器后，除非已逐条证明标准保证，否则重新取得位置。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 常直接迭代对象而不显式暴露 iterator 类型；在迭代列表时修改列表同样容易产生跳项等逻辑错误。C++ 还多一层内存有效性：\texttt{vector} 搬迁后，旧迭代器可能指向已经释放的存储。
-\end{pythonbridge}
 
 故意失败的 \path{code/ch04/failures/stale_iterator.cpp} 保存旧迭代器，强制扩容后再解引用。它不进入绿色目标；AddressSanitizer 应非零退出并报告 \texttt{heap-use-after-free}。程序违反失效规则才是根因，不能据此认定“vector 不可靠”。修复可在取得迭代器前预留足够容量，或在修改后重新取得迭代器。
-
-立即练习：把安全实验改为先 \texttt{reserve(64)}，取得迭代器后只追加一个元素。记录容量是否改变；若没有改变，原迭代器仍指向第一个元素。随后恢复“持续追加直到扩容”的版本，比较两个条件而不是死记某个容量数值。
 
 \section{从普通函数到标准算法与 lambda}
 
@@ -84,13 +81,10 @@ Python 常直接迭代对象而不显式暴露 iterator 类型；在迭代列表
 
 \texttt{copy\_if} 把有效值追加到新 \texttt{vector}，\texttt{sort} 排序，\texttt{transform} 把价格乘以固定数量得到名义金额，\texttt{accumulate} 从 \texttt{0.0} 开始归约。\texttt{notionals} 必须先按输出数量建立大小；把空 \texttt{vector} 的 \texttt{begin()} 交给 \texttt{transform} 写入会越界。算法调用仍需要调用者满足输入、输出和迭代器类别的前置条件。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 的 \texttt{sum}、\texttt{sorted}、\texttt{filter} 和推导式也能表达操作意图。C++ lambda 的参数和返回在编译期形成具体类型，算法通过迭代器工作；输出算法不会像 Python 列表推导式那样自动替你创建足够的目标元素。
-\end{pythonbridge}
 
 失败诊断：删除 \texttt{std::vector<double> notionals(valid\_prices.size())} 中的大小参数，程序仍可能编译，但 \texttt{transform} 写入空范围是未定义行为。根因是输出迭代器没有可写位置。修复是预先 \texttt{resize}，或像 \texttt{copy\_if} 一样使用 \texttt{std::back\_inserter} 明确追加。
-
-立即练习：把有效条件统一改为 \texttt{price >= 100.0}。手写、命名函数和 lambda 的计数都应变为 2；排序后的首项应为 100，十股名义金额合计应为 2010。三个结果不同步说明你只改了一条规则，而没有完成等价重构。
 
 \section{文件边界与命令行参数}
 
@@ -102,13 +96,10 @@ Python 的 \texttt{sum}、\texttt{sorted}、\texttt{filter} 和推导式也能�
 
 \texttt{std::ifstream input\{argv[1]\};} 打开输入文件。流对象可出现在条件中：\texttt{if (!input)} 表示文件未成功打开。程序把启动错误和数据错误写到 \texttt{std::cerr} 并返回 2，把正常统计写到 \texttt{std::cout} 并返回 0；调用脚本因此能分别消费数据和诊断。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 常写 \texttt{with open(path) as input}；C++ 文件流对象也拥有文件句柄，并在对象离开作用域时关闭。第 6 章会把这种确定性清理归纳为 RAII。本章先记住：必须检查打开状态，且不要让解析函数偷偷重新打开另一个路径。
-\end{pythonbridge}
 
 失败诊断：给出不存在的路径时，工具应精确打印 \texttt{error=cannot open input file} 并返回 2。根因位于文件边界，与 CSV 行内容无关；应检查路径、权限和工作目录，修改解析规则不会解决问题。
-
-立即练习：不带参数运行一次，再传入不存在的文件运行一次。两次状态都应为 2，但诊断分别是 usage 与 cannot open；这证明启动参数错误和外部文件错误没有被混成同一类别。
 
 \section{CSV 校验：先拒绝坏行，再做统计}
 
@@ -137,13 +128,10 @@ Python 常写 \texttt{with open(path) as input}；C++ 文件流对象也拥有�
 
 边界回归还使用内存流验证 CRLF 输入、读取中途故障和不等长统计参数；三者不依赖“恰好在当前机器上没出错”。成功路径同时断言状态为 0、标准输出逐字匹配且标准错误为空。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 的 \texttt{csv} 模块能处理引号和转义，本章的手写切分器不能；这一差异来自当前接口刻意缩小的输入协议，并非语言能力。两种实现都必须在把字符串转成业务对象前检查列数、空字段、数值范围和来源行号。
-\end{pythonbridge}
 
 失败诊断：把数量写成 \texttt{10.5} 或 \texttt{ten} 会得到 \texttt{invalid number: quantity}。直接读取为 \texttt{double} 再静默转成整数会隐藏数据错误；修复是按目标字段类型完整消费文本，并拒绝尾随字符与非正数。
-
-立即练习：复制正常文件，把第 3 行数量改成 \texttt{ten}。预期标准输出为空、标准错误为 \texttt{error=line 3: invalid number: quantity}、退出状态为 2。恢复后再把代码改为空，确认错误类别随首个根因改变。
 
 \section{从干净目录复现输出任务}
 
@@ -165,7 +153,17 @@ ctest --test-dir build-linux -R ch04_ --output-on-failure
 
 第一组命令证明章节快照可独立配置、构建并得到章首精确输出；第二组同时运行容器、算法、迭代器、CSV 错误、练习答案与 ASan 证据。Windows 可使用 \texttt{build-mingw} 与 \texttt{-G "MinGW Makefiles"}，可执行文件带 \texttt{.exe}。
 
-\section{自测、编码任务与面试表达}
+\section{章末三层练习}
+
+\subsection*{随堂验证汇总}
+
+\begin{enumerate}
+  \item 把 \texttt{reserve(8)} 改为 \texttt{resize(8)}，预测 \texttt{push\_back} 后 \texttt{prices\_size} 变为 9，而总和仍为 400.5，因为新增元素值初始化为零。运行验证后恢复 \texttt{reserve}，说明“容量”和“元素数”为什么不能互换。
+  \item 把安全实验改为先 \texttt{reserve(64)}，取得迭代器后只追加一个元素。记录容量是否改变；若没有改变，原迭代器仍指向第一个元素。随后恢复“持续追加直到扩容”的版本，比较两个条件而不是死记某个容量数值。
+  \item 把有效条件统一改为 \texttt{price >= 100.0}。手写、命名函数和 lambda 的计数都应变为 2；排序后的首项应为 100，十股名义金额合计应为 2010。三个结果不同步说明你只改了一条规则，而没有完成等价重构。
+  \item 不带参数运行一次，再传入不存在的文件运行一次。两次状态都应为 2，但诊断分别是 usage 与 cannot open；这证明启动参数错误和外部文件错误没有被混成同一类别。
+  \item 复制正常文件，把第 3 行数量改成 \texttt{ten}。预期标准输出为空、标准错误为 \texttt{error=line 3: invalid number: quantity}、退出状态为 2。恢复后再把代码改为空，确认错误类别随首个根因改变。
+\end{enumerate}
 
 \begin{enumerate}
   \item \texttt{string}、\texttt{vector<double>} 与 \texttt{array<string, 3>} 分别表达什么大小和元素类型约束？
@@ -180,9 +178,6 @@ ctest --test-dir build-linux -R ch04_ --output-on-failure
 
 编码任务：按命令行代码汇总正常 CSV。完整答案见 \path{code/ch04/exercises/symbol_summary_solution.cpp}；\texttt{AAPL} 必须精确输出 \texttt{symbol=AAPL rows=2 quantity=15 notional=1505.00}。
 
-\begin{interviewcheck}
-用 90 秒回答：“为什么 vector 是行情序列的合理默认容器，什么时候 push\_back 会让旧迭代器失效？”回答包含连续存储、重新分配、ASan 证据以及 reserve/重新取位置两类修复。
-\end{interviewcheck}
 
 \section{本章小结}
 

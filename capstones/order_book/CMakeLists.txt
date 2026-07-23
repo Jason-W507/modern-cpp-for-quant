@@ -19,6 +19,19 @@ target_include_directories(capstone_market_replay PUBLIC include)
 add_executable(capstone_replay_benchmark benchmarks/replay_benchmark.cpp)
 target_link_libraries(capstone_replay_benchmark PRIVATE capstone_market_replay)
 
+option(CAPSTONE_BUILD_FUZZERS "Build libFuzzer protocol targets with Clang" OFF)
+if(CAPSTONE_BUILD_FUZZERS)
+  if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    message(FATAL_ERROR "CAPSTONE_BUILD_FUZZERS requires Clang/libFuzzer")
+  endif()
+  add_executable(capstone_market_replay_fuzzer fuzz/market_replay_fuzz.cpp)
+  target_link_libraries(capstone_market_replay_fuzzer PRIVATE capstone_market_replay)
+  target_compile_options(capstone_market_replay_fuzzer PRIVATE
+    -fsanitize=fuzzer,address,undefined -fno-omit-frame-pointer)
+  target_link_options(capstone_market_replay_fuzzer PRIVATE
+    -fsanitize=fuzzer,address,undefined)
+endif()
+
 if(MSVC)
   target_compile_options(capstone_order_book_demo PRIVATE /W4 /permissive-)
 else()
@@ -47,11 +60,39 @@ if(BUILD_TESTING)
     COMMAND capstone_market_replay_tests)
   set_tests_properties(capstone_market_replay_classifies_sequence_failures
     PROPERTIES PASS_REGULAR_EXPRESSION
-      "market-replay-tests-ok accepted=3 duplicate=1 gap=1 decode=1 trades=1 next=4")
+      "market-replay-tests-ok accepted=4 duplicate=1 gap=1 buffered=1 recovered=1 decode=1 trades=2 next=5")
 
   add_test(NAME capstone_replay_benchmark_preserves_message_count
     COMMAND capstone_replay_benchmark)
   set_tests_properties(capstone_replay_benchmark_preserves_message_count
     PROPERTIES PASS_REGULAR_EXPRESSION
       "replay-benchmark-ok messages=10000 accepted=10000")
+
+  find_package(Python3 COMPONENTS Interpreter QUIET)
+  if(Python3_Interpreter_FOUND)
+  add_test(NAME capstone_replay_multiprocess_report_is_reproducible
+      COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_LIST_DIR}/benchmarks/run_replay_benchmark.py
+        $<TARGET_FILE:capstone_replay_benchmark>
+        --output ${CMAKE_CURRENT_BINARY_DIR}/replay-multiprocess-test.json
+        --processes 3)
+  set_tests_properties(capstone_replay_multiprocess_report_is_reproducible
+    PROPERTIES PASS_REGULAR_EXPRESSION
+      "replay-multiprocess-ok processes=3 samples=300")
+  add_test(NAME capstone_replay_report_uses_nearest_rank_without_process_p999
+    COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_LIST_DIR}/tests/test_replay_report.py
+      ${CMAKE_CURRENT_LIST_DIR}/reports/replay-benchmark.json)
+  set_tests_properties(capstone_replay_report_uses_nearest_rank_without_process_p999
+    PROPERTIES PASS_REGULAR_EXPRESSION
+      "replay-report-contract-ok nearest-rank=1 aggregate-p999=1")
+endif()
+
+  add_executable(capstone_spsc_replay_tests tests/test_spsc_replay.cpp)
+  target_link_libraries(capstone_spsc_replay_tests PRIVATE capstone_market_replay)
+  add_test(NAME capstone_spsc_replay_preserves_every_message
+    COMMAND capstone_spsc_replay_tests)
+  set_tests_properties(capstone_spsc_replay_preserves_every_message
+    PROPERTIES PASS_REGULAR_EXPRESSION
+      "spsc-replay-ok offered=10000 accepted=10000 next=10001")
 endif()

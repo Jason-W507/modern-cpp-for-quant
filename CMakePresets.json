@@ -56,6 +56,15 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "windows-mingw-python-release",
+      "inherits": "windows-mingw-release",
+      "displayName": "Windows MinGW Release with locked Python bindings",
+      "cacheVariables": {
+        "Python3_EXECUTABLE": "${sourceDir}/.venv/Scripts/python.exe",
+        "pybind11_DIR": "${sourceDir}/.venv/Lib/site-packages/pybind11/share/cmake/pybind11"
+      }
     }
   ],
   "buildPresets": [
@@ -73,6 +82,11 @@
       "name": "windows-mingw-release",
       "configurePreset": "windows-mingw-release",
       "jobs": 4
+    },
+    {
+      "name": "windows-mingw-python-release",
+      "configurePreset": "windows-mingw-python-release",
+      "jobs": 4
     }
   ],
   "testPresets": [
@@ -89,6 +103,11 @@
     {
       "name": "windows-mingw-release",
       "configurePreset": "windows-mingw-release",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "windows-mingw-python-release",
+      "configurePreset": "windows-mingw-python-release",
       "output": { "outputOnFailure": true }
     }
   ]

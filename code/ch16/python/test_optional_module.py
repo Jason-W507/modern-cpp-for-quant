@@ -1,8 +1,16 @@
 from __future__ import annotations
 
 import gc
+import os
+import sys
 
 import numpy as np
+
+if sys.platform == "win32":
+    os.add_dll_directory(sys.base_prefix)
+    runtime_directory = os.environ.get("QUANT_CH16_DLL_DIR")
+    if runtime_directory:
+        os.add_dll_directory(runtime_directory)
 
 import quant_ch16
 

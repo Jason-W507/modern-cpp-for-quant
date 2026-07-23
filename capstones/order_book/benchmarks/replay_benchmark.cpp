@@ -2,10 +2,13 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <string_view>
 #include <vector>
 
 namespace {
@@ -35,15 +38,26 @@ std::vector<std::uint8_t> add_message(std::uint64_t sequence) {
 
 std::int64_t percentile(const std::vector<std::int64_t>& sorted,
                         double probability) {
-  const auto index = static_cast<std::size_t>(
-      probability * static_cast<double>(sorted.size() - 1));
+  const auto rank = static_cast<std::size_t>(
+      std::ceil(probability * static_cast<double>(sorted.size())));
+  const auto index = std::clamp(rank, std::size_t{1}, sorted.size()) - 1;
   return sorted[index];
+}
+
+void write_samples(std::ostream& output,
+                   const std::vector<std::int64_t>& samples) {
+  output << '[';
+  for (std::size_t index = 0; index < samples.size(); ++index) {
+    output << (index == 0 ? "" : ", ") << samples[index];
+  }
+  output << ']';
 }
 
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
   constexpr std::size_t message_count = 10'000;
+  constexpr std::size_t window_size = 100;
   std::vector<std::vector<std::uint8_t>> messages;
   messages.reserve(message_count);
   for (std::size_t index = 0; index < message_count; ++index) {
@@ -52,15 +66,18 @@ int main() {
 
   quant::capstone::MarketReplay replay;
   std::vector<std::int64_t> samples;
-  samples.reserve(message_count);
+  samples.reserve(message_count / window_size);
   const auto run_start = std::chrono::steady_clock::now();
-  for (const auto& message : messages) {
+  for (std::size_t first = 0; first < message_count; first += window_size) {
     const auto start = std::chrono::steady_clock::now();
-    replay.apply(message);
+    for (std::size_t index = first; index < first + window_size; ++index) {
+      replay.apply(messages[index]);
+    }
     const auto stop = std::chrono::steady_clock::now();
     samples.push_back(
         std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start)
-            .count());
+            .count() /
+        static_cast<std::int64_t>(window_size));
   }
   const auto run_stop = std::chrono::steady_clock::now();
   std::sort(samples.begin(), samples.end());
@@ -71,11 +88,38 @@ int main() {
     std::cerr << "replay benchmark correctness gate failed\n";
     return 2;
   }
+  const auto p50 = percentile(samples, 0.50);
+  const auto p99 = percentile(samples, 0.99);
+  const auto throughput = static_cast<double>(message_count) / seconds;
+  if (argc == 3 && std::string_view{argv[1]} == "--json") {
+    std::ofstream output{argv[2]};
+    if (!output) {
+      std::cerr << "cannot open replay benchmark report\n";
+      return 3;
+    }
+    output << "{\n  \"schema\": 1,\n  \"environment\": {\"compiler\": \""
+           << __VERSION__
+           << "\", \"clock\": \"std::chrono::steady_clock\"},\n"
+              "  \"workload\": {\"messages\": "
+           << message_count
+           << ", \"message_bytes\": 32, \"pre_encoded\": true, \"window_messages\": "
+           << window_size
+           << ", \"sample_unit\": \"ns_per_message_from_window\"},\n"
+              "  \"samples_ns\": ";
+    write_samples(output, samples);
+    output << ",\n  \"summary\": {\"p50_ns\": " << p50
+           << ", \"p99_ns\": " << p99
+           << ", \"throughput_msg_s\": " << std::fixed
+           << std::setprecision(0) << throughput
+           << "},\n  \"correctness\": {\"accepted\": "
+           << replay.stats().accepted << ", \"next_expected\": "
+           << replay.next_expected()
+           << "},\n  \"limitations\": [\"one process; use run_replay_benchmark.py for multi-process evidence\", \"window averages do not expose within-window single-message tails\", \"no affinity or frequency pinning\", \"teaching protocol, not an exchange feed\"]\n}\n";
+  }
   std::cout << "replay-benchmark-ok messages=" << message_count
             << " accepted=" << replay.stats().accepted
-            << " p50_ns=" << percentile(samples, 0.50)
-            << " p99_ns=" << percentile(samples, 0.99)
-            << " p999_ns=" << percentile(samples, 0.999)
+            << " p50_ns=" << p50
+            << " p99_ns=" << p99
             << " throughput_msg_s=" << std::fixed << std::setprecision(0)
-            << static_cast<double>(message_count) / seconds << '\n';
+            << throughput << '\n';
 }

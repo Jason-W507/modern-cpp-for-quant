@@ -14,6 +14,11 @@
 
 Python 研究代码移到 C++ 时，两个问题常被错误地混在一起：数值结果为何改变，以及调用为什么没有变快。\path{code/ch16} 把它们拆成一个无第三方依赖的 C++20 核心和一个可选 pybind11 薄绑定。核心始终可构建；只有环境已经提供 pybind11 时才生成 Python 模块。
 
+\begin{pythonbridge}
+NumPy 数组表达式和 C++ 批量 kernel 都能把逐元素循环移出 Python；真正的边界由 dtype、布局、所有者和错误政策共同决定。
+\pythoncompare{NumPy 用数组与 ufunc；C++ 暴露接收连续批次的静态类型函数。}{Python 数组通过 owner/base 保活；C++ span 只借用，返回数组必须拥有结果。}{NumPy 在调用时检查 dtype/shape；C++ 核心接口先编译，绑定再验证运行期元数据。}{Python 侧通常抛 TypeError/ValueError；未验证的 C++ 借用可能悬空或越界。}
+\end{pythonbridge}
+
 从项目根目录运行独立快照：
 
 \begin{lstlisting}[language=bash,numbers=none]
@@ -50,7 +55,7 @@ return difference <=
 
 绝对容差保护接近零的值；相对容差随量级缩放。可运行的 \texttt{tolerance\_from\_budget} 接收输入绝对误差、预计舍入操作数和结果尺度。本例输入误差为 0、加法含两次舍入、尺度为 0.3，按 \texttt{double} epsilon 导出上面的绝对与相对界限。报价精度或参考实现已有误差时，应计入 input-abs；容差过大仍会吞掉真实回归。
 
-Python 的 \texttt{math.isclose} 也使用相对与绝对容差，但默认值、NaN 规则和调用点不会自动成为 C++ 合约。失败可由直接断言 \texttt{simple\_return(100, 102.5) == 0.025} 触发；诊断是值只在末位不同，根因是两次舍入，修复是给出业务来源的容差并保留独立 expected。立即练习：只把 input-abs 从 0 改为 $10^{-4}$；输出 absolute 应约为 $10^{-4}$，并解释这代表输入精度变化而非“为了过测试”。
+Python 的 \texttt{math.isclose} 也使用相对与绝对容差，但默认值、NaN 规则和调用点不会自动成为 C++ 合约。失败可由直接断言 \texttt{simple\_return(100, 102.5) == 0.025} 触发；诊断是值只在末位不同，根因是两次舍入，修复是给出业务来源的容差并保留独立 expected。
 
 \section{求和顺序、补偿项与在线方差}
 
@@ -62,7 +67,7 @@ Python 的 \texttt{math.isclose} 也使用相对与绝对容差，但默认值�
 
 方差也不能机械套用 $E[X^2]-E[X]^2$：两项很大而差很小时会发生灾难性消减。\texttt{sample\_moments} 使用 Welford 更新，每读一个值就更新 count、mean 与平方离差和，最后明确除以 $n-1$，所以输出叫 sample variance；若业务要总体方差，则分母与名称必须同时改变。
 
-Python 的 \texttt{math.fsum} 提供高精度求和工具，NumPy 的归约还可能按 dtype、轴和实现选择不同顺序；C++ 补偿算法不会自动等同于某个 NumPy 版本。失败触发是把输入顺序换成大数、小数、反向大数并观察朴素和偏离 oracle；诊断类别是 cancellation/order sensitivity，根因是有效位丢失，修复是改变算法、提高精度或重构问题，而非扩大测试容差。立即练习：只把数组顺序改为 \texttt{\{1e16, -1e16, 1, 3\}}；朴素和应变为 4，稳定和仍为 4，并解释“这次朴素正确”为何不能证明算法稳健。
+Python 的 \texttt{math.fsum} 提供高精度求和工具，NumPy 的归约还可能按 dtype、轴和实现选择不同顺序；C++ 补偿算法不会自动等同于某个 NumPy 版本。失败触发是把输入顺序换成大数、小数、反向大数并观察朴素和偏离 oracle；诊断类别是 cancellation/order sensitivity，根因是有效位丢失，修复是改变算法、提高精度或重构问题，而非扩大测试容差。
 
 \section{金额、收益率与方差需要不同表示}
 
@@ -76,7 +81,7 @@ numeric-policy money=int64-cents rounded-cents=1013
   overflow-rejected=true
 \end{lstlisting}
 
-Python 的整数也能无损保存 cents，\texttt{decimal.Decimal} 能表达十进制规则且整数不会溢出；C++ 固定宽度整数必须检查范围，标准库也没有金融 decimal 的直接替代品。失败可由向金额入口传 NaN、无穷或超出 \texttt{int64\_t} 的值触发；稳定类别分别是 invalid input 与 overflow，根因是表示域不匹配，修复是边界拒绝而不是静默截断。立即练习：只把金额改为 $-10.125$，按本章口径应得到 $-1013$ 分；再写一句说明退款是否允许为负属于领域规则而非浮点规则。
+Python 的整数也能无损保存 cents，\texttt{decimal.Decimal} 能表达十进制规则且整数不会溢出；C++ 固定宽度整数必须检查范围，标准库也没有金融 decimal 的直接替代品。失败可由向金额入口传 NaN、无穷或超出 \texttt{int64\_t} 的值触发；稳定类别分别是 invalid input 与 overflow，根因是表示域不匹配，修复是边界拒绝而不是静默截断。
 
 \section{逐元素调用、批量复制与零拷贝借用}
 
@@ -91,7 +96,7 @@ boundary-ok rows=4 scalar-calls=4 bulk-copies=1
 
 调用次数和复制次数只描述成本模型，尚不足以推出耗时结论。小数组可能由转换成本主导，大数组复制后反而可能因连续布局更快；应像第 14 章那样固定结果、规模、预热和样本再测量。
 
-Python/NumPy 的向量化把循环移到扩展内部，但“写成数组表达式”不保证零拷贝，也不保证 dtype 未转换。失败触发是对每个行情点调用一次绑定后只测 C++ 循环；诊断是 profiler 显示大量 binding/call overhead，根因是边界粒度太细，修复是设计批量领域操作。立即练习：只把输入行数从 4 改为 8；三条 checksum 仍须相同，scalar-calls 应为 8，而 bulk-copies 与 zero-copy-borrows 仍各为 1。
+Python/NumPy 的向量化把循环移到扩展内部，但“写成数组表达式”不保证零拷贝，也不保证 dtype 未转换。失败触发是对每个行情点调用一次绑定后只测 C++ 循环；诊断是 profiler 显示大量 binding/call overhead，根因是边界粒度太细，修复是设计批量领域操作。
 
 \section{dtype、连续性与缓冲所有权}
 
@@ -107,7 +112,7 @@ ownership-error temporary-view-rejected owner-missing=true
 
 严格拒绝适合教学和延迟敏感路径；另一种合法 API 可以明确命名 \texttt{allow\_copy}，由它转换 dtype 与布局并报告发生了复制。两种语义不能藏在同一个“看起来零拷贝”的函数里。
 
-Python 视图常通过 \texttt{base} 保持源对象存活；C++ \texttt{span} 只是指针加长度，不拥有元素。故意失败的 \path{temporary_buffer_view.cpp} 返回局部 vector 的 span，离开函数即悬空；ASan 稳定报告 \texttt{heap-use-after-free}。pybind11 返回借用数组时必须把原 Python 对象设为 base，返回新 C++ 缓冲时则用 capsule 或拥有型数组托管释放。立即练习：只把步长 16 改回 8，layout 错误应消失；dtype 仍为 float32 时必须继续拒绝，说明两个前置条件彼此独立。
+Python 视图常通过 \texttt{base} 保持源对象存活；C++ \texttt{span} 只是指针加长度，不拥有元素。故意失败的 \path{temporary_buffer_view.cpp} 返回局部 vector 的 span，离开函数即悬空；ASan 稳定报告 \texttt{heap-use-after-free}。pybind11 返回借用数组时必须把原 Python 对象设为 base，返回新 C++ 缓冲时则用 capsule 或拥有型数组托管释放。
 
 \section{GIL 与可选 pybind11 薄绑定}
 
@@ -117,11 +122,24 @@ Python 调入扩展时当前线程持有 GIL。长时间纯 C++ 循环若一直�
 
 可选构建遵守依赖边界：\texttt{find\_package(pybind11 CONFIG QUIET)} 找不到依赖时只打印状态并继续构建核心；找到时生成 \texttt{quant\_ch16}，其 \texttt{sum\_returns} 仍调用同一 \texttt{sum\_batch}。Python 验收脚本检查 float64 连续输入、错误 dtype、切片 stride，以及删除原名称后借用视图仍由 base 保活。
 
-Python 的线程同样受 GIL 约束，但 NumPy 或其他扩展是否释放、释放多久属于各函数实现契约。失败触发是两个 Python 线程调用长 C++ 循环却完全串行；profiler 显示第二线程没有 Python 进展，根因通常是持锁计算。修复是在纯 C++ 且对象寿命已固定的最小区间释放，并用 ThreadSanitizer/行为测试另证 C++ 线程安全。立即练习：只把 \texttt{gil\_scoped\_release} 移出数据指针取得之前，指出为什么此时访问 \texttt{py::array} 元数据不再安全；正确答案不是“多加一个锁”，而是缩回释放作用域。
+Python 的线程同样受 GIL 约束，但 NumPy 或其他扩展是否释放、释放多久属于各函数实现契约。失败触发是两个 Python 线程调用长 C++ 循环却完全串行；profiler 显示第二线程没有 Python 进展，根因通常是持锁计算。修复是在纯 C++ 且对象寿命已固定的最小区间释放，并用 ThreadSanitizer/行为测试另证 C++ 线程安全。
 
 无需 pybind11 的 \path{gil_probe.cpp} 还用 CPython 扩展 API 建立可运行诊断：新 C++ 线程必须取得 GIL 后才设置原子进度。调用方持有 GIL 等待时进度稳定为 false；仅在等待区间释放后才为 true，测试输出 \texttt{gil-diagnostic held-progress=false released-progress=true}。探针以 deadline 防止故障无限挂起，但不靠 sleep 猜测调度。
 
-\section{输出任务与自测}
+\section{章末三层练习}
+
+\subsection*{随堂验证汇总}
+
+\begin{enumerate}
+  \item 只把 input-abs 从 0 改为 $10^{-4}$；输出 absolute 应约为 $10^{-4}$，并解释这代表输入精度变化而非“为了过测试”。
+  \item 只把数组顺序改为 \texttt{\{1e16, -1e16, 1, 3\}}；朴素和应变为 4，稳定和仍为 4，并解释“这次朴素正确”为何不能证明算法稳健。
+  \item 只把金额改为 $-10.125$，按本章口径应得到 $-1013$ 分；再写一句说明退款是否允许为负属于领域规则而非浮点规则。
+  \item 只把输入行数从 4 改为 8；三条 checksum 仍须相同，scalar-calls 应为 8，而 bulk-copies 与 zero-copy-borrows 仍各为 1。
+  \item 只把步长 16 改回 8，layout 错误应消失；dtype 仍为 float32 时必须继续拒绝，说明两个前置条件彼此独立。
+  \item 只把 \texttt{gil\_scoped\_release} 移出数据指针取得之前，指出为什么此时访问 \texttt{py::array} 元数据不再安全；正确答案不是“多加一个锁”，而是缩回释放作用域。
+\end{enumerate}
+
+复现层固定数值与边界输出；修改层改变批大小或缺失值分布并保持独立 oracle；开放层为一段 Python 热点设计 dtype、所有权、GIL 与测量契约。
 
 输出任务：提交 \path{code/ch16} 的 clean-build 命令、容差预算与三组精确输出，以及一页边界说明。说明须给出金额舍入口径、收益与方差定义；比较逐元素、批量复制和零拷贝；列出 dtype、stride、所有者与 GIL 的前置条件。附 ASan 的 \texttt{heap-use-after-free} 与 GIL probe 两类稳定证据。环境有 pybind11 时再提交可选模块输出；没有时提交“dependency-free core only”配置证据。
 
@@ -137,9 +155,6 @@ Python 的线程同样受 GIL 约束，但 NumPy 或其他扩展是否释放、�
   \item 释放 GIL 能解决什么，又绝不能替代什么？
 \end{enumerate}
 
-\begin{interviewcheck}
-被问“如何把 Python 因子计算迁到 C++”时，先给独立数值 oracle 与误差口径；再说明批量 API、dtype/连续性拒绝策略、复制或借用的所有权；最后才讨论 GIL 释放和 benchmark。主动说明零拷贝增加寿命约束，释放 GIL 也不自动带来 C++ 线程安全。
-\end{interviewcheck}
 
 \section{本章小结}
 

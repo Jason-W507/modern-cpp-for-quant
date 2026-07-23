@@ -1,6 +1,6 @@
 # Tickets: Modern C++ 量化教程第二版扩写
 
-把当前 62 页初稿扩写为适合 C++ 零基础 Python 量化读者自学的 18 章、约 145–170 页教程。源规格见 `.scratch/second-edition-expansion/PRD.md`。
+把当前 62 页初稿扩写为适合 C++ 零基础 Python 量化读者自学的 18 章教程；在用户取消原页数上限后，完整版本采用 235 页成稿与 250 页出版护栏。源规格见 `.scratch/second-edition-expansion/PRD.md`。
 
 Work the **frontier**: any ticket whose blockers are all done.
 
@@ -13,7 +13,7 @@ Work the **frontier**: any ticket whose blockers are all done.
 - [x] 初学语法覆盖矩阵记录每个概念的首次教学、立即练习和后续复用位置。
 - [x] 章节验收清单覆盖先修、七步教学闭环、Python 边界、失败实验、输出任务和答案反馈。
 - [x] 完整代码清单、故意失败示例和项目阶段快照各有明确且可自动检查的约定。
-- [x] 18 章五篇职责与约 145–170 页出版护栏能够被后续验收使用，而不靠空白占位章节制造进度。
+- [x] 18 章五篇职责与修订后的 235/250 页成稿及出版护栏能够被后续验收使用，而不靠空白占位章节制造进度。
 - [x] 当前 C++ 测试与 LaTeX 构建在引入验收骨架后仍保持绿色。
 
 ## 标杆章：类型、表达式与控制流
@@ -252,7 +252,7 @@ Work the **frontier**: any ticket whose blockers are all done.
 
 - [x] 18 章与 8 个附录全部通过章节学习单元检查，语法覆盖矩阵没有未解释前置概念。
 - [x] 所有完整示例、项目快照、最终项目和既有测试在 Windows MinGW Release preset 下通过；不受支持的 sanitizer 证据按平台规则跳过并保留 Linux/WSL 主线。
-- [x] MiKTeX/XeLaTeX 生成 199 页最终 PDF，位于约 180--220 页的当前出版护栏内；交叉引用、目录、主题索引和代码清单正确。
+- [x] MiKTeX/XeLaTeX 生成 235 页最终 PDF，位于约 200--250 页的当前出版护栏内；算法面试附录达到 38 页，其中包含可构建答案、复杂度与 cache-aware 讨论，交叉引用、目录、主题索引和代码清单正确。
 - [x] 构建日志没有未定义引用、缺失字形、致命错误或影响阅读的正文溢出。
 - [x] 渲染抽查覆盖封面、目录、代码密集页、角色项目、并发附录与参考文献，未发现裁切、重叠或不可读内容。
 - [x] 原 ElegantBook 模板目录保持不变，发布产物文件名稳定。

@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <span>
 #include <vector>
 
@@ -13,6 +14,8 @@ struct ReplayStats final {
   std::size_t accepted{};
   std::size_t duplicates{};
   std::size_t gaps{};
+  std::size_t buffered{};
+  std::size_t recovered{};
   std::size_t decode_errors{};
   std::size_t book_rejections{};
   std::size_t trades{};
@@ -37,6 +40,7 @@ class MarketReplay final {
   LimitOrderBook book_;
   SequenceGate sequence_;
   ReplayStats stats_;
+  std::map<std::uint64_t, std::vector<std::uint8_t>> pending_;
 };
 
 }  // namespace quant::capstone

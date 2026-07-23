@@ -32,11 +32,11 @@ threshold_orders=1 hold_orders=0
 
 \begin{pythonbridge}
 Python 的函数通常不声明具体参数类型，只要传入对象在运行到该行时具有 \texttt{on\_event} 就能继续。C++ 普通函数把类型要求写在签名里，因此编译器在调用前就能拒绝其他类型。两者都可以从最具体实现开始，不应为了“以后可能有很多策略”预先设计复杂层次。
+
+\pythoncompare{Python 依赖鸭子类型；C++ 可用普通签名、模板或 concept。}{Python 调用持有对象引用；C++ 模板不改变实参的所有权契约。}{Python 在运行到成员访问时检查；C++ 模板实例化时检查约束。}{Python 抛 AttributeError；C++ concept 给出不满足约束的编译诊断。}
 \end{pythonbridge}
 
 失败诊断：若调用 \texttt{decide\_threshold(hold, event, flat)}，编译器会报告无法把 \texttt{HoldStrategy} 绑定到 \texttt{const ThresholdStrategy\&}。根因是函数签名点名了另一种类型，并非持有策略缺少方法。若确实需要复用同一算法，下一步才引入模板。
-
-立即练习：把事件价格从 99 改为 101，其他代码不变。输出应变为 \texttt{ordinary=none}；若仍为 buy，先检查阈值比较而不是模板语法。
 
 \section{函数模板：把类型变成参数}
 
@@ -52,13 +52,10 @@ Python 的函数通常不声明具体参数类型，只要传入对象在运行�
 
 编译器实例化时必须看到模板定义，不能像普通非模板函数那样只在头文件留声明、把通用定义藏进一个无人可见的源文件。常见做法是把模板定义放在头文件；大型项目也可显式实例化已知类型，但会限制可用类型集合并增加构建设计成本。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 只保留一份函数对象，运行时对不同对象执行相同字节码；C++ 模板通常为实际类型分别实例化机器代码。Python 类型提示不会自动生成新函数，C++ 模板参数同样不属于运行时变量，程序执行期间不能突然换成另一种类型。
-\end{pythonbridge}
 
 失败诊断：传入整数 42 时，模板推导成功，因为任何类型都能先成为 \texttt{Strategy}；错误直到实例化函数体中的 \texttt{strategy.on\_event} 才出现。根因是模板参数没有说明所需能力；模板推导本身已经成功。
-
-立即练习：删除 \texttt{HoldStrategy} 调用并重新构建。输出只剩阈值结果，同时编译器不再需要持有策略对应的 \texttt{decide} 实例；源码模板仍然存在。
 
 \section{concept：给所需能力命名}
 
@@ -76,13 +73,10 @@ Python 只保留一份函数对象，运行时对不同对象执行相同字节�
 
 构造函数按值接收策略并移动到成员，运行器拥有策略对象。\texttt{count\_orders} 负责遍历一批事件、调用所持策略并汇总订单数；调用方提供同一持仓快照，因而这里刻意不模拟成交后的仓位变化。类模板既固定一种编译期策略，也封装批处理职责，所做工作超过转发一个成员函数。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 的 \texttt{typing.Protocol} 也能描述“具有某方法并返回某类型”的结构化能力，但主要由静态检查器使用，运行时不一定强制。C++ concept 直接参与模板候选选择；不满足时该重载或特化不可用。两者都不能证明方法的业务语义，只能约束可表达的接口形状。
-\end{pythonbridge}
 
 失败诊断：若策略返回 \texttt{Order} 而不是 \texttt{optional<Order>}，调用表达式本身有效，但 \texttt{same\_as} 要求失败。修复应先判断领域契约：若“无订单”是正常结果，就修改策略返回 optional；不要为了让 concept 通过而放宽成与业务不一致的任意类型。
-
-立即练习：把 \texttt{HoldStrategy::on\_event} 返回类型暂时改为 \texttt{bool}，并把函数体改成 \texttt{return false;}。构建持有策略对应的运行器特化时，应报告 \texttt{MarketStrategy} 约束不满足；恢复原返回类型与函数体后，静态策略 seam 重新绿色。
 
 \section{约束改善入口诊断，不证明运行结果}
 
@@ -103,13 +97,10 @@ g++ -std=c++20 -c code/ch09/failures/constrained_strategy.cpp
 
 concept 改善的是错误发生位置和接口文档，并不替代行为测试。一个 \texttt{AlwaysBuyStrategy} 完全可以满足返回类型，却在任何价格下买入。\path{code/ch09/tests/test_static_strategy.cpp} 仍通过公开策略 seam 验证：阈值策略给出一笔数量 25 的 AAPL 订单，持有策略没有订单。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 静态检查器也能在调用前指出对象不满足 Protocol；若不运行检查器，错误可能到执行方法访问时才出现。C++ concept 检查属于编译本身，但它同样只看到声明的能力，无法替代 pytest 中的业务样例。
-\end{pythonbridge}
 
 失败诊断：看到长模板诊断时，从最靠前的用户代码调用点和第一条未满足要求开始，不要从最末尾的库实现逐字倒读。先把参与类型写出来，再核对方法的参数 cv/ref 限定和精确返回类型。
-
-立即练习：在受约束失败示例中为整数换成一个含 \texttt{int on\_event(const Event\&) const} 的小类。约束应通过；随后把返回类型改为 \texttt{double}，观察 \texttt{same\_as<int>} 失败。
 
 \section{静态与动态多态的真实取舍}
 
@@ -140,13 +131,10 @@ ABI 边界 & 头文件变化常触发重编译 & 稳定接口可隔离实现 \\
 
 模板会增加解析和实例化工作；类型组合多时，编译时间与代码体积可能上升。暴露模板定义也让调用方依赖更多头文件细节。虚接口则承担对象生命、虚析构、间接调用和 ABI 演化约束。选择来自部署与替换需求，不能只凭“modern”标签。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 常在运行时替换策略对象，天然接近动态分派；Numba、Cython 或专门化 JIT 又可能根据具体类型生成代码，接近静态专门化。C++ 把选择显式放在模板或虚接口中，因此类型确定时机与构建成本更容易在源码中审查。
-\end{pythonbridge}
 
 失败诊断：若为了允许一个运行时配置而实例化所有策略组合并写巨大 \texttt{variant} 分支，模板复杂度可能超过收益；反过来，若热循环中的策略集合在编译时固定，却强制所有对象经共享指针和虚接口访问，也可能增加生命管理负担。先写替换时机，再选机制。
-
-立即练习：把 \texttt{RuntimeStrategy\&} 改为具体 \texttt{RuntimeThreshold\&}。输出不变，但调用点不再展示运行时替换能力；这说明“用了继承类”本身不等于调用发生了动态分派。
 
 \section{独立快照与验收命令}
 
@@ -165,7 +153,17 @@ ctest --test-dir build/ch09 --output-on-failure
 
 最后一行必须与章首逐字一致。根项目还验证普通函数、函数模板、静态策略 seam、静态/动态对照、两种编译诊断、练习答案与干净快照。concept 只负责编译期能力，输出测试负责运行期语义，两类证据不可互相替代。
 
-\section{自测、编码任务与面试检查点}
+\section{章末三层练习}
+
+\subsection*{随堂验证汇总}
+
+\begin{enumerate}
+  \item 把事件价格从 99 改为 101，其他代码不变。输出应变为 \texttt{ordinary=none}；若仍为 buy，先检查阈值比较而不是模板语法。
+  \item 删除 \texttt{HoldStrategy} 调用并重新构建。输出只剩阈值结果，同时编译器不再需要持有策略对应的 \texttt{decide} 实例；源码模板仍然存在。
+  \item 把 \texttt{HoldStrategy::on\_event} 返回类型暂时改为 \texttt{bool}，并把函数体改成 \texttt{return false;}。构建持有策略对应的运行器特化时，应报告 \texttt{MarketStrategy} 约束不满足；恢复原返回类型与函数体后，静态策略 seam 重新绿色。
+  \item 在受约束失败示例中为整数换成一个含 \texttt{int on\_event(const Event\&) const} 的小类。约束应通过；随后把返回类型改为 \texttt{double}，观察 \texttt{same\_as<int>} 失败。
+  \item 把 \texttt{RuntimeStrategy\&} 改为具体 \texttt{RuntimeThreshold\&}。输出不变，但调用点不再展示运行时替换能力；这说明“用了继承类”本身不等于调用发生了动态分派。
+\end{enumerate}
 
 \begin{enumerate}
   \item 普通函数的具体参数何时比模板更合适？
@@ -180,9 +178,6 @@ ctest --test-dir build/ch09 --output-on-failure
 
 编码任务：实现一个最大持仓策略，空仓时可以买 25 股，持仓已达 50 股时不再下单，并把它交给同一个 \texttt{StrategyRunner}。完整答案位于 \path{code/ch09/exercises/maximum_position_solution.cpp}，精确输出必须为 \texttt{flat=buy full=none}。
 
-\begin{interviewcheck}
-回答“模板与虚函数怎么选”时，先说明具体类型在编译期还是运行期确定，再比较 concept 接口、实例化与内联机会、虚分派、代码体积、编译时间和 ABI。最后强调 concept 只检查能力，业务正确性仍由同一策略 seam 的手算行为测试保护。
-\end{interviewcheck}
 
 \section{本章小结}
 

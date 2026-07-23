@@ -2,9 +2,9 @@
   "schema_version": 1,
   "state": "accepted",
   "publication": {
-    "rendered_pages": 43,
-    "complete_book_pages": 199,
-    "guardrail": 220,
+    "rendered_pages": 78,
+    "complete_book_pages": 235,
+    "guardrail": 250,
     "note": "The expanded appendices are reader-facing material: they preserve the original recovery paths and add C++23 adoption guidance, memory-order literacy, role-specific capstones and interview algorithms. The higher guardrail reflects the user's decision that the former 155-page ceiling should not force excessive compression."
   },
   "units": [

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "modern-cpp-for-quant-dependency-example",
+  "version-string": "0.1.0",
+  "builtin-baseline": "2475cc332a47b3a63bb3de58293bdab7726613ca",
+  "dependencies": [
+    "catch2",
+    "eigen3",
+    "pybind11"
+  ]
+}

@@ -27,6 +27,8 @@ quant_target(appendix_interview_algorithms
 quant_target(appendix_spsc_demo
   code/appendix_concurrency/spsc_demo.cpp)
 target_link_libraries(appendix_spsc_demo PRIVATE Threads::Threads)
+quant_target(appendix_simd_demo
+  code/appendix_performance/simd_factor.cpp)
 
 if(BUILD_TESTING)
   add_test(NAME appendix_interview_algorithms_have_independent_oracles
@@ -39,6 +41,10 @@ if(BUILD_TESTING)
   set_tests_properties(appendix_spsc_preserves_every_item PROPERTIES
     PASS_REGULAR_EXPRESSION
       "spsc-ok produced=10000 consumed=10000 checksum=50005000")
+  add_test(NAME appendix_simd_preserves_scalar_oracle COMMAND appendix_simd_demo)
+  set_tests_properties(appendix_simd_preserves_scalar_oracle PROPERTIES
+    PASS_REGULAR_EXPRESSION
+      "simd-demo-ok elements=1027 width=[1-9][0-9]* checksum=1027")
 endif()
 
 if(QUANT_BUILD_FUZZERS)
@@ -1013,7 +1019,7 @@ add_test(NAME book_contract
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_book_contract.py
           --root ${CMAKE_CURRENT_SOURCE_DIR})
 set_tests_properties(book_contract PROPERTIES
-  PASS_REGULAR_EXPRESSION "18 chapters.*195 planned pages")
+  PASS_REGULAR_EXPRESSION "18 chapters.*235 planned pages")
 
 add_test(NAME book_contract_rejects_invalid_authoring_evidence
   COMMAND ${Python3_EXECUTABLE}

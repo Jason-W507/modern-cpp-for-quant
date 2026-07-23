@@ -65,11 +65,11 @@ return_type function_name(parameter_declarations);
 
 \begin{pythonbridge}
 两种语言都用函数名和圆括号调用，也都有局部作用域与早返回。Python 在运行时把实参对象绑定给参数名称；这里的 C++ 声明在编译时固定参数和返回类型，并决定后续是复制还是引用。Python 函数可在不同路径返回不同种类对象，C++ 每条返回路径必须满足同一声明的返回类型。
+
+\pythoncompare{两边都用函数调用；C++ 签名固定参数与返回类型。}{Python 参数绑定对象引用；C++ 参数可复制或显式借用。}{Python 在执行操作时检查能力；C++ 在调用前完成类型检查。}{Python 错误多在调用路径运行后出现；C++ 错误签名通常无法编译。}
 \end{pythonbridge}
 
 失败诊断：若调用写在声明之前，编译器会报告名称未声明；若声明写作 \texttt{double trade\_notional(double, int);}，定义却交换参数类型，二者就是不同函数，原调用可能在链接阶段找不到定义。修复时同时对照声明、定义和调用，不要只改其中一处。
-
-立即练习：只把 \texttt{volume\_weighted\_price} 的零数量返回值从 \texttt{0.0} 改为 \texttt{-1.0}，用空输入运行工具，结果中的 VWAP 应从 \texttt{0.00} 变为 \texttt{-1.00}；随后恢复原协议。
 
 \section{按值、引用与可空指针}
 
@@ -87,13 +87,10 @@ return_type function_name(parameter_declarations);
 
 \texttt{const double original\{100.0\};} 还演示只读对象：初始化之后不能再赋值。\texttt{const} 约束的是通过该名称允许的操作，不表示数值被放到某种神秘的永久存储中。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 的实参传递不能概括为“所有东西按引用”：参数名称绑定到同一对象，但对名称重新赋值不会改调用者，而修改共享的可变对象可能会。C++ 把三种意图写进函数签名：按值得到独立对象，\texttt{const\&} 只读借用，\texttt{\&} 可变借用。二者不能只靠表面调用语法互相类推。
-\end{pythonbridge}
 
 失败诊断：把字面量 \texttt{100.0} 传给 \texttt{double\&} 会在编译阶段失败，因为可变左值引用需要一个可修改、寿命明确的调用者对象；改成 \texttt{double cash\{100.0\}; charge\_fee(cash, 5.0);}。若只读函数意外要求可变引用，\texttt{const} 对象也无法调用它；正确修复是收窄函数权限为 \texttt{const double\&} 或按值，而不是删除调用者的 \texttt{const}。
-
-立即练习：只把 \texttt{charge\_fee} 的第一个参数改成按值，保持函数体和调用点不变。预测局部参数仍会减去 5，但最终 \texttt{cash} 应从 995 变回 1000；运行验证后恢复可变引用。
 
 \subsection{指针：允许“没有观察对象”}
 
@@ -109,11 +106,10 @@ const double* missing{nullptr};
 
 \texttt{const double* missing\{nullptr\};} 明确表示当前没有对象；程序用 \texttt{missing == nullptr} 得到 1。指针可以为空，所以每次解引用前都必须由接口契约或条件证明非空。这里的裸指针只是非拥有观察，不负责销毁对象；\texttt{price\_view} 也不能比 \texttt{original} 活得更久。所有权与数组指针在第 6 章继续展开。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 常用 \texttt{None} 表示没有对象；C++ 裸指针用 \texttt{nullptr} 表示没有地址。但 Python 名称会自动保持对象引用，非拥有 C++ 指针不会延长被观察对象的生命周期。引用适合必有对象，指针适合“可能没有”的观察接口。
-\end{pythonbridge}
 
-失败诊断：直接计算 \texttt{*missing} 是未定义行为，不能把某次崩溃当成契约；修复是在解引用前检查非空，并让被指向对象覆盖整个使用期。立即练习：只把 \texttt{price\_view} 初始化为 \texttt{nullptr}，用 \texttt{if (price\_view != nullptr)} 保护读取；预期程序跳过读取而不崩溃，随后恢复指向 \texttt{original}。
+失败诊断：直接计算 \texttt{*missing} 是未定义行为，不能把某次崩溃当成契约；修复是在解引用前检查非空，并让被指向对象覆盖整个使用期。
 
 \section{重载：同名操作的不同参数表}
 
@@ -121,13 +117,10 @@ Python 常用 \texttt{None} 表示没有对象；C++ 裸指针用 \texttt{nullpt
 
 重载的签名必须在参数数量或参数类型上可区分；只改变返回类型不够，因为调用点不能总从接收结果的上下文唯一决定候选。默认实参也可能让两个候选同时可用，从而产生“调用有歧义”类别的编译错误。本书优先让重载表达同一概念；完全不同的业务动作应使用不同名称。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 后定义的同名函数通常替换前一个绑定，常用默认参数或 \texttt{*args} 手工分派。C++ 会在编译期建立同名候选集，根据实参数量、类型和所需转换选择唯一最佳匹配；没有可行候选或最佳候选不唯一都会编译失败。
-\end{pythonbridge}
 
 失败诊断：新增 \texttt{double trade\_notional(double price, int quantity, double multiplier = 1.0);} 后，二实参调用可能同时匹配原二参数版本和带默认实参的版本。根因是接口集合有歧义；修复为移除默认值、移除重复能力，或使用含义不同的名称。
-
-立即练习：只把 \texttt{add\_trade} 内部的二实参调用改为 \texttt{trade\_notional(price, quantity, 1.0)}。结果应逐字符不变，因为乘数为 1；然后把乘数改为 0.5，预期总名义金额与 VWAP 都减半，而总数量仍为 40。
 
 \section{头文件、实现文件与翻译单元}
 
@@ -139,7 +132,7 @@ Python 后定义的同名函数通常替换前一个绑定，常用默认参数�
 
 \texttt{namespace quant::chapter3 \{ ... \}} 把名称放进项目自己的命名空间，降低与其他库同名函数冲突的风险。调用点写全限定名 \texttt{quant::chapter3::add\_trade}；头文件不写 \texttt{using namespace}，避免把选择强加给每个包含者。
 
-include guard 立即练习：只在入口中连续写两次同一个项目头文件，然后运行预处理命令 \path{g++ -E -P -I code/ch03/include code/ch03/src/main.cpp}。输出中两个 \texttt{trade\_notional} 重载声明应各出现一次，而不是各出现两次；这就是 guard 跳过第二次展开的可观察证据。删除重复的 include 后再继续构建。
+include guard
 
 入口文件只负责读取、调用和输出：
 
@@ -149,13 +142,10 @@ include guard 立即练习：只在入口中连续写两次同一个项目头文
 
 独立快照的 \path{code/ch03/CMakeLists.txt} 同时列出两个 \texttt{.cpp}，并用 \texttt{target\_include\_directories} 把 \path{include/} 加入该目标的头文件搜索路径。头文件本身不需要列为编译源；真正分别产生目标文件的是两个实现源文件。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 的 \texttt{import} 通常加载模块对象并在运行时绑定名称；C++ 的 \texttt{\#include} 是预处理期文本包含，每个 \texttt{.cpp} 仍独立编译。头文件提供共同声明，定义则必须在最终链接中恰好满足需要。把 include guard 理解成模块加载缓存会得到错误心智模型。
-\end{pythonbridge}
 
 失败诊断：若编译器报告找不到头文件，先检查 include 拼写和目标的 include 目录；若只有 \texttt{main.cpp} 进入目标，编译能通过但链接器会找不到 \texttt{market\_math.cpp} 中的定义。修复方式是让正确实现文件参与同一目标；直接把 \texttt{.cpp} include 进入入口文件会混淆翻译单元边界。
-
-立即练习：只从 \texttt{add\_executable} 中删除 \path{src/market_math.cpp}，从全新构建目录编译。预期两个源文件不再同时参与目标，链接阶段报告缺失定义；恢复该文件后重新干净构建，输出应回到章首结果。
 
 \section{三个诊断实验：定义数量与对象寿命}
 
@@ -173,8 +163,6 @@ Python 的 \texttt{import} 通常加载模块对象并在运行时绑定名称�
 
 \path{dangling_reference.cpp} 返回局部 \texttt{double} 对象的引用。局部对象在函数返回时已经结束生命周期，调用者拿到的引用随即悬空。高警告级别编译应报告“返回局部对象引用”类别；本实验不运行生成的程序，因为读取悬空引用是未定义行为，不能把某次崩溃或数值当成稳定结果。修复是按值返回这个小对象，或引用一个已证明比调用者活得更久的对象。
 
-立即练习：为三条实验各记录“两个编译是否成功、链接是否成功、是否允许运行”。答案依次是：单一源编译成功但链接失败；两个源分别编译成功但合并链接失败；编译产生寿命警告且禁止把运行结果当证据。
-
 \section{从干净目录复现与章节验收}
 
 在 Linux/WSL 中运行：
@@ -190,7 +178,19 @@ ctest --test-dir build-linux -R ch03_ --output-on-failure
 
 前三条命令证明章节快照不依赖后续项目源码并得到精确输出；后三条从仓库根项目建立 Linux/WSL 测试构建树，再运行全部第 3 章证据。Windows 可改用 \path{cmake -S . -B build-mingw -G "MinGW Makefiles"}；多配置生成器还可能把可执行文件放在 \path{build/ch03/Debug/} 并加 \path{.exe}，但源文件边界、声明/定义规则与测试预期不变。
 
-\section{自测、编码任务与面试表达}
+\section{章末三层练习}
+
+\subsection*{随堂验证汇总}
+
+\begin{enumerate}
+  \item 只把 \texttt{volume\_weighted\_price} 的零数量返回值从 \texttt{0.0} 改为 \texttt{-1.0}，用空输入运行工具，结果中的 VWAP 应从 \texttt{0.00} 变为 \texttt{-1.00}；随后恢复原协议。
+  \item 只把 \texttt{charge\_fee} 的第一个参数改成按值，保持函数体和调用点不变。预测局部参数仍会减去 5，但最终 \texttt{cash} 应从 995 变回 1000；运行验证后恢复可变引用。
+  \item 只把 \texttt{price\_view} 初始化为 \texttt{nullptr}，用 \texttt{if (price\_view != nullptr)} 保护读取；预期程序跳过读取而不崩溃，随后恢复指向 \texttt{original}。
+  \item 只把 \texttt{add\_trade} 内部的二实参调用改为 \texttt{trade\_notional(price, quantity, 1.0)}。结果应逐字符不变，因为乘数为 1；然后把乘数改为 0.5，预期总名义金额与 VWAP 都减半，而总数量仍为 40。
+  \item 只在入口中连续写两次同一个项目头文件，然后运行预处理命令 \path{g++ -E -P -I code/ch03/include code/ch03/src/main.cpp}。输出中两个 \texttt{trade\_notional} 重载声明应各出现一次，而不是各出现两次；这就是 guard 跳过第二次展开的可观察证据。删除重复的 include 后再继续构建。
+  \item 只从 \texttt{add\_executable} 中删除 \path{src/market_math.cpp}，从全新构建目录编译。预期两个源文件不再同时参与目标，链接阶段报告缺失定义；恢复该文件后重新干净构建，输出应回到章首结果。
+  \item 为三条实验各记录“两个编译是否成功、链接是否成功、是否允许运行”。答案依次是：单一源编译成功但链接失败；两个源分别编译成功但合并链接失败；编译产生寿命警告且禁止把运行结果当证据。
+\end{enumerate}
 
 \begin{enumerate}
   \item 函数声明、定义和调用分别提供什么信息？分号与花括号出现在何处？
@@ -210,9 +210,6 @@ ctest --test-dir build-linux -R ch03_ --output-on-failure
   \item 运行三个故障实验，记录每个翻译单元的编译状态、链接状态、稳定类别、根因和最小恢复步骤；不要运行悬空引用程序来“看看会怎样”。
 \end{enumerate}
 
-\begin{interviewcheck}
-用 90 秒回答：“如何把一个单文件行情程序拆成可链接的多文件 C++ 程序？”回答需包含声明与定义、按值和引用、include guard、命名空间、独立翻译单元以及一个缺失或重复定义的可观察诊断。
-\end{interviewcheck}
 
 \section{本章小结}
 

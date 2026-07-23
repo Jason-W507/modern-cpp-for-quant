@@ -59,15 +59,16 @@ int main() {
   const auto& book = replay.book();
   const bool valid =
       outcome.status == quant::capstone::ReplayStatus::accepted &&
-      outcome.trades.size() == 1 && stats.accepted == 3 &&
+      outcome.trades.size() == 2 && stats.accepted == 4 &&
       stats.duplicates == 1 && stats.gaps == 1 &&
-      stats.decode_errors == 1 && replay.next_expected() == 4 &&
+      stats.buffered == 1 && stats.recovered == 1 &&
+      stats.decode_errors == 1 && replay.next_expected() == 5 &&
       book.best_bid() == 100 && book.quantity_at(quant::capstone::Side::buy, 100) == 5 &&
-      book.best_ask() == 101 && book.quantity_at(quant::capstone::Side::sell, 101) == 2;
+      book.best_ask() == 101 && book.quantity_at(quant::capstone::Side::sell, 101) == 1;
   if (!valid) {
     std::cerr << "market replay oracle mismatch\n";
     return 2;
   }
-  std::cout << "market-replay-tests-ok accepted=3 duplicate=1 gap=1 decode=1 "
-               "trades=1 next=4\n";
+  std::cout << "market-replay-tests-ok accepted=4 duplicate=1 gap=1 buffered=1 "
+               "recovered=1 decode=1 trades=2 next=5\n";
 }

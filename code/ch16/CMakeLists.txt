@@ -99,9 +99,11 @@ if(CH16_BUILD_PYTHON)
       RESULT_VARIABLE CH16_NUMPY_IMPORT_RESULT
       OUTPUT_QUIET ERROR_QUIET)
     if(CH16_NUMPY_IMPORT_RESULT EQUAL 0)
+      get_filename_component(CH16_CXX_RUNTIME_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
       add_test(NAME ch16_optional_pybind_module_preserves_core_behavior
         COMMAND ${CMAKE_COMMAND} -E env
                 "PYTHONPATH=$<TARGET_FILE_DIR:quant_ch16>"
+                "QUANT_CH16_DLL_DIR=${CH16_CXX_RUNTIME_DIR}"
                 ${Python3_EXECUTABLE}
                 ${CMAKE_CURRENT_LIST_DIR}/python/test_optional_module.py)
     endif()

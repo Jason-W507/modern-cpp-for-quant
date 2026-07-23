@@ -3,11 +3,11 @@
   "edition": "0.3",
   "calibration_chapters": [2, 6],
   "target_pages": {
-    "minimum": 180,
-    "planned": 195,
-    "maximum": 220,
+    "minimum": 200,
+    "planned": 235,
+    "maximum": 250,
     "front_matter": 6,
-    "appendices": 57
+    "appendices": 97
   },
   "required_syntax_ids": [
     "program-entry",

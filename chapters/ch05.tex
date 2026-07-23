@@ -34,11 +34,11 @@ symbol=AAPL rows=2 first=100.00 last=101.00 return=1.00% low=100.00 high=101.00 
 
 \begin{pythonbridge}
 Python 的 \texttt{dataclass} 与 C++ 聚合都适合透明记录，但 Python 属性可在运行期重新绑定为不同类型；C++ 字段类型在编译期固定。两者的公开字段都不能自行阻止 \texttt{price=-1}，需要在创建或更新边界加入不变量。
+
+\pythoncompare{dataclass 与 struct 都表达记录；class 可封装更新入口。}{Python 属性指向对象；C++ 字段直接属于对象并按对象寿命析构。}{Python 注解多由工具检查；C++ 字段和构造参数由编译器检查。}{两边都需显式业务校验；C++ 非法字段类型还会先编译失败。}
 \end{pythonbridge}
 
 失败诊断：把 \texttt{Trend::up} 写成裸 \texttt{up} 会在编译期得到“名称未声明”一类诊断。根因是作用域枚举要求限定名；修复是恢复 \texttt{Trend::up}，不要退回可与整数混用的旧式枚举。
-
-立即练习：把 \texttt{Trend::up} 改为 \texttt{Trend::down}，先预测末尾精确输出为 \texttt{trend=down}，再运行验证。只改变枚举值，不修改字符串转换函数。
 
 \section{class 把有效状态写进构造边界}
 
@@ -64,13 +64,10 @@ Python 的 \texttt{dataclass} 与 C++ 聚合都适合透明记录，但 Python �
 
 构造函数发现非法字段就执行 \texttt{throw std::invalid\_argument\{...\}}。对象没有构造成功，调用点跳到匹配的 \texttt{catch (const std::exception\& error)}；作用域中已经构造完成的自动对象会在传播过程中销毁，这称为栈展开。捕获后读取 \texttt{error.what()} 得到原因，但只在命令行边界记录一次。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 的 \texttt{\_\_init\_\_} 也可抛出 \texttt{ValueError} 阻止对象交付；C++ 的关键差异是成员初始化早于构造函数体，且栈展开会确定性销毁已经完成构造的自动对象。第 6 章会把这一机制用于文件和动态资源的 RAII。
-\end{pythonbridge}
 
 故意失败的 \path{code/ch05/failures/private_access.cpp} 尝试读取 \texttt{quote.quantity\_}。它不进入绿色目标；编译必须非零退出，并匹配 private 或 inaccessible 诊断类别。根因是调用者越过公开接口，修复是调用 \texttt{quantity()}，而不是把字段改回 \texttt{public}。
-
-立即练习：把有效对象的数量从 10 改为 0。预期程序进入 \texttt{catch} 并得到 \texttt{quantity must be positive}；随后恢复 10，解释为何不需要在每次统计前重复检查数量。
 
 \section{成员函数维护分析器不变量}
 
@@ -90,13 +87,10 @@ Python 的 \texttt{\_\_init\_\_} 也可抛出 \texttt{ValueError} 阻止对象�
 \]
 并用 \texttt{minmax\_element} 得到区间。价格已由 \texttt{MarketQuote} 保证为正，因此分母不会为零。末价大于、等于或小于首价时分别产生 \texttt{Trend::up}、\texttt{flat} 或 \texttt{down}。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 方法显式写 \texttt{self} 参数；C++ 非静态成员函数隐式获得 \texttt{this}。Python 常在实例字典中加入字段，C++ 的私有成员集合属于类型定义，调用者只能通过编译期已声明的公开成员函数操作它。
-\end{pythonbridge}
 
 失败诊断：查询数据中不存在的 TSLA 时，旧实现对空 \texttt{vector} 调用 \texttt{front()}，WSL 中曾以状态 \(-11\) 崩溃。根因是成员函数没有先证明“至少一行”的前置条件。当前实现抛出 \texttt{no rows for symbol TSLA}，入口捕获后返回 2。
-
-立即练习：把正常数据第二条 AAPL 价格从 101 改为 99。预期 \texttt{return=-1.00\%}、\texttt{low=99.00}、\texttt{high=100.00}、\texttt{trend=down}；行数和总数量不变。
 
 \section{多文件 CLI 与异常边界}
 
@@ -110,13 +104,10 @@ Python 方法显式写 \texttt{self} 参数；C++ 非静态成员函数隐式获
 
 固定测试覆盖以下行为：正常 AAPL 摘要；空代码、非法价格和非正数量；错误表头、列数、价格文本与数量文本；不存在的目标代码；usage 与文件打开失败。完整读取和分析实现位于 \path{code/ch05/src/}，并在附录 C 原样给出。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 常在命令行入口捕获 \texttt{Exception} 并转换退出码；C++ 同样应在有能力决定协议的边界捕获。不要在每一层重复记录，也不要把文件打不开、CSV 语法错误和对象不变量错误都改写成同一句“分析失败”。
-\end{pythonbridge}
 
 失败诊断：价格文本 \texttt{not-a-price} 最初泄漏了标准库实现消息 \texttt{stod}，因而无法充当稳定的领域契约。修复是在 CSV 层完整消费文本并固定为 \texttt{invalid number: price}，再附加行号。
-
-立即练习：把正常文件的第 2 行数量改为 \texttt{ten}。预期 stdout 为空、stderr 为 \texttt{error=line 2: invalid number: quantity}、退出状态为 2；恢复后输出任务必须重新逐字匹配。
 
 \section{从干净目录交付基础篇项目}
 
@@ -138,7 +129,16 @@ ctest --test-dir build-linux -R ch05_ --output-on-failure
 
 Windows 原生 MinGW 的目标文件带 \texttt{.exe}，生成器可写 \texttt{-G "MinGW Makefiles"}；对象、构造、访问控制和异常边界不因平台改变。
 
-\section{自测、编码任务与面试表达}
+\section{章末三层练习}
+
+\subsection*{随堂验证汇总}
+
+\begin{enumerate}
+  \item 把 \texttt{Trend::up} 改为 \texttt{Trend::down}，先预测末尾精确输出为 \texttt{trend=down}，再运行验证。只改变枚举值，不修改字符串转换函数。
+  \item 把有效对象的数量从 10 改为 0。预期程序进入 \texttt{catch} 并得到 \texttt{quantity must be positive}；随后恢复 10，解释为何不需要在每次统计前重复检查数量。
+  \item 把正常数据第二条 AAPL 价格从 101 改为 99。预期 \texttt{return=-1.00\%}、\texttt{low=99.00}、\texttt{high=100.00}、\texttt{trend=down}；行数和总数量不变。
+  \item 把正常文件的第 2 行数量改为 \texttt{ten}。预期 stdout 为空；stderr 先给 \texttt{error=line 2:}，随后是 \texttt{invalid number: quantity}；退出状态为 2。恢复后输出任务必须重新逐字匹配。
+\end{enumerate}
 
 \begin{enumerate}
   \item \texttt{struct} 与 \texttt{class} 的默认访问权限有何区别？二者是否代表不同对象模型？
@@ -153,9 +153,6 @@ Windows 原生 MinGW 的目标文件带 \texttt{.exe}，生成器可写 \texttt{
 
 编码任务：使用现有 \texttt{MarketAnalyzer} 构造两条 AAPL 行情，输出最高价与最低价之差以及趋势。可运行答案位于 \path{code/ch05/exercises/price_range_solution.cpp}，精确输出必须为 \texttt{symbol=AAPL range=1.00 trend=up}。
 
-\begin{interviewcheck}
-“为什么不把字段全部设为 public？”回答应包含：公开记录适用于无需维护跨字段不变量的结果；输入对象由构造函数保证有效；私有表示允许未来替换存储；测试通过公开行为而不是读取内部成员。随后用负价格、空分析器崩溃和带行号诊断作为证据。
-\end{interviewcheck}
 
 \section{本章小结}
 

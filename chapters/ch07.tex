@@ -34,11 +34,11 @@ symbol=AAPL trades=3 first_sell=102.00 low=100.00 high=102.00 gross=2520.00 net_
 
 \begin{pythonbridge}
 Python \texttt{list} 与 C++ \texttt{vector} 都保持顺序，\texttt{dict} 与关联容器都按键查询；不同点是 Python 引用通常不因列表扩容失效，而 C++ 迭代器直接关联具体存储。Python 的 \texttt{sorted} 返回新列表，C++ 的 \texttt{ranges::sort} 原地修改范围，因此需要先决定是否保留原顺序。
+
+\pythoncompare{Python sorted 返回新 list；C++ ranges::sort 原地修改范围。}{Python 迭代对象通常持有引用；C++ view 与迭代器可能只是借用。}{Python 在迭代时检查元素操作；C++ 算法约束可在编译期拒绝。}{Python 常抛异常；C++ 悬空 view 可能成为未定义行为。}
 \end{pythonbridge}
 
 失败诊断：若直接排序 \texttt{trades} 后再寻找“首笔卖出”，程序仍能编译，却把“首笔”偷换为“排序后的第一笔”。根因是一个容器同时承担时间线和排名两种语义；修复是保留原序列并排序副本。若 \texttt{find\_if} 可能失败，则在解引用前先与末端比较。
-
-立即练习：把第一笔 AAPL 的代码改为 MSFT。预期 \texttt{aapl\_position=5}，最低价变为 \texttt{MSFT@100.00}，而行数、代码数、首笔 AAPL 卖出及 \texttt{order=AAPL,MSFT} 不变。
 
 \section{view：惰性借用而非新容器}
 
@@ -52,13 +52,10 @@ Python \texttt{list} 与 C++ \texttt{vector} 都保持顺序，\texttt{dict} 与
 
 借用也意味着源范围必须覆盖 view 的所有使用。view 自身按值保存并不延长底层 \texttt{vector} 的生命；同时，若源容器发生使迭代器失效的修改，已有 view 的遍历同样可能失效。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 生成器表达式同样惰性，但生成器通常持有对源对象的 Python 引用，垃圾回收会延长对象生命。本例由左值 \texttt{vector} 建立的 C++ view 只借用源容器，不能替它保活数据；其他 view 是否拥有底层范围，取决于它包装的 range 或 view。两者都可能在迭代时看到源数据的后续修改。
-\end{pythonbridge}
 
 故意失败的 \path{code/ch07/failures/dangling_view.cpp} 从函数返回借用局部 \texttt{vector} 的 view。它不进入绿色目标；ASan 执行必须非零退出并报告 stack-use-after-return、stack-use-after-scope 或等价的栈访问类别。根因在于源范围过早结束生命，与 filter 本身无关。修复是让调用者拥有源容器、在源仍存活时消费 view，或把结果物化为拥有元素的容器。
-
-立即练习：把过滤阈值从 100 改为 105。首价修改后仍通过，101 被排除，精确输出应变为 \texttt{selected=220.00}。
 
 \section{把算法组合成行情管道}
 
@@ -72,13 +69,10 @@ Python 生成器表达式同样惰性，但生成器通常持有对源对象的 
 
 \texttt{find\_if} 在原时间线中找首笔卖出；\texttt{transform} 把每笔成交映射为 \(price \times quantity\)；\texttt{accumulate} 从 \texttt{0.0} 开始按迭代顺序累加，因此结果类型为 \texttt{double}。最后的 \texttt{map} 用正买入、负卖出累计每个代码的净数量。每个步骤的对象寿命都能从局部变量和参数边界读出。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 常把这段写成筛选列表、\texttt{sorted}、\texttt{next} 和 \texttt{sum}。C++ ranges 把“遍历什么”与“如何处理”分开，但不会自动把 view 物化，也不会自动检查末端。需要修改顺序或把结果带出源范围时，显式复制反而是清楚的所有权决定。
-\end{pythonbridge}
 
 失败诊断：把命令行代码改为 MSFT 时，过滤能得到一笔买入，但找不到卖出。程序以状态 2 输出 \texttt{error=no sell trade for symbol MSFT}，而不是解引用末端迭代器。查询 TSLA 则更早得到 \texttt{no trades for symbol TSLA}。错误发生在哪个前置条件，诊断就停在哪一层。
-
-立即练习：保持数据不变，只把命令中的 AAPL 改为 MSFT。验证退出状态为 2、stdout 为空、stderr 精确包含 \texttt{error=no sell trade for symbol MSFT}。
 
 \section{浮点归约有顺序}
 
@@ -90,13 +84,10 @@ Python 常把这段写成筛选列表、\texttt{sorted}、\texttt{next} 和 \tex
 
 有限精度下，\(10^{16}+(-10^{16})\) 先抵消，再加 1 得到 1；反向遍历时，1 先与 \(-10^{16}\) 相加会被舍入，最终得到 0。因此精确输出为 \texttt{forward=1 reverse=0}。\texttt{accumulate} 的顺序确定，却仍依赖输入顺序；允许重排的并行归约可能产生另一条舍入路径。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 的普通 \texttt{float} 通常同样是 IEEE 754 双精度，\texttt{sum} 也不能把浮点数变回实数。NumPy 的实现可能使用不同分块或成对求和，因此结果与逐项 Python 循环不同并不自动说明其中一个“错了”；必须先定义容差与数值口径。
-\end{pythonbridge}
 
 失败诊断：这里没有编译错误或 sanitizer 报告；失败的是“加法可任意重排且逐位相同”的假设。修复不应只是固定一次偶然顺序，而应在第 16 章根据数据尺度选择更稳定算法，并用有来源的容差测试。
-
-立即练习：把值的顺序改为 \texttt{\{1.0, 1.0e16, -1.0e16\}}。先预测，再验证正向结果为 0、反向结果为 1；元素集合没有变化。
 
 \section{独立快照与输出任务}
 
@@ -110,7 +101,16 @@ cmake --build build/ch07 -j
 
 输出必须与章首单行逐字一致。根项目的 CTest 还验证非法方向、缺失代码、惰性 view、浮点顺序、ASan 故障实验、核心练习与干净快照。Windows 可用同一 CMake 源目录选择 Visual Studio 生成器，运行时按所选配置进入 \texttt{Debug} 或 \texttt{Release} 子目录；正文的生命周期和算法规则不变。
 
-\section{自测、编码任务与面试检查点}
+\section{章末三层练习}
+
+\subsection*{随堂验证汇总}
+
+\begin{enumerate}
+  \item 把第一笔 AAPL 的代码改为 MSFT。预期 \texttt{aapl\_position=5}，最低价变为 \texttt{MSFT@100.00}，而行数、代码数、首笔 AAPL 卖出及 \texttt{order=AAPL,MSFT} 不变。
+  \item 把过滤阈值从 100 改为 105。首价修改后仍通过，101 被排除，精确输出应变为 \texttt{selected=220.00}。
+  \item 保持数据不变，只把命令中的 AAPL 改为 MSFT。验证退出状态为 2、stdout 为空、stderr 精确包含 \texttt{error=no sell trade for symbol MSFT}。
+  \item 把值的顺序改为 \texttt{\{1.0, 1.0e16, -1.0e16\}}。先预测，再验证正向结果为 0、反向结果为 1；元素集合没有变化。
+\end{enumerate}
 
 \begin{enumerate}
   \item 为什么时间顺序成交默认适合 vector，而按代码仓位适合关联容器？
@@ -125,9 +125,6 @@ cmake --build build/ch07 -j
 
 编码任务：过滤固定成交中的 AAPL，按价格降序排序并只输出前两笔。可运行答案位于 \path{code/ch07/exercises/top_prices_solution.cpp}，精确输出必须为 \texttt{top=AAPL@102.00,AAPL@101.00}。
 
-\begin{interviewcheck}
-面试中若被问“ranges 是否一定比循环快”，先回答它主要表达组合与惰性，性能必须测量；再说明 view 的借用生命周期、物化时机、迭代器失效与浮点归约顺序。能指出这些边界，比背诵 adaptor 名称更可信。
-\end{interviewcheck}
 
 \section{本章小结}
 

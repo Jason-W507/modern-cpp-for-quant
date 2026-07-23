@@ -53,9 +53,9 @@ portfolio-fee-ok cash=799.00 equity=1019.00
 
 \begin{pythonbridge}
 pytest 的 \texttt{assert observed == expected} 会由 pytest 改写并生成丰富差异；C++ 标准 \texttt{assert} 是可被 \texttt{NDEBUG} 删除的调试宏。GoogleTest、Catch2 等框架提供不会随 Release 消失的检查，但本书最小快照用显式分支展示底层协议。两种语言相同的原则是：先断言公开行为，再重构实现；不要对私有调用顺序写脆弱测试。
-\end{pythonbridge}
 
-立即练习：把正确实现中的费用暂改为 0，先写下你预测的现金和权益，再运行测试。确认失败来自数值差异后恢复代码；若你先改期望值让测试变绿，就失去了手续费需求的独立 oracle。
+\pythoncompare{pytest assert 由框架改写；C++ 标准 assert 可在 Release 消失。}{两边的测试数据都应由 fixture 或局部对象明确拥有。}{pytest 断言在运行期；C++ 测试代码本身还需先通过编译。}{两边都报告行为失败；sanitizer 另报告内存或未定义行为类别。}
+\end{pythonbridge}
 
 \section{Release 陷阱：\texttt{assert} 无法替代测试框架}
 
@@ -134,8 +134,6 @@ g++ -std=c++20 -fanalyzer -c \
 
 稳定证据类别是 double free/use after delete；具体措辞和行号会随编译器版本变化。clang-tidy 能补充现代化、可读性和缺陷检查，但它不是本章复现的隐藏前置依赖：未安装时先用已有编译器警告和 GCC analyzer。静态分析会有误报，也看不到真实运行数据；先检查报告路径是否可达，再决定修复、抑制或调整规则，并在代码审查中记录理由。
 
-立即练习：删除第一次 \texttt{delete} 后复跑 analyzer，确认类别消失；再把裸资源改为 \texttt{std::unique\_ptr<int>}。解释为什么所有权类型既减少错误路径，也比局部抑制警告提供更强的设计证据。
-
 \section{Sanitizer：让未定义行为留下运行证据}
 
 C++ 的越界、释放后使用和有符号溢出属于未定义行为。程序可能崩溃、输出旧值、污染别处，也可能看似正常；“运行十次都没事”无法证明程序正确。Sanitizer 在编译时插入检查并在运行时报告类别，适合用能覆盖缺陷路径的小输入触发。
@@ -178,9 +176,8 @@ g++ -std=c++20 -O0 -g -fsanitize=undefined \
 
 ASan 和 UBSan 应在 Debug/Sanitized 配置中编译并链接相同选项；它们增加内存与时间开销，不用于性能结论。MSVC 近年支持 AddressSanitizer，但选项和覆盖范围与 GCC/Clang 不同；本章自动故障类别测试会在不支持的编译器上显式跳过，避免伪造通过。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 列表越界通常抛出 \texttt{IndexError}，整数自动扩展，普通对象由运行时维持生命周期；这会降低一类内存错误，却不会阻止 NumPy/C 扩展、ctypes 或原生库中的 UB。C++ sanitizer 更像“带观测器的特殊构建”，其职责与异常处理机制不同：发现错误后应修复所有权、边界或范围，并留下行为回归测试。
-\end{pythonbridge}
 
 \section{症状决定工具，工具不能代替根因}
 
@@ -203,7 +200,16 @@ Python 列表越界通常抛出 \texttt{IndexError}，整数自动扩展，普�
 
 实际故障循环可固定为六步：保存失败输入与命令；用最小公开行为稳定复现；按错误阶段和症状选择工具；记录稳定类别及首个用户栈帧；提出能解释全部证据的根因；做最小修复并增加回归测试。若修复只让症状消失却不能解释证据，诊断仍未完成。
 
-\section{输出任务：用命令形成诊断}
+\section{章末三层练习}
+
+\subsection*{随堂验证汇总}
+
+\begin{enumerate}
+  \item 把正确实现中的费用暂改为 0，先写下你预测的现金和权益，再运行测试。确认失败来自数值差异后恢复代码；若你先改期望值让测试变绿，就失去了手续费需求的独立 oracle。
+  \item 删除第一次 \texttt{delete} 后复跑 analyzer，确认类别消失；再把裸资源改为 \texttt{std::unique\_ptr<int>}。解释为什么所有权类型既减少错误路径，也比局部抑制警告提供更强的设计证据。
+\end{enumerate}
+
+复现层重跑固定故障矩阵；修改层修复下述现金逻辑并保留红灯；开放层选择一个自己的崩溃，提交从复现到回归的完整诊断记录。
 
 从 \path{code/ch12/failures/logic_bug.cpp} 开始，不先查看练习答案。提交一份短报告并满足以下验收：
 
@@ -231,9 +237,6 @@ Python 列表越界通常抛出 \texttt{IndexError}，整数自动扩展，普�
   \item 一份可复核诊断报告至少应保存哪些证据？
 \end{enumerate}
 
-\begin{interviewcheck}
-被问“怎样调试 C++ 崩溃”时，不要只背 GDB 命令。先说明如何用输入、配置、退出码和公开行为复现，再按症状选择调用栈、ASan、UBSan 或静态分析，最后用根因解释证据并留下回归测试。若被问测试为何在 Release 假绿，明确指出 \texttt{NDEBUG} 可删除标准 \texttt{assert}，真实测试检查必须在所有配置执行。
-\end{interviewcheck}
 
 \enlargethispage{4\baselineskip}
 \section{本章小结}

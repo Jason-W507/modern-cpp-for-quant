@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 import unittest
@@ -30,7 +31,22 @@ class BookContractCliTest(unittest.TestCase):
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertIn("18 chapters", result.stdout)
-        self.assertIn("195 planned pages", result.stdout)
+        self.assertIn("235 planned pages", result.stdout)
+
+    def test_final_chapter_publication_note_matches_revised_guardrail(self) -> None:
+        units = json.loads(
+            (REPOSITORY_ROOT / "docs" / "authoring" / "chapter-units.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        final_chapter = next(
+            chapter for chapter in units["chapters"] if chapter["number"] == 18
+        )
+        note = final_chapter["evidence"]["publication_note"]
+        self.assertIn("235-page PDF", note)
+        self.assertIn("250-page guardrail", note)
+        self.assertNotIn("166-page", note)
+        self.assertNotIn("170-page", note)
 
     def test_practice_cannot_precede_first_teaching(self) -> None:
         invalid_coverage = (

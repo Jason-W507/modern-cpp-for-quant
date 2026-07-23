@@ -53,10 +53,10 @@ false-sharing-layout-ok assumed-line-bytes=64
 
 三个成员本身在本机共 17 字节，\texttt{Quote} 却占 24 字节。填充让 \texttt{Quote[]} 中每个元素都正确对齐，它不是“编译器浪费的神秘空间”。成员声明顺序受保证，具体偏移、基本类型大小和尾部填充仍与 ABI/实现有关；不要把本机输出写进跨平台文件格式或网络协议。
 
-立即练习：把 \texttt{venue} 移到两个大成员之间，在全新构建树中记录大小与偏移。若大小改变，只能写“此编译器和 ABI 下改变了”；随后恢复原顺序并确认 checksum 类测试不受布局观察影响。
-
 \begin{pythonbridge}
 NumPy 的结构化 dtype 也可能有偏移与对齐，\texttt{itemsize} 类似数组步长；普通 Python 对象还包含运行时元数据和间接引用，\texttt{sys.getsizeof} 通常不含它引用的全部对象。两边都不能只把字段标称大小相加就声称得到真实工作集。
+
+\pythoncompare{NumPy dtype 与 C++ 对象布局都描述元素表示和步长。}{NumPy 数组由 owner 管理缓冲；C++ span 或指针通常不拥有。}{NumPy 在构造或运算时验 dtype；C++ 布局由编译器和 ABI 决定。}{Python 常抛 shape/dtype 错误；C++ 错误步长可能静默读错或越界。}
 \end{pythonbridge}
 
 \section{连续访问与无关字段：AoS 还是 SoA}
@@ -68,8 +68,6 @@ Array of Structures（AoS）把一条记录的全部字段放在一起，适合�
 两个 checksum 都是 1496，因而布局没有改变业务语义。\texttt{modeled-*-bytes} 只是源码层模型：AoS 按 \texttt{rows * sizeof(Quote)} 计算完整记录字节，SoA 按两个热数组的元素大小计算。它不是硬件计数器读数，没有证明 CPU 恰好搬运这些字节，也没有计入预取、缓存行、TLB、向量化或额外指针。
 
 若下一步操作同时需要价格、数量、时间和 venue，AoS 可能避免从多条数组收集字段；若只扫描价格，SoA 可能减少无关字段进入工作集。选择来自访问模式，不来自容器名字。第 14 章会在相同数据、交替顺序和 checksum 保护下测量；本章不从复杂度相同推断速度相同，也不从字节模型直接推断耗时比例。
-
-立即练习：为两种循环都增加 venue 过滤，列出现在实际读取的字段。先保持 checksum 相同，再更新“模型字节”；不要计时，先解释为什么原来的冷热字段判断已经变化。
 
 \section{预分配：减少搬迁而不增加元素}
 
@@ -86,8 +84,6 @@ quotes.emplace_back(100.0);     // now size becomes 1
 \end{lstlisting}
 
 预分配需要可信上界；把攻击者提供的行数直接用于 \texttt{reserve} 可能造成巨大分配。过度预留也会提高峰值内存和工作集。若保存了 \texttt{data()} 或元素地址，仍需保证后续不超过容量；\texttt{reserve} 不是永久地址承诺。
-
-立即练习：\texttt{reserve(3)} 后插入 3 个元素，记录实际 \texttt{capacity()} 和移动计数；继续插入到 \texttt{size()} 超过该容量，再记录两者。容量一旦改变，先前元素地址便全部失效，不要读取或比较旧指针。
 
 \section{Arena 与 \texttt{std::pmr}：区分分配与所有权}
 
@@ -117,8 +113,6 @@ ctest --test-dir build/ch13-asan -R ch13_arena_dangling \
 
 失败阶段是资源销毁后的解引用，稳定类别为 \texttt{heap-use-after-free}；地址和调用栈不是契约。恢复方法是把消费者留在资源作用域、复制逃逸值，或让拥有资源的对象同时拥有使用者。
 
-立即练习：复制样例为 \path{arena_copy.cpp}，让函数在 arena 存活时按值返回 \texttt{double}。用 \texttt{g++} \texttt{-std=c++20} \texttt{-fsanitize=address} \path{arena_copy.cpp} \texttt{-o} \path{arena_copy} 编译并直接运行 \path{./arena_copy}，要求正常退出且值为 100；不要调用上面期望失败的 CTest。
-
 \section{False sharing：先声明缓存行假设}
 
 不同原子变量若落在同一一致性块，两个线程写入仍可能让缓存所有权来回转移，即 false sharing。变量无 C++ 数据竞争，却可能有硬件开销；原子与并发测量留到第 15 章，本章只检查布局假设：
@@ -132,10 +126,20 @@ struct alignas(experiment_line_bytes) CounterSlot {
 
 程序打印 64 字节假设、slot 大小和地址步长。\texttt{alignas(64)} 只保证满足源码的对齐请求，不证明缓存行就是 64，也不排除对象共享更大的硬件块。\path{std::hardware_destructive_interference_size} 可作线索，仍须记录环境并实验验证。
 
-立即练习：把假设改为 128，记录 \texttt{sizeof} 和 stride 的变化。解释为什么内存占用已经确定增加，却仍不能在没有线程测量时声称吞吐提高。
-
 \enlargethispage{2\baselineskip}
-\section{有证据后才进入章节快照}
+\section{章末三层练习}
+
+\subsection*{随堂验证汇总}
+
+\begin{enumerate}
+  \item 把 \texttt{venue} 移到两个大成员之间，在全新构建树中记录大小与偏移。若大小改变，只能写“此编译器和 ABI 下改变了”；随后恢复原顺序并确认 checksum 类测试不受布局观察影响。
+  \item 为两种循环都增加 venue 过滤，列出现在实际读取的字段。先保持 checksum 相同，再更新“模型字节”；不要计时，先解释为什么原来的冷热字段判断已经变化。
+  \item \texttt{reserve(3)} 后插入 3 个元素，记录实际 \texttt{capacity()} 和移动计数；继续插入到 \texttt{size()} 超过该容量，再记录两者。容量一旦改变，先前元素地址便全部失效，不要读取或比较旧指针。
+  \item 复制样例为 \path{arena_copy.cpp}，让函数在 arena 存活时按值返回 \texttt{double}。编译命令分成编译器、\path{-std=c++20 -fsanitize=address}、源文件和 \path{-o arena_copy} 四段记录；直接运行 \path{./arena_copy}，要求正常退出且值为 100，不调用上面期望失败的 CTest。
+  \item 把假设改为 128，记录 \texttt{sizeof} 和 stride 的变化。解释为什么内存占用已经确定增加，却仍不能在没有线程测量时声称吞吐提高。
+\end{enumerate}
+
+复现层保存五个布局实验；修改层改变字段或容量并维持 checksum；开放层针对自己的访问模式提出一种布局或分配假设，但在测量前不宣称更快。
 
 AoS/SoA 实验先证明价格与数量的两列计算保持 1496，再显示本工作负载不读取 timestamp 与 venue。只有得到这两项证据后，章节快照才采用列式价格/数量数组完成阈值扫描；它没有修改最终回测引擎，也没有声称列式布局适合所有阶段。
 
@@ -163,9 +167,6 @@ quote-scan-ok rows=5 selected=3 notional=808.00
   \item \texttt{alignas(64)} 为什么不能证明硬件缓存行固定为 64 字节？
 \end{enumerate}
 
-\begin{interviewcheck}
-被问“怎样优化数据布局”时，先描述访问模式和正确性 oracle，再记录对象表示与工作集，提出 AoS/SoA 或预分配假设，最后用第 14 章的方法测量。主动说明 ABI、标准库增长策略、arena 生命周期和缓存行假设的边界；不要用一个 \texttt{sizeof} 或单次耗时给出跨机器结论。
-\end{interviewcheck}
 
 \section{本章小结}
 

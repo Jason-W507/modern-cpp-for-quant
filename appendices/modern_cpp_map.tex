@@ -50,6 +50,12 @@ Modules 旨在减少文本包含和宏污染，并改善依赖表达。现实项
 
 在这些问题有答案前，把 modules 写进公共库主线只会扩大构建风险。本书因此保留 include guard、翻译单元和 target-based CMake 作为可迁移基础。
 
+\section{可选 SIMD 实验：先证明等价，再谈宽度}
+
+\path{code/appendix_performance/simd_factor.cpp} 给出一个可单独构建的点积实验。若标准库提供 \texttt{<experimental/simd>}，程序使用原生向量宽度成批计算，并用标量尾循环处理不能整除的 1027 个元素；缺少该头文件时，同一 target 明确回退到标量实现。验收先比较独立标量结果，再报告实际 pack 宽度与 checksum。这里的宽度只说明编译目标选择了哪种向量类型，不等于端到端提速。
+
+这个实验刻意保留三个采用条件：输入长度相同且连续；尾部元素不能丢失；浮点归约次序变化只能在事先约定的误差界内接受。若要写入作品集，还应保存 \path{-fopt-info-vec} 或 \path{-Rpass=loop-vectorize} 报告、热点汇编、CPU 型号与成对原始样本。只有业务 oracle、生成代码和测量结果同时成立，SIMD 才从“用了新 API”升级为可审查的优化证据。
+
 \section{采用分级表}
 
 \begin{center}

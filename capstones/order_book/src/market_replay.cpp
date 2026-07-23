@@ -3,6 +3,7 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <iterator>
 #include <optional>
 #include <stdexcept>
 
@@ -94,19 +95,53 @@ ReplayOutcome MarketReplay::apply(std::span<const std::uint8_t> bytes) {
     return {sequence_status, {}};
   }
   if (sequence_status == ReplayStatus::gap) {
+    const auto [position, inserted] = pending_.try_emplace(
+        message->sequence, bytes.begin(), bytes.end());
+    static_cast<void>(position);
+    if (!inserted) {
+      ++stats_.duplicates;
+      return {ReplayStatus::duplicate_or_stale, {}};
+    }
     ++stats_.gaps;
-    return {sequence_status, {}};
+    ++stats_.buffered;
+    return {ReplayStatus::gap, {}};
   }
 
-  try {
-    auto trades = book_.submit(message->order);
-    ++stats_.accepted;
-    stats_.trades += trades.size();
-    return {ReplayStatus::accepted, std::move(trades)};
-  } catch (const std::invalid_argument&) {
-    ++stats_.book_rejections;
-    return {ReplayStatus::book_rejected, {}};
+  ReplayOutcome outcome{ReplayStatus::accepted, {}};
+  const auto submit = [this, &outcome](const Order& order) {
+    try {
+      auto trades = book_.submit(order);
+      ++stats_.accepted;
+      stats_.trades += trades.size();
+      outcome.trades.insert(outcome.trades.end(),
+                            std::make_move_iterator(trades.begin()),
+                            std::make_move_iterator(trades.end()));
+      return true;
+    } catch (const std::invalid_argument&) {
+      ++stats_.book_rejections;
+      return false;
+    }
+  };
+
+  if (!submit(message->order)) {
+    outcome.status = ReplayStatus::book_rejected;
   }
+
+  for (;;) {
+    const auto found = pending_.find(sequence_.next_expected());
+    if (found == pending_.end()) {
+      break;
+    }
+    const auto recovered = decode_add(found->second);
+    pending_.erase(found);
+    if (!recovered ||
+        sequence_.observe(recovered->sequence) != ReplayStatus::accepted) {
+      throw std::logic_error{"buffered replay message violated sequence invariant"};
+    }
+    ++stats_.recovered;
+    submit(recovered->order);
+  }
+  return outcome;
 }
 
 }  // namespace quant::capstone

@@ -56,13 +56,13 @@ ctest --test-dir build/factor --output-on-failure
 
 \lstinputlisting[caption={缺失值与形状政策的核心实现}]{capstones/factor_kernel/src/factor_kernel.cpp}
 
-CTest 的固定四行矩阵先由手算验收，再由 \path{python/test_numpy_consistency.py} 使用 NumPy 独立计算。当前固定输出是三行有限值和一行 NaN；比较使用明确的绝对/相对容差和 \texttt{equal\_nan=True}，不会从 C++ 结果反推 expected。
+CTest 的固定四行矩阵先由手算验收，再由 \path{python/test_numpy_consistency.py} 使用 NumPy 独立计算。项目根目录的 \path{pyproject.toml} 与 \path{uv.lock} 锁定 CPython 3.12、pybind11、NumPy、PyArrow 和 pytest；\path{python/test_binding_consistency.py} 会真正导入生成的模块，并用 Arrow fixed-size-list 的子缓冲构造二维视图。当前固定输出是三行有限值和一行 NaN；比较使用明确的绝对/相对容差和 \texttt{equal\_nan=True}，不会从 C++ 结果反推 expected。
 
 找到 pybind11 的 CMake package 时，项目额外生成 \texttt{quant\_factor\_kernel}。绑定要求二维/一维 float64 C-contiguous 数组，并通过 \texttt{noconvert} 拒绝隐式 dtype 转换；核心计算期间只借用输入，返回数组拥有自己的副本：
 
 \lstinputlisting[caption={可选 pybind11 批量边界}]{capstones/factor_kernel/bindings/module.cpp}
 
-这份基线没有假装已经使用 Arrow、Parquet、Eigen 或 BLAS。合理的下一步是把文件解码适配成同一 \path{FactorBatchView}，再以独立 target 引入矩阵库；报告分别记录读取、解码、边界复制、kernel 与分配时间。只有布局和所有权允许时，Arrow 缓冲才能作为零拷贝观察者接入。
+可选的 \texttt{FACTOR\_KERNEL\_BUILD\_EIGEN} target 固定拉取 Eigen 3.4.0，以矩阵—向量乘法实现同一缺失值政策，并与标量核心逐行比较。\path{python/benchmark_factor.py} 对 65536 行、32 列运行 31 次，保存全部纳秒样本、环境、checksum 与限制到 \path{reports/factor-benchmark.json}。Arrow 子值缓冲在布局兼容时零拷贝借用；Parquet 解码仍明确位于计时区外，因此报告没有把文件读取冒充 kernel 性能。成对实验逐轮交替先后顺序，并由生成器保存 31 个 pair ratio 及其中位数；当前 Eigen 候选的中位数约为标量的 3.83 倍，pair ratio 中位数为 3.71。值矩阵与缺失掩码的物化抵消了矩阵表达式的潜在收益，优化报告据此拒绝采用该候选。GCC 向量化报告还指出 NaN 分支阻止热点循环自动向量化，为下一轮预归一化与 SIMD 实验留下可验证假设。
 
 \section{Quant Developer：限价订单簿与 replay}
 
@@ -81,7 +81,7 @@ ctest --test-dir build/order-book --output-on-failure
 
 固定场景先挂出 101 的六单位卖单和 100 的五单位买单，再提交 102 的四单位买单。成交价采用 resting order 的 101，maker 为 1，taker 为 3；卖一剩余两单位，买一仍为 100。测试还拒绝重复订单 ID。
 
-\texttt{SequenceGate} 将消息序号 1、2、2、4 分类为两次 accepted、一次 duplicate/stale 和一次 gap，next expected 保持 3。它没有自行跳过缺口，因为恢复政策属于 feed handler：可以请求重传、切换快照并重放，或终止本次结果。静默接受 4 会让之后盘口缺少不可见的消息。
+\texttt{SequenceGate} 将消息序号 1、2、2、4 分类为两次 accepted、一次 duplicate/stale 和一次 gap，next expected 保持 3。\texttt{MarketReplay} 在这一层之上缓存未来消息；序号 3 到达后自动处理 3、再排空已缓存的 4。它仍不会静默跳过缺口，也没有假装实现交易所重传或快照协议。
 
 \subsection{32 字节协议与可回放入口}
 
@@ -103,15 +103,15 @@ price/quantity & 24 & 8 & 两个大端序有符号 32 位整数 \\
 \end{tabular}
 \end{center}
 
-\texttt{MarketReplay::apply} 是协议测试的公开 seam。解码错误不推进序号；旧序号计为 duplicate/stale；未来序号计为 gap 且保持 next expected；只有恰好命中的消息进入订单簿。结果与累计统计都可从公开接口观察：
+\texttt{MarketReplay::apply} 是协议测试的公开边界（seam）。解码错误不推进序号；旧序号计为 duplicate/stale；未来序号进入有序缓存且保持 next expected；只有缺口闭合后才按连续序号进入订单簿。结果、buffered/recovered 计数与盘口都可从公开接口观察：
 
 \lstinputlisting[caption={replay 公开结果、统计与入口}]{capstones/order_book/include/quant/capstone/market_replay.hpp}
 
 \lstinputlisting[caption={大端序解码、序号门与订单簿提交}]{capstones/order_book/src/market_replay.cpp}
 
-固定回放先拒绝 3 字节坏消息，再处理序号 1、2、重复 2、缺口 4 和恢复到 3。验收结果是 accepted=3、duplicate=1、gap=1、decode=1、trades=1、next=4；最终买一仍为 100 的五单位，卖一为 101 的两单位。
+固定回放先拒绝 3 字节坏消息，再处理序号 1、2、重复 2、缺口 4 和恢复到 3。消息 3 到达后，缓存中的 4 随即排空；验收结果是 accepted=4、duplicate=1、gap=1、buffered=1、recovered=1、decode=1、trades=2、next=5。\path{test_spsc_replay.cpp} 进一步让单生产者线程通过容量 256 的 SPSC ring 交付 10000 条消息，消费线程全部回放，accepted 与 offered 必须相等。
 
-\path{benchmarks/replay_benchmark.cpp} 预先编码 10000 条消息，计时区域只包含 \texttt{apply}，排序真实样本后报告 p50/p99/p99.9 和吞吐。测试只锁 messages 与 accepted 均为 10000，不锁纳秒值。单次本机数字不进入简历；提交报告时还需记录 CPU、编译器、优化、affinity、频率策略、原始样本和独立进程重复结果。
+\path{benchmarks/replay_benchmark.cpp} 预先编码 10000 条消息，计时区域只包含 \texttt{apply}。为避免本机计时器把单次调用大量量化为 0/100 ns，报告以每 100 条消息的窗口计时并换算单条均值；Python 驱动启动 11 个全新进程，合并 1100 个窗口样本后报告 p50/p99/p99.9 与各进程吞吐。\path{reports/replay-benchmark.json} 保存环境、原始窗口样本、正确性计数与限制，并明确不把窗口均值解释为窗口内单条消息的真实尾延迟。测试只锁消息与 accepted 数，不锁纳秒值。\texttt{CAPSTONE\_BUILD\_FUZZERS} 在 Clang/libFuzzer 下生成协议 fuzzer，任意字节都只能被拒绝或安全处理；发现样本必须缩减后转入普通回归测试。
 
 \section{从教学订单簿演化到作品集}
 
@@ -127,7 +127,7 @@ price/quantity & 24 & 8 & 两个大端序有符号 32 位整数 \\
   \item 故障报告：至少保存一次 gap、重复、非法长度或超量取消的复现与回归。
 \end{enumerate}
 
-当前 capstone 仍不是交易所级订单簿：它没有网络、持久化、取消、快照、真实协议、时钟校准或生产延迟数据。README 和简历必须保留这条范围声明。完成上述扩展后，描述应落在“实现并验证了哪些协议”，不能跳到“生产级低延迟交易平台”。
+当前 capstone 仍不是交易所级订单簿：它没有网络、持久化、取消、快照、真实协议、时钟校准或生产延迟数据。README 和简历必须保留这条范围声明。现有 SPSC、乱序恢复和 fuzzer 是可运行证据，不会把教学协议抬高成生产平台。
 
 \section{作品集目录建议}
 

@@ -58,8 +58,6 @@ checksum-guard=220971839999.68 conclusion=environment-specific
 
 完整程序输出两组各 21 个原始样本。由于第 \(i\) 轮 AoS 与 SoA 共享起点和相邻测量窗口，它们构成一对观测；程序因此额外报告每对 \(AoS_i-SoA_i\) 的差值，以及 \(SoA_i/AoS_i\) 的比率，并分别给出中位数与 IQR。配对摘要保留了同轮背景负载，单独比较两个边际中位数会丢失这层信息。即便配对中位数偏向 SoA，单个进程仍不足以支持“所有机器上 SoA 快 3.3\%”；下一步应保存原始输出，交替启动多个独立进程，并调查异常样本。
 
-立即练习：把测量顺序改成永远先 AoS，重新运行三个独立进程；同时比较边际摘要与配对差值/比率。即使方向未变，也要解释固定顺序如何把位置效应混入配对结果，以及为什么交替顺序更可信。
-
 \section{分布与指标：一个数字回答不了四个问题}
 
 \path{code/ch14/experiments/statistics_report.cpp} 使用两组 8 个固定的串行请求延迟。两组中位数均为 10 微秒，却得到：
@@ -77,9 +75,9 @@ bursty median-us=10.00 iqr-us=37.50 p99-us=100
 
 \begin{pythonbridge}
 Python 的 \texttt{timeit} 也会重复运行并通常报告多次结果，但不能自动证明输入、线程数和底层 BLAS 状态相同；\texttt{cProfile} 是确定性调用 profiler，开销模型不同于采样 profiler。NumPy 调用把工作移进原生库时，应同时记录 Python 边界和原生热点，不能只看 Python 行级时间。
-\end{pythonbridge}
 
-立即练习：为 bursty 样本再增加 100 个 10 微秒请求，重新计算中位数、IQR 和 nearest-rank $p_{99}$。解释为什么分位数会跳变，以及原来的 8 个样本为何不能支持尾延迟 SLA。
+\pythoncompare{timeit/cProfile 与 C++ benchmark/profiler 分别测时间和热点。}{两边都必须让输入、结果与报告对象活过计时区间。}{工具不会替语言做业务检查；oracle 必须在测量前独立通过。}{错误做法通常得到可信外观的错数字，而非自动报错。}
+\end{pythonbridge}
 
 \section{硬件证据：从耗时追到 cycles、缓存与向量化}
 
@@ -121,7 +119,7 @@ gprof ./profile_workload_pg gmon.out | head -n 12
 
 \lstinputlisting[caption={把热点比例转换为整体收益上限}]{code/ch14/experiments/amdahl_report.cpp}
 
-输出整体加速 1.82 倍；即使热点无限快，未受影响的 40 ms 仍把上限锁在 2.5 倍。立即练习：把热点份额改为 20\%，局部加速仍为 4 倍，先手算整体收益再运行程序；说明为什么“优化最慢函数”仍可能不值得工程成本。
+输出整体加速 1.82 倍；即使热点无限快，未受影响的 40 ms 仍把上限锁在 2.5 倍。
 
 \newpage
 \section{失败实验：结果不同，性能比较立即作废}
@@ -176,7 +174,17 @@ limitations-and-next-test:
 \end{lstlisting}
 
 \newpage
-\section{输出任务与自测}
+\section{章末三层练习}
+
+\subsection*{随堂验证汇总}
+
+\begin{enumerate}
+  \item 把测量顺序改成永远先 AoS，重新运行三个独立进程；同时比较边际摘要与配对差值/比率。即使方向未变，也要解释固定顺序如何把位置效应混入配对结果，以及为什么交替顺序更可信。
+  \item 为 bursty 样本再增加 100 个 10 微秒请求，重新计算中位数、IQR 和 nearest-rank $p_{99}$。解释为什么分位数会跳变，以及原来的 8 个样本为何不能支持尾延迟 SLA。
+  \item 把热点份额改为 20\%，局部加速仍为 4 倍，先手算整体收益再运行程序；说明为什么“优化最慢函数”仍可能不值得工程成本。
+\end{enumerate}
+
+复现层重跑已有样本与统计；修改层只改变一个工作负载维度并交替测量；开放层用 profiler 热点和 Amdahl 上限决定采用、拒绝或继续实验。
 
 输出任务：提交布局实验的假设、命令、环境、oracle、全部原始样本、中位数/IQR、结论与限制；附 profiler 命令和热点表，并代入 Amdahl 模型。不得只交截图、最快一次或脱离环境的百分比。
 
@@ -190,9 +198,6 @@ limitations-and-next-test:
   \item 热点占 60\%、局部加速 4 倍时，为什么整体只有约 1.82 倍？
 \end{enumerate}
 
-\begin{interviewcheck}
-被问“怎样证明优化有效”时，按假设、oracle、Release 环境、采样分布、profiler 热点、Amdahl 上限和限制回答；没有独立复测或目标硬件数据，就主动缩小结论。
-\end{interviewcheck}
 
 \section{本章小结}
 

@@ -1,22 +1,14 @@
 #include "quant/capstone/factor_kernel.hpp"
+#include "quant/capstone/detail/factor_validation.hpp"
 
 #include <cmath>
 #include <limits>
-#include <stdexcept>
 
 namespace quant::capstone {
 
 std::vector<double> weighted_factor(FactorBatchView batch,
                                     std::span<const double> weights) {
-  if (batch.columns == 0 || weights.size() != batch.columns ||
-      batch.values.size() != batch.rows * batch.columns) {
-    throw std::invalid_argument{"factor batch shape mismatch"};
-  }
-  for (const double weight : weights) {
-    if (!std::isfinite(weight)) {
-      throw std::invalid_argument{"factor weights must be finite"};
-    }
-  }
+  detail::validate_factor_inputs(batch, weights);
 
   std::vector<double> result;
   result.reserve(batch.rows);
@@ -27,9 +19,6 @@ std::vector<double> weighted_factor(FactorBatchView batch,
       const double value = batch.values[row * batch.columns + column];
       if (std::isnan(value)) {
         continue;
-      }
-      if (!std::isfinite(value)) {
-        throw std::invalid_argument{"factor values must be finite or NaN"};
       }
       weighted_sum += value * weights[column];
       observed_weight += std::fabs(weights[column]);

@@ -51,11 +51,11 @@ orders=1 fills=1 symbol=AAPL quantity=25 cash=7525.00 equity=10050.00
 
 \begin{pythonbridge}
 Python 的 \texttt{@dataclass} 很适合快速表达这些记录，但默认字段仍可被任意改写，也不会从类型声明自动得到正价格约束。C++ 同样不会自动验证业务规则；区别在于我们可以让构造函数成为唯一建成对象的入口，并把字段保持为私有。Python 也能用只读 property 或验证库实现类似契约，关键在于边界，语言优越性并非讨论重点。
+
+\pythoncompare{dataclass 可快速建模；C++ 构造函数与私有字段封闭合法状态。}{Python 属性寿命跟随对象图；C++ 值成员与宿主对象共同生灭。}{Python 依赖运行期验证或类型工具；C++ 接口类型先由编译器检查。}{两边的业务不变量都需显式拒绝；C++ 还能隐藏绕过入口。}
 \end{pythonbridge}
 
 失败诊断：如果 \texttt{Portfolio} 同时读取 CSV、选择策略、撮合并打印报告，那么任何失败都指向这个大类，测试也必须搭建整条流水线。根因是职责由“程序需要哪些名词”而非具体行为划分。恢复方法是先写成功/失败句子，再把每条规则放到拥有足够信息的最小组件。
-
-立即练习：为“订单数量大于行情可用数量时不成交”补一句用例，并指出规则属于 \texttt{SimulatedExchange} 而不是 \texttt{Portfolio}。原因是撮合时已经同时拥有订单与行情，组合不应重新推断市场流动性。
 
 \section{值对象：构造后始终有效}
 
@@ -73,13 +73,10 @@ Python 的 \texttt{@dataclass} 很适合快速表达这些记录，但默认字�
 
 \texttt{PortfolioSnapshot} 则是只读观察结果的简单 \texttt{struct}。它不负责被重新送入组合更新，因此公开数据记录比一组机械 getter 更直接。选择 \texttt{class} 还是 \texttt{struct}，取决于是否需要用访问控制维护构造与修改规则，与“复杂或简单”无关。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 的 \texttt{b = a} 通常让两个名字指向同一对象；要得到独立对象需显式复制。C++ 的 \texttt{Order b = a;} 默认复制成员，\texttt{a} 与 \texttt{b} 是两个对象。反过来，\texttt{const Order\&} 才是借用同一个对象且不复制。判断接口成本时要先分清按值拥有、按引用借用和移动所有权。
-\end{pythonbridge}
 
 失败诊断：若提供 \texttt{set\_quantity(-5)}，对象可能先有效、后失效，下游每层都被迫防御。根因是修改入口破坏了构造契约。恢复方案通常是创建一个新的合法值，或提供一个名称体现完整业务动作的方法，而不是开放任意字段写入。
-
-立即练习：在 \path{code/ch08/tests/test_invalid_values.cpp} 中把零数量改为负数，把 NaN 改为正无穷。两种构造仍应抛出 \texttt{invalid\_argument}，测试最终精确输出 \texttt{domain invariants ok}。
 
 \section{正常缺席不是非法对象}
 
@@ -95,13 +92,10 @@ Python 的 \texttt{b = a} 通常让两个名字指向同一对象；要得到独
 
 策略行为测试只从公开 seam 观察结果：低价空仓得到 AAPL 买单，高价与已有持仓都得到空 optional。测试不检查阈值字段叫什么，也不要求内部执行几次比较，所以成员布局可以重构而不改测试。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 常用 \texttt{None} 表示没有订单；\texttt{optional<Order>} 把这条可能性写进静态类型，调用者不能把结果直接当 \texttt{Order} 使用。它与 Python 异常承担不同语义：无值是预期分支，非法策略配置才在构造边界失败。
-\end{pythonbridge}
 
 失败诊断：用 \texttt{Order\{"AAPL", buy, 0\}} 表示“不下单”会与“非法订单”混在一起，而且该对象根本无法通过本章构造函数。恢复方案是让值对象只表达有效事实，用 optional 表达事实可能缺席。
-
-立即练习：把阈值改为 98。测试中的 99 元事件应不再产生订单；先观察策略 seam 以“cheap event should create an order”失败，再同步修改用例或恢复阈值。失败消息证明测试保护的是行为而非内部实现。
 
 \section{组合是默认装配方式}
 
@@ -121,13 +115,10 @@ Python 常用 \texttt{None} 表示没有订单；\texttt{optional<Order>} 把这
 
 成交/组合 seam 测试手算两笔成交。99 元买 25 股后现金 7525；101 元卖 10 股后现金 8535、持仓 15、权益 10050。它还验证错误代码与流动性不足都不成交、超卖与第二个代码都在修改前被拒绝。策略 seam 另外拒绝事件与快照代码不一致。测试只调用 \texttt{match}、\texttt{apply} 与 \texttt{snapshot}，不读取私有状态。本章快照明确限定一次运行一个代码；多资产总权益需要一组完整估值价格，留到第 17 章统一设计，不能只拿最后一个代码的价格冒充总权益。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 可把策略对象作为参数传入循环，只要它有所需方法；对象生命由引用计数或垃圾回收协助管理。C++ 的具体局部对象让所有权和销毁点完全可见，引用参数只借用它们。不要为了模仿 Python 的可替换性，提前把每个组件都放进 \texttt{shared\_ptr}。
-\end{pythonbridge}
 
 失败诊断：若 \texttt{apply} 先扣现金、随后才发现超卖，异常会留下半更新状态。根因在于修改早于完整验证，与异常机制本身无关。恢复方法是先算候选结果并验证，再一次提交相关字段。
-
-立即练习：运行 \path{code/ch08/exercises/sell_down_solution.cpp}，解释为何买入 25、卖出 10 后精确输出 \texttt{quantity=15 cash=8535.00 equity=10050.00}。再把卖出数量改为 26，程序应在产生输出前以状态不一致失败。
 
 \section{什么时候才需要运行时多态}
 
@@ -155,8 +146,6 @@ std::optional<Order> on_event(
 
 故意失败的 \path{code/ch08/failures/wrong_override.cpp} 把基类的 \texttt{const double\&} 参数误写为 \texttt{double\&}，却标记 \texttt{override}。编译器必须报告该函数没有覆盖基类成员。去掉 \texttt{override} 可能让错误潜伏为新重载，并使派生类仍是抽象类；正确修复是让签名完全一致。
 
-立即练习：在 \texttt{HoldStrategy::on\_event} 参数末尾删除成员函数的 \texttt{const}，保留 \texttt{override}。预测并验证编译失败；恢复 \texttt{const} 后输出重新变为 \texttt{threshold=1 hold=0}。
-
 \section{独立快照与验收命令}
 
 在 WSL 中从项目根目录执行：
@@ -170,7 +159,17 @@ ctest --test-dir build/ch08 --output-on-failure
 
 最后一行必须与章首输出逐字一致。根项目还运行 8 项 ch08 检查：策略 seam、成交/组合 seam、主流水线、运行时替换、非法值、核心练习、错误覆盖诊断以及从空目录配置的快照。Windows 可选择 Visual Studio 生成器；多配置生成器的可执行文件通常位于 \texttt{Debug} 或 \texttt{Release} 子目录，接口与值语义规则不变。
 
-\section{自测、编码任务与面试检查点}
+\section{章末三层练习}
+
+\subsection*{随堂验证汇总}
+
+\begin{enumerate}
+  \item 为“订单数量大于行情可用数量时不成交”补一句用例。规则属于 \texttt{SimulatedExchange}，而非 \texttt{Portfolio}：撮合时已经同时拥有订单与行情，组合不应重新推断市场流动性。
+  \item 在 \path{code/ch08/tests/test_invalid_values.cpp} 中把零数量改为负数，把 NaN 改为正无穷。两种构造仍应抛出 \texttt{invalid\_argument}，测试最终精确输出 \texttt{domain invariants ok}。
+  \item 把阈值改为 98。测试中的 99 元事件应不再产生订单；先观察策略 seam 以“cheap event should create an order”失败，再同步修改用例或恢复阈值。失败消息证明测试保护的是行为而非内部实现。
+  \item 运行 \path{code/ch08/exercises/sell_down_solution.cpp}，解释为何买入 25、卖出 10 后精确输出 \texttt{quantity=15 cash=8535.00 equity=10050.00}。再把卖出数量改为 26，程序应在产生输出前以状态不一致失败。
+  \item 在 \texttt{HoldStrategy::on\_event} 参数末尾删除成员函数的 \texttt{const}，保留 \texttt{override}。预测并验证编译失败；恢复 \texttt{const} 后输出重新变为 \texttt{threshold=1 hold=0}。
+\end{enumerate}
 
 \begin{enumerate}
   \item 为什么先写成功和失败用例，比先列 getter/setter 更能确定接口？
@@ -185,9 +184,6 @@ ctest --test-dir build/ch08 --output-on-failure
 
 编码任务：从 10000 现金开始，应用 99 元买入 25 股和 101 元卖出 10 股两笔成交，再以 101 元估值。可运行答案位于 \path{code/ch08/exercises/sell_down_solution.cpp}；输出必须精确为 \texttt{quantity=15 cash=8535.00 equity=10050.00}。扩展题是尝试应用一笔 MSFT 成交，验证程序在任何现金或数量改变前以“单次运行只支持一个代码”的状态错误拒绝它。
 
-\begin{interviewcheck}
-被问“什么时候用继承”时，先说默认用值语义和组合表达明确所有权；只有调用方必须在运行时通过同一契约替换实现时，才考虑抽象接口。随后说明虚析构、override、对象生命周期和间接调用成本，并指出编译期已知类型将在第 9 章用模板方案比较。
-\end{interviewcheck}
 
 \section{本章小结}
 

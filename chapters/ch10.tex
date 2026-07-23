@@ -61,11 +61,11 @@ C++20 主线继续用 \path{variant<Fill, ParseError>} 展示显式结果，因�
 
 \begin{pythonbridge}
 Python 的 \texttt{None} 接近 optional，\texttt{Union[Fill, ParseError]} 接近 variant，\texttt{raise} 接近异常。Python assert 同样可被优化选项移除，也不适合校验用户输入。区别在于 C++ variant 的备选集合进入静态类型，调用方不能把错误对象当 Fill 使用而不被编译器阻止。
+
+\pythoncompare{None、Union、raise 分别近似 optional、variant、异常。}{Python 异常对象由运行时管理；C++ 值错误随返回对象传递。}{Python Union 主要靠工具；C++ variant 备选集合进入静态类型。}{Python 错误常在运行期；C++ 未处理备选可能先被访问接口阻止。}
 \end{pythonbridge}
 
 失败诊断：如果 optional 无值却不知道原因，说明“正常缺席”可能被误用来承载错误；如果每一层 catch 后只写日志再重新抛出，同一故障会形成重复日志。先重新分类，而不是追加更多字符串。
-
-立即练习：先把最新价查询的代码参数暂时改为空字符串。Debug 构建应在 assert 处终止；再配置独立 Release 构建：
 
 \begin{lstlisting}[language=bash]
 cmake -S code/ch10 -B build/ch10-release -DCMAKE_BUILD_TYPE=Release
@@ -87,13 +87,10 @@ cmake --build build/ch10-release -j
 
 测试从公开解析入口验证已知字面量：合法行必须保留 AAPL 与数量 10；损坏数量的错误行号必须为 3，字段必须为 quantity，并带固定消息。预期来自手写场景，不重新实现解析算法。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 常返回 \texttt{(value, error)} 或抛自定义异常。若元组允许两项同时为空或同时有值，就出现无效状态；variant 保证恰有一个备选。Rust 的 Result 更直接表达同一思想，C++20 可用 variant 建立轻量版本。
-\end{pythonbridge}
 
 失败诊断：若错误只写 \texttt{invalid input}，运维无法定位文件；若把整行原文无条件写入日志，又可能泄露敏感字段。保留结构化的行号、字段名和稳定类别，原始值只在数据治理允许时记录。
-
-立即练习：把坏行的 side 改为 \texttt{hold}。测试应得到 \texttt{field=side} 与 \texttt{expected buy or sell}；恢复后重新运行输入 seam。
 
 \section{强异常保证：失败前后公开状态相同}
 
@@ -111,13 +108,10 @@ Python 常返回 \texttt{(value, error)} 或抛自定义异常。若元组允许
 
 \path{code/ch10/tests/test_atomic_portfolio.cpp} 先建立 10 股 AAPL，再注入“买 5 股 AAPL 后买 1 股 MSFT”的批次。测试捕获 \texttt{logic\_error}，并逐字段比较异常前后 quantity、cash、equity。它不检查 candidate 或私有成员，所以实现可替换。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python 也可先 \texttt{candidate = copy.deepcopy(state)}，验证后再替换引用；数据库事务则把提交点交给数据库。C++ 的差异在于析构与 noexcept 能把栈展开和提交边界写入类型与实现，资源对象会在异常路径自动清理。
-\end{pythonbridge}
 
 失败诊断：看到异常后现金已扣、仓位未加，说明修改发生在所有可能失败检查之前。列出函数内每个可能抛出的操作，移动到候选状态阶段，最后只保留不会失败的提交动作。
-
-立即练习：把失败批次第二笔改成合法 AAPL 买单。此时不应抛异常，快照应一次增加 6 股；随后恢复错配代码，确认强保证测试重新绿色。
 
 \section{日志、指标与追踪各回答什么}
 
@@ -133,13 +127,10 @@ Python 也可先 \texttt{candidate = copy.deepcopy(state)}，验证后再替换�
 
 异常只在有恢复或终止策略的边界捕获。\path{code/ch10/src/main.cpp} 负责文件打开和进程退出，因此缺文件在那里记录一次 \texttt{fatal context=...} 并返回 2；中间层不会 catch、记录、再抛出同一异常。
 
-\begin{pythonbridge}
+\paragraph{与 Python 对照。}
 Python logging 的 \texttt{extra} 字段、Prometheus counter 和 OpenTelemetry span 分别对应结构化日志、指标与追踪。关键原则与语言无关：稳定字段便于聚合，关联 ID 贯穿边界，错误归属层只记录一次。
-\end{pythonbridge}
 
 失败诊断：若同一个 trace id 出现三条完全相同堆栈，搜索 catch-and-rethrow；若错误率升高却没有日志，检查采样与队列丢弃指标；若日志量拖慢回测，测量成功路径是否仍格式化消息。
-
-立即练习：在输入末尾加入一行 \texttt{MSFT,buy,1,420.0}。解析会成功，但组合边界应记录 \texttt{field=portfolio}，rejected 与 rolled back 各增加 1；AAPL 状态不变。
 
 \section{独立快照与验收命令}
 
@@ -163,7 +154,16 @@ fatal context=missing.csv message=cannot open input file
 
 并以状态 2 退出。状态码让 shell、调度器和 Python \texttt{subprocess} 在不解析自然语言时也能判断失败。
 
-\section{自测、编码任务与面试检查点}
+\section{章末三层练习}
+
+\subsection*{随堂验证汇总}
+
+\begin{enumerate}
+  \item 先把最新价查询的代码参数暂时改为空字符串。Debug 构建应在 assert 处终止；再配置独立 Release 构建：
+  \item 把坏行的 side 改为 \texttt{hold}。测试应得到 \texttt{field=side} 与 \texttt{expected buy or sell}；恢复后重新运行输入 seam。
+  \item 把失败批次第二笔改成合法 AAPL 买单。此时不应抛异常，快照应一次增加 6 股；随后恢复错配代码，确认强保证测试重新绿色。
+  \item 在输入末尾加入一行 \texttt{MSFT,buy,1,420.0}。解析会成功，但组合边界应记录 \texttt{field=portfolio}，rejected 与 rolled back 各增加 1；AAPL 状态不变。
+\end{enumerate}
 
 \begin{enumerate}
   \item optional 无值与 ParseError 的语义边界是什么？
@@ -178,9 +178,6 @@ fatal context=missing.csv message=cannot open input file
 
 编码任务：向一个已有 AAPL 持仓注入“两笔组成的失败批次”，第一笔合法，第二笔超卖；捕获异常后必须用公开快照断言 quantity、cash、equity 全部不变，并精确输出 \texttt{injected=1 rolled\_back=1 unchanged=1}。完整答案位于 \path{code/ch10/exercises/error_injection_solution.cpp}。
 
-\begin{interviewcheck}
-回答“交易系统怎么做错误处理”时，只谈 try/catch 还不够。先分类正常缺席、可恢复错误、外部失败和内部 bug；再说明错误上下文、异常安全级别与提交点；最后给出日志只记一次、指标聚合、追踪关联和热路径成本边界。
-\end{interviewcheck}
 
 \section{本章小结}
 

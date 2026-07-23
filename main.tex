@@ -55,6 +55,12 @@
 \newcommand{\cpp}{\textsf{C++}}
 \newcommand{\quant}{\textsf{Quant}}
 \newenvironment{pythonbridge}{\begin{remark}\textbf{Python 迁移提示：}}{\end{remark}}
+\newcommand{\pythoncompare}[4]{%
+  \par\smallskip
+  \textbf{语法表现：}#1\par
+  \textbf{生命周期：}#2\par
+  \textbf{类型检查时机：}#3\par
+  \textbf{失败方式：}#4}
 \newenvironment{interviewcheck}{\begin{problem}[面试检查点]}{\end{problem}}
 \newcommand{\chaptermeta}[3]{%
   \begin{remark}

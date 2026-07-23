@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "environment": {
+    "python": "3.12.11",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "AMD64 Family 25 Model 117 Stepping 2, AuthenticAMD",
+    "numpy": "2.5.1",
+    "pyarrow": "25.0.0"
+  },
+  "workload": {
+    "rows": 65536,
+    "columns": 32,
+    "repeats": 31,
+    "dtype": "float64",
+    "c_contiguous": true,
+    "arrow_child_zero_copy": true
+  },
+  "samples_ns": [
+    1432600,
+    1635800,
+    1593300,
+    1600700,
+    1618000,
+    1579000,
+    1584300,
+    1581900,
+    2263900,
+    1578600,
+    1538400,
+    1532100,
+    1527100,
+    1560000,
+    1542300,
+    1581200,
+    1818100,
+    1723900,
+    1598700,
+    1634300,
+    1562700,
+    1568600,
+    1661600,
+    1557000,
+    1798600,
+    2756600,
+    1793400,
+    3306500,
+    2696100,
+    2108700,
+    1811900
+  ],
+  "summary_ns": {
+    "median": 1598700,
+    "p99": 3306500,
+    "min": 1432600,
+    "max": 3306500
+  },
+  "checksum": -106.01093153109076,
+  "limitations": [
+    "single host and process",
+    "wall-clock samples are not hardware counters",
+    "Parquet decode time is outside the measured kernel boundary"
+  ]
+}

@@ -22,10 +22,12 @@
 \]
 箭头不是装饰。CSV reader 是不可信文本边界；策略只观察事件与只读快照；撮合器把订单意图变成成交事实；只有 Portfolio 能应用成交；统计只读取权益曲线和成交集合。若策略直接改现金，策略测试就无法与账本测试分开，失败也难以定位。
 
-最终源码保存在 \path{project/}，早期的 \path{code/ch05}、\path{code/ch08} 等快照仍从自己的 CMake 入口构建。最终项目没有反向引用这些目录，因此后续重构不会改变读者已经见过的教学状态。立即练习：沿一条低价事件写出每个阶段的输入类型、输出类型及所有者；任何一步若同时返回“事件和错误字符串”，说明边界还没有说清。
+最终源码保存在 \path{project/}，早期的 \path{code/ch05}、\path{code/ch08} 等快照仍从自己的 CMake 入口构建。最终项目没有反向引用这些目录，因此后续重构不会改变读者已经见过的教学状态。
 
 \begin{pythonbridge}
 Python 的 generator 或事件循环同样能分阶段处理数据；差异不在语法是否有 class，而在契约是否可被绕过。C++ 的 \texttt{const PortfolioSnapshot\&} 表达只读借用，值类型 \texttt{OrderIntent} 表达独立结果；Python 需要靠不可变对象、类型检查和团队约定达到相似效果。
+
+\pythoncompare{generator 与 C++ 事件循环都能分阶段处理；领域事件应保持不同类型。}{Python 依靠对象引用；C++ 值事件独立拥有数据，引用快照只读借用。}{Python 靠运行期与类型工具；C++ 事件接口在编译期区分。}{Python 错字段常在路径执行时出现；C++ 错事件类型无法匹配接口。}
 \end{pythonbridge}
 
 \section{把配置视为领域输入}
@@ -51,8 +53,6 @@ struct BacktestConfig final {
 
 独立账本是测试事实来源。报价 100、买 10 股、滑点 10 bps、费用 1.25 时，执行价是 100.10；从 10000 现金出发，现金变为 8997.75，以报价 100 估值的权益为 9997.75。Python 的 \texttt{dict} 配置也能传这些值，但字符串键拼错可能拖到运行路径才暴露；C++ 聚合类型让字段名、类型和默认值参加编译检查，却仍须在构造边界验证数值组合。
 
-立即练习：把费用改为 2.00，只改一项输入，先把期望现金写成 8997.00，再运行成交/组合 seam。若通过“放宽容差”让错误账本变绿，修复方向已经错了。
-
 \section{四个 seam 保护演化}
 
 测试不读取 Portfolio 的私有 map，也不检查某个辅助函数被调用几次。四个 seam 分别回答调用者真正关心的问题：
@@ -73,7 +73,7 @@ ctest --test-dir build -R \
   "market_data_input|strategy_decision|execution_portfolio|end_to_end"
 \end{lstlisting}
 
-Python 的 pytest fixture 可以建立相同 seam；C++ 额外需要决定测试程序如何成为 CMake target。测试名描述“成本进入现金账本”，不绑定“调用了 match”这类实现步骤；容器从 \texttt{unordered\_map} 改成别的实现时，公开事实没有变化，测试就不应失败。立即练习：先把成本账本的期望权益故意改错 1 元，确认测试因事实不符而红，再恢复独立值。
+Python 的 pytest fixture 可以建立相同 seam；C++ 额外需要决定测试程序如何成为 CMake target。测试名描述“成本进入现金账本”，不绑定“调用了 match”这类实现步骤；容器从 \texttt{unordered\_map} 改成别的实现时，公开事实没有变化，测试就不应失败。
 
 \section{多资产与缺失价格：先拒绝错误答案}
 
@@ -85,7 +85,7 @@ model-boundary-error single-symbol backtest requires one symbol; define a comple
 
 故意失败源 \path{project/failures/mixed_symbols.cpp} 不进入默认 \texttt{all}，CTest 先单独构建它，再验收状态 2 与上面的诊断。根因是估值契约缺少完整价格映射，与 vector 能否容纳两个代码无关。
 
-真正的多资产 tracer bullet 至少要增加 \texttt{map<Symbol, Price>}，并在三种缺失价格政策中明确选择：拒绝本次估值；使用不晚于估值时刻的最近价格并报告 stale age；或把缺失仓位排除且把结果标记为不完整。直接填零会把未知价格伪装成资产归零，静默沿用未来价格则会引入 look-ahead bias。立即练习：为三种政策各写一个输入、可观察输出和风险，暂时不要修改引擎。
+真正的多资产 tracer bullet 至少要增加 \texttt{map<Symbol, Price>}，并在三种缺失价格政策中明确选择：拒绝本次估值；使用不晚于估值时刻的最近价格并报告 stale age；或把缺失仓位排除且把结果标记为不完整。直接填零会把未知价格伪装成资产归零，静默沿用未来价格则会引入 look-ahead bias。
 
 \section{订单生命周期：当前只有即时终态}
 
@@ -96,7 +96,7 @@ model-boundary-error single-symbol backtest requires one symbol; define a comple
 \text{created}\rightarrow\text{accepted}\rightarrow
 \{\text{partially-filled},\text{filled},\text{cancelled},\text{rejected}\}.
 \]
-然后为每条合法边和非法反向边提供事实，给订单与事件稳定 ID，并让重复成交消息具有幂等规则。并发队列只负责传递这些状态，不能替代状态机。Python 对象也需要相同协议；async/await 只改变调度方式，不会自动给出幂等与审计语义。立即练习：解释 \texttt{filled -> accepted} 为什么非法，以及部分成交后撤单时剩余数量和已成交数量各由谁拥有。
+然后为每条合法边和非法反向边提供事实，给订单与事件稳定 ID，并让重复成交消息具有幂等规则。并发队列只负责传递这些状态，不能替代状态机。Python 对象也需要相同协议；async/await 只改变调度方式，不会自动给出幂等与审计语义。
 
 \section{独立构建与可测量运行}
 
@@ -118,7 +118,7 @@ backtest-ok events=3 fills=1 cash=7521.525 equity=10096.525 return=0.965250% max
 
 \lstinputlisting[caption={账本门控的端到端回测 benchmark}]{project/benchmarks/backtest_benchmark.cpp}
 
-这条测量包含事件循环、策略、撮合、组合、权益曲线分配和统计，但不含 CSV、磁盘、Python 边界或多线程队列。Debug 数字不用于性能结论；Release 报告还要记录 CPU、编译器、优化配置、原始 11 个样本和系统负载。立即练习：只把事件数加倍，检查账本仍相同，再比较中位数；一次运行变快不能证明复杂度改善。
+这条测量包含事件循环、策略、撮合、组合、权益曲线分配和统计，但不含 CSV、磁盘、Python 边界或多线程队列。Debug 数字不用于性能结论；Release 报告还要记录 CPU、编译器、优化配置、原始 11 个样本和系统负载。
 
 \section{教学引擎与生产平台的分界}
 
@@ -126,11 +126,21 @@ backtest-ok events=3 fills=1 cash=7521.525 equity=10096.525 return=0.965250% max
 
 合理演化顺序是：完整价格映射与缺失政策；订单状态机和拒绝原因；数据版本与交易日历；风险与容量；可回放的异步协议；最后才根据 profiler 证据调整布局或并发。每一步新增一条穿过输入、领域、输出与测试的 tracer bullet，并保持旧四个 seam 绿色。
 
-\begin{interviewcheck}
-请在五分钟内画出本章数据流，逐一说明所有权和失败边界；手算有成本的三事件账本；解释为何当前拒绝多资产比“先算个近似权益”更可靠；最后指出 benchmark 测到了什么、没有测到什么。
-\end{interviewcheck}
 
-\section{输出任务与自测}
+\section{章末三层练习}
+
+\subsection*{随堂验证汇总}
+
+\begin{enumerate}
+  \item 沿一条低价事件写出每个阶段的输入类型、输出类型及所有者；任何一步若同时返回“事件和错误字符串”，说明边界还没有说清。
+  \item 把费用改为 2.00，只改一项输入，先把期望现金写成 8997.00，再运行成交/组合 seam。若通过“放宽容差”让错误账本变绿，修复方向已经错了。
+  \item 先把成本账本的期望权益故意改错 1 元，确认测试因事实不符而红，再恢复独立值。
+  \item 为三种政策各写一个输入、可观察输出和风险，暂时不要修改引擎。
+  \item 解释 \texttt{filled -> accepted} 为什么非法，以及部分成交后撤单时剩余数量和已成交数量各由谁拥有。
+  \item 只把事件数加倍，检查账本仍相同，再比较中位数；一次运行变快不能证明复杂度改善。
+\end{enumerate}
+
+复现层重放三事件账本；修改层加入一个费用或失败输入并保持 seam 可测；开放层选择多资产估值、取消状态机或数据恢复之一，只交付最小纵向闭环。
 
 输出任务：从空目录配置 \path{project/}，构建并运行全部 CTest；提交默认与成本配置的两条精确摘要、四个 seam 的通过记录、混合代码状态 2 诊断，以及 Release benchmark 的环境、11 个原始样本、中位数、IQR 和账本门结果。另附一页边界说明，覆盖费用、滑点、多资产、缺失价格和订单生命周期。
 
