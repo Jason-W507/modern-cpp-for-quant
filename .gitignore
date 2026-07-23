@@ -1,6 +1,7 @@
 /build/
 /build-*/
 /tmp/
+/.venv/
 __pycache__/
 *.pyc
 *.synctex.gz

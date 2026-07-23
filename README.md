@@ -26,7 +26,7 @@ ctest --test-dir build-cpp --output-on-failure
 
 ## 验证当前书籍契约
 
-当前 0.3 修订版采用 18 章、五篇、8 个附录、计划 195 页（出版护栏 180--220 页）的机器可读契约，并维护零基础语法覆盖矩阵、章节学习单元清单以及代码/项目快照约定。直接运行：
+当前 0.3 修订版采用 18 章、五篇、8 个附录和 235 页成稿（出版护栏 200--250 页）的机器可读契约，并维护零基础语法覆盖矩阵、章节学习单元清单以及代码/项目快照约定。仓库同时提交已验证的 PDF：`output/pdf/python-quant-modern-cpp.pdf`。直接运行：
 
 ```powershell
 python tools/check_book_contract.py
