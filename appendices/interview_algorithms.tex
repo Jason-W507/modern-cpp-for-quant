@@ -1,0 +1,98 @@
+% appendix:algorithm-drills
+% appendix:complexity-evidence
+\chapter{量化 C++ 面试算法题集}
+
+本附录把常见算法题放回量化语境。每题先冻结输入、输出和非法边界，再给手算例、状态不变量、复杂度与 cache-aware 延伸。面试中先写清楚且可测的版本，只有在数据规模或追问要求时才进一步优化。
+
+\section{共同作答协议}
+
+\begin{enumerate}
+  \item 复述输入类型、顺序、单位、重复值和空输入政策；
+  \item 写两个正常例和一个失败/边界例，得到独立 expected；
+  \item 说明核心状态在每轮循环后保持什么不变量；
+  \item 给出时间复杂度、额外空间和最坏情况；
+  \item 完成后再讨论连续布局、分配、分支和并发，不在开头炫技。
+\end{enumerate}
+
+\section{Binary search：找第一个不小于阈值的位置}
+
+有序报价 \texttt{\{1,3,3,7,9\}} 中查找 7，应返回索引 3；查找 3 返回第一个 3 的索引 1；查找 10 返回 size。使用半开区间 \([first,last)\)，循环不变量是答案始终位于该区间。中点写成 \texttt{first + (last-first)/2}，避免两个大索引直接相加溢出。时间为 \(O(\log n)\)，空间为 \(O(1)\)。
+
+量化延伸是按时间戳找不晚于估值时刻的最后一条记录。此时要先说明相同时间戳、时区、缺失值和 look-ahead policy，算法本身只是最后一步。
+
+\section{Heap 与 top-k}
+
+从 \(n\) 个分数中保留最大的 \(k\) 个，可维护大小至多为 \(k\) 的最小堆：新值入堆，超过容量就弹出最小值。时间 \(O(n\log k)\)，空间 \(O(k)\)。若 \(k\) 接近 \(n\)，排序或 selection 算法可能更合适；若结果还要有序，最后再排序堆内元素。
+
+追问通常包括稳定 tie-break、NaN、重复代码和流式输入。把 \texttt{double} 直接作为唯一比较键，可能让 NaN 破坏严格弱序；实际候选可使用“有效标志、分数、序号”的复合键。
+
+\section{Hash table 与 LRU}
+
+LRU cache 需要 \(O(1)\) 平均查找和 \(O(1)\) 移动到最近端：哈希表保存 key 到双向链表迭代器，链表保存使用顺序。命中时把节点移到头部；新增超过容量时删除尾部并同步擦除哈希项。两个容器必须共同维护同一不变量，任何异常或提前返回都不能只更新一边。
+
+工作中还要定义容量按条目还是字节、并发策略、加载失败是否缓存、时间过期和 key 的所有权。哈希表平均 \(O(1)\) 不代表稳定低延迟；rehash、分配与碰撞仍需测量。
+
+\section{Sliding window：单调队列}
+
+长度为 \(w\) 的滑动最大值可在 deque 中保存“仍可能成为最大值”的索引。每轮先弹出窗口左侧的过期索引，再从尾部删除不大于新值的候选，最后把新索引入队。每个索引最多进出一次，时间 \(O(n)\)，空间 \(O(w)\)。
+
+时间窗口比固定条数窗口多一层契约：事件可能乱序、同时间戳、迟到或缺失。若先排序，复杂度和延迟都会改变；若在线处理，就要定义 watermark 和迟到政策。
+
+\section{Streaming mean、variance 与 drawdown}
+
+Welford 更新用 count、mean 和 \(M_2\) 在线维护样本方差，避免先求平方和再做两个接近大数的相减。样本方差使用 \(M_2/(n-1)\)，总体方差使用 \(M_2/n\)；\(n<2\) 时样本方差没有定义。
+
+最大回撤只需维护历史 peak 与当前 \((peak-equity)/peak\) 的最大值，时间 \(O(n)\)、空间 \(O(1)\)。输入权益必须为正，序列顺序必须是真实时间顺序。\(100,80,120,90\) 的最大回撤是 \(25\%\)，因为 120 到 90 的跌幅大于 100 到 80。
+
+\section{Merge sorted streams}
+
+合并 \(k\) 条有序流时，最小堆保存每条流当前头部及来源。每弹出一个元素，只推进它所属的流。总元素数为 \(N\) 时，时间 \(O(N\log k)\)，额外空间 \(O(k)\)。行情版本还需定义相同时间戳的稳定顺序、来源优先级和去重键；“都按时间排好”仍不足以得到确定性重放。
+
+\section{Ring buffer 与订单簿数据结构}
+
+固定容量 ring buffer 适合明确上界和单调 head/tail 的队列。取模可用额外槽位区分空/满，也可使用单调计数与容量差；并发版本必须先指定 SPSC、MPSC 或 MPMC，不能把单生产者实现直接共享给多个写者。
+
+简化订单簿常用“价格到价位队列”的有序映射：bid 降序、ask 升序，同价位 deque 保存时间优先。插入和找到最优价通常为 \(O(\log L)\)，其中 \(L\) 为价位数；消费一个 resting order 为摊销 \(O(1)\)。若需要按 ID 取消，还需哈希索引，并处理迭代器稳定性和跨容器一致性。
+
+\section{可构建参考实现}
+
+\path{code/appendix_algorithms/interview_algorithms.cpp} 把 binary search、top-k、LRU、sliding maximum、Welford、drawdown 和 merge 放进同一个可运行 target。程序使用独立常量验收，不把实现输出重新当 expected：
+
+\lstinputlisting[caption={量化算法题的可运行参考实现}]{code/appendix_algorithms/interview_algorithms.cpp}
+
+固定输出为：
+
+\begin{lstlisting}[numbers=none]
+algorithms-ok top=9 lower-bound=3 lru-hit=10 window-max=8
+  mean=3.00 drawdown=0.25 merged=6
+\end{lstlisting}
+
+\section{复杂度与工程边界速查}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth}p{0.22\textwidth}p{0.18\textwidth}X}
+\toprule
+问题 & 时间 & 额外空间 & 常见工程追问 \\
+\midrule
+binary search & \(O(\log n)\) & \(O(1)\) & 重复值、时间边界、look-ahead \\
+top-k heap & \(O(n\log k)\) & \(O(k)\) & tie-break、NaN、结果排序 \\
+LRU & 平均 \(O(1)\) & \(O(capacity)\) & rehash、字节容量、并发 \\
+sliding max & \(O(n)\) & \(O(w)\) & 乱序、迟到、watermark \\
+Welford/drawdown & \(O(n)\) & \(O(1)\) & 分母、精度、非正权益 \\
+merge streams & \(O(N\log k)\) & \(O(k)\) & 同时间戳、去重、来源优先 \\
+order book & \(O(\log L)\) 插入 & \(O(orders)\) & cancel 索引、序号、快照恢复 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\section{分层练习}
+
+\begin{enumerate}
+  \item \textbf{复现：}从空文件重写 binary search、top-k 与 drawdown，并用附录固定输入验收。
+  \item \textbf{修改：}让 sliding window 接受时间戳和毫秒窗口，明确相同时间戳与过期边界。
+  \item \textbf{开放：}为订单簿增加 cancel，使用 ID 索引保持平均常数定位，并证明删除后价位与哈希表一致。
+  \item \textbf{性能：}比较 vector 排序与 heap top-k，在多个 \(n,k\) 组合中保存原始配对样本和业务 oracle。
+  \item \textbf{系统：}把 merge sorted streams 接入 sequence gate，定义重复、gap 与恢复后的确定性顺序。
+\end{enumerate}
+

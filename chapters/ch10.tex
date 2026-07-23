@@ -29,6 +29,8 @@ error line=3 field=quantity message=expected a positive integer
 
 找不到 MSFT 最新价可能只是当前数据集中没有该代码；坏 CSV 行是调用方需要检查的可恢复结果；文件系统拒绝打开属于环境失败；负持仓则违反组合内部不变量。若全部返回 \texttt{bool}，上下文会丢失；若全部抛异常，正常缺席也会变成昂贵而喧闹的控制流。
 
+本章示例沿用第 8 章的 \texttt{double} 现金，以便把注意力放在错误传播和异常安全上。有限性检查只能证明结果不是 NaN 或无穷，无法证明 \texttt{int64\_t} 数量与浮点价格的乘积保留了每个最小货币单位；金额类型和舍入责任仍按第 16 章的规则处理。
+
 \lstinputlisting[caption={同一程序中的四种错误机制}]{code/ch10/error_choices.cpp}
 
 \texttt{std::optional<double>} 表示“有价格或正常缺席”，没有错误消息。解析结果把 Fill 与 ParseError 作为 variant 的两个备选类型，并用较短的 \texttt{FillParseResult} 作为别名。variant 在任一时刻只持有一个备选，返回类型明确要求调用方处理成功或错误。\texttt{holds\_alternative<T>} 可以检查当前类型；\texttt{get\_if<T>} 接收 variant 地址，匹配时返回指向该备选的指针，否则返回空指针。示例先检查指针再读取字段，不会因读取错误备选而抛 \texttt{bad\_variant\_access}。
@@ -37,18 +39,24 @@ error line=3 field=quantity message=expected a positive integer
 
 \texttt{assert(!symbol.empty())} 只声明开发者必须满足的内部前置条件。Release 构建定义 \texttt{NDEBUG} 时断言通常不执行，所以不能用它检查 CSV、网络消息、命令行参数或资金是否充足。外部数据无论构建类型都可能无效，必须走返回值或异常。
 
+下面的矩阵给出决策线索，不是“错误类别到语言机制”的固定映射。同一故障在批处理入口、共享库 ABI 和微秒级热路径上可能需要不同表示。选择前至少回答：错误出现频率如何，当前调用者能否恢复，需要携带哪些上下文，是否跨动态库或语言边界，延迟预算能否接受栈展开，以及项目是否禁用异常。
+
 \begin{center}
-\begin{tabular}{lll}
+\small
+\begin{tabularx}{\textwidth}{p{0.18\textwidth}X X}
 \toprule
-失败类别 & 首选机制 & 调用方责任 \\
+机制 & 适合表达 & 关键边界 \\
 \midrule
-正常缺席 & optional & 分支处理无值 \\
-可恢复输入错误 & variant 中的 ParseError & 检查并保留上下文 \\
-无法就地处理的外部失败 & exception & 在有策略的边界捕获 \\
-程序员破坏内部不变量 & assert & Debug 期尽早暴露 \\
+\texttt{optional<T>} & 预期内的“有或没有” & 不携带失败原因；无值必须确实属于正常分支 \\
+\texttt{variant}/Result & 高频、可恢复且需要上下文的显式错误 & 调用方必须传播或处理；自定义样板较多 \\
+\texttt{error\_code} & 禁用异常、跨 ABI 或需要稳定错误域的接口 & 错误类别与消息需集中注册，不能忽略返回值 \\
+exception & 低频、无法就地处理并需要跨多层传播的失败 & 热路径成本、异常安全、动态库和语言边界需要单独评估 \\
+assert/contract & 违反内部不变量且继续执行已无意义 & 可在 Release 中消失，不能校验不可信输入或可恢复业务条件 \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{center}
+
+C++20 主线继续用 \path{variant<Fill, ParseError>} 展示显式结果，因为它不引入外部依赖。C++23 的 \path{std::expected<T,E>} 为同类“值或错误”接口提供标准词汇，可减少访问成功/失败分支的样板；采用它仍不能替代错误域、上下文、恢复策略和边界成本的设计。
 
 \begin{pythonbridge}
 Python 的 \texttt{None} 接近 optional，\texttt{Union[Fill, ParseError]} 接近 variant，\texttt{raise} 接近异常。Python assert 同样可被优化选项移除，也不适合校验用户输入。区别在于 C++ variant 的备选集合进入静态类型，调用方不能把错误对象当 Fill 使用而不被编译器阻止。

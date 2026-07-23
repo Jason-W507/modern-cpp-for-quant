@@ -69,7 +69,10 @@
     {"tex": "chapters/ch14.tex", "source": "code/ch14/failures/checksum_mismatch.cpp", "target": "ch14_checksum_mismatch_failure"},
     {"tex": "chapters/ch15.tex", "source": "code/ch15/failures/data_race.cpp", "target": "ch15_data_race_failure"},
     {"tex": "chapters/ch16.tex", "source": "code/ch16/experiments/stability_report.cpp", "target": "ch16_stability_report"},
-    {"tex": "chapters/ch17.tex", "source": "project/benchmarks/backtest_benchmark.cpp", "target": "ch17_backtest_benchmark"}
+    {"tex": "chapters/ch17.tex", "source": "project/benchmarks/backtest_benchmark.cpp", "target": "ch17_backtest_benchmark"},
+    {"tex": "appendices/advanced_concurrency.tex", "source": "code/appendix_concurrency/spsc_demo.cpp", "target": "appendix_spsc_demo"},
+    {"tex": "appendices/capstones.tex", "source": "capstones/order_book/include/quant/capstone/order_book.hpp", "target": "capstone_order_book_demo"},
+    {"tex": "appendices/interview_algorithms.tex", "source": "code/appendix_algorithms/interview_algorithms.cpp", "target": "appendix_interview_algorithms"}
   ],
   "intentional_failures": [
     {

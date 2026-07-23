@@ -68,7 +68,9 @@ set_tests_properties(
   ch16_temporary_buffer_view_is_reported_by_address_sanitizer
   PROPERTIES SKIP_RETURN_CODE 77)
 
-if(Python3_Development.Module_FOUND)
+# CPython's official Windows ABI is built with MSVC.  A MinGW extension may
+# compile successfully yet fail to load because its runtime/ABI does not match.
+if(Python3_Development.Module_FOUND AND NOT MINGW)
   find_package(Threads REQUIRED)
   Python3_add_library(ch16_gil_probe MODULE WITH_SOABI failures/gil_probe.cpp)
   set_target_properties(ch16_gil_probe PROPERTIES

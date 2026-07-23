@@ -17,6 +17,10 @@ orders=1 fills=1 symbol=AAPL quantity=25 cash=7525.00 equity=10050.00
 
 完成判据不只是“能打印”。零数量、非有限价格、超现金买入和超持仓卖出都必须在越过领域边界前失败；策略决策与成交/组合两个公开 seam 由独立行为测试保护；\path{code/ch08} 能从空构建目录独立配置。
 
+\begin{remark}
+本章为突出对象边界，暂用 \texttt{double} 表示价格和现金。这是教学简化，不是生产默认值。真实系统需要根据资产、币种、最小报价单位和舍入规则选择整数定点或专门金额类型；大数量与 \texttt{double} 相乘还可能丢失整数精度，\texttt{isfinite} 只能排除 NaN 和无穷，不能恢复已经舍入掉的低位。第 16 章会建立完整的表示策略。
+\end{remark}
+
 \section{先写用例，再决定类}
 
 \subsection{场景：一条行情怎样变成持仓}

@@ -1,0 +1,92 @@
+% appendix:role-capstones
+% appendix:order-book-evidence
+\chapter{岗位分流 Capstone}
+
+贯穿正文的回测器用于教学组件边界，但相似项目很多。作品集需要根据目标岗位增加一条更有辨识度的证据链。本附录提供 Research Engineer 与 Quant Developer 两条路线；读者只需优先完成一条，另一条保留为系统设计材料。
+
+\section{两条路线的共同验收}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth}X X}
+\toprule
+证据 & Research Engineer & Quant Developer \\
+\midrule
+业务 oracle & Python/NumPy 独立结果与容差政策 & 手算订单、成交、盘口和序列状态 \\
+数据边界 & dtype、shape、stride、owner、缺失值 & 协议版本、序号、价格 tick、数量和消息类型 \\
+性能边界 & 批量大小、复制次数、kernel 热点 & p50/p99/p99.9、吞吐、队列水位、丢弃 \\
+失败实验 & 错 dtype、非连续数组、生命周期 & 重复、乱序、丢包、越界取消、队列满 \\
+交付物 & Python 包、基准报告、数值一致性测试 & replay 工具、订单簿、协议测试、延迟报告 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\section{Research Engineer：批量 factor kernel}
+
+推荐项目是“版本化 Parquet/Arrow 输入到批量 factor kernel，再返回 NumPy/Arrow 结果”。最小纵向闭环包含：
+
+\begin{enumerate}
+  \item Python 生成固定因子输入和独立 expected，保存数据版本与 schema；
+  \item C++ 核心只接收连续 span/mdspan 风格视图，不依赖 Python API；
+  \item Eigen 或 BLAS 只负责明确的矩阵 kernel，并记录线程数与数值口径；
+  \item pybind11 在一次调用中处理整批数据，验证 dtype、维度、stride 和 owner；
+  \item Python/C++ 结果按绝对/相对容差和 NaN 政策逐字段比较；
+  \item profiler 先定位 Python 边界、复制、kernel 或分配热点，再提交优化；
+  \item benchmark 保存批量大小、预热、原始样本、配对差值和端到端比例。
+\end{enumerate}
+
+Arrow 的“零拷贝”只在缓冲布局、对齐、生命周期和消费者语义全部兼容时成立；Parquet 是列式文件格式，不意味着解压、解码和类型转换都为零。项目 README 应分别统计文件读取、解码、边界复制和 kernel 时间。
+
+一个可信简历描述可以写成：“实现 C++20 批量 factor kernel，以 Python/NumPy 独立结果验证数值一致性；绑定层拒绝错误 dtype 与非连续输入，报告不同 batch size 下的复制次数和配对延迟。”具体库名、倍数和数据规模只能来自实际报告。
+
+\section{Quant Developer：限价订单簿与 replay}
+
+仓库中的 \path{capstones/order_book} 是可独立构建的最小版本：整数 tick 表示价格，整数表示数量；bid 按价格降序，ask 按价格升序；同一价位使用 deque 保存到达顺序；主动单按 resting price 成交。构建命令为：
+
+\begin{lstlisting}[language=bash,numbers=none]
+cmake -S capstones/order_book -B build/order-book -DCMAKE_BUILD_TYPE=Release
+cmake --build build/order-book -j
+ctest --test-dir build/order-book --output-on-failure
+./build/order-book/capstone_order_book_demo
+\end{lstlisting}
+
+核心接口与价格—时间优先实现如下：
+
+\lstinputlisting[caption={简化限价订单簿与序号门}]{capstones/order_book/include/quant/capstone/order_book.hpp}
+
+固定场景先挂出 101 的六单位卖单和 100 的五单位买单，再提交 102 的四单位买单。成交价采用 resting order 的 101，maker 为 1，taker 为 3；卖一剩余两单位，买一仍为 100。测试还拒绝重复订单 ID。
+
+\texttt{SequenceGate} 将消息序号 1、2、2、4 分类为两次 accepted、一次 duplicate/stale 和一次 gap，next expected 保持 3。它没有自行跳过缺口，因为恢复政策属于 feed handler：可以请求重传、切换快照并重放，或终止本次结果。静默接受 4 会让之后盘口缺少不可见的消息。
+
+\section{从教学订单簿演化到作品集}
+
+按以下顺序增加能力，每一步都保留旧 oracle：
+
+\begin{enumerate}
+  \item cancel/replace：定义未知 ID、部分成交后取消和价格修改是否失去时间优先；
+  \item 二进制协议：固定字节序、版本、长度与校验，fuzzer 只攻击解析边界；
+  \item market-data replay：保存输入哈希、首末序号、gap/duplicate 计数和最终盘口摘要；
+  \item 有界 SPSC：解析线程与订单簿线程间明确容量、满策略、close 和 stop；
+  \item 快照恢复：快照序号与增量消息建立一致切点，拒绝未来或缺失消息；
+  \item 性能报告：预分配后记录分配次数、队列水位、吞吐与 p50/p99/p99.9；
+  \item 故障报告：至少保存一次 gap、重复、非法长度或超量取消的复现与回归。
+\end{enumerate}
+
+当前 capstone 仍不是交易所级订单簿：它没有网络、持久化、取消、快照、真实协议、时钟校准或生产延迟数据。README 和简历必须保留这条范围声明。完成上述扩展后，描述应落在“实现并验证了哪些协议”，不能跳到“生产级低延迟交易平台”。
+
+\section{作品集目录建议}
+
+\begin{lstlisting}[numbers=none]
+README.md              scope, build, exact examples, limitations
+CMakePresets.json      reproducible Debug/Release/Sanitized configs
+include/               public domain and protocol contracts
+src/                   implementation
+tests/                 independent behavior oracles
+failures/              isolated malformed/replay fixtures
+benchmarks/            correctness-gated raw measurements
+reports/               environment, profiler, paired statistics
+data/                   tiny redistributable fixtures and hashes
+\end{lstlisting}
+
+评审者应能在十分钟内找到范围、构建命令、测试数量、一个成功样例、一个失败样例、性能口径和明确非目标。文件数量不是完成判据，证据入口才是。
+

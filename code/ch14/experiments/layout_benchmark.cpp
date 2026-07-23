@@ -82,6 +82,25 @@ std::pair<double, double> median_and_iqr(std::vector<long long> samples) {
   return {median, q3 - q1};
 }
 
+double median_of_sorted(const std::vector<double>& samples,
+                        std::size_t begin, std::size_t end) {
+  const std::size_t count = end - begin;
+  const std::size_t middle = begin + count / 2;
+  if (count % 2 == 1) {
+    return samples[middle];
+  }
+  return (samples[middle - 1] + samples[middle]) / 2.0;
+}
+
+std::pair<double, double> median_and_iqr(std::vector<double> samples) {
+  std::ranges::sort(samples);
+  const std::size_t size = samples.size();
+  const double median = median_of_sorted(samples, 0, size);
+  const double q1 = median_of_sorted(samples, 0, size / 2);
+  const double q3 = median_of_sorted(samples, (size + 1) / 2, size);
+  return {median, q3 - q1};
+}
+
 void print_samples(std::string_view name,
                    const std::vector<long long>& samples) {
   const auto [median, iqr] = median_and_iqr(samples);
@@ -198,6 +217,21 @@ int main() {
     }
   }
 
+  std::vector<double> paired_differences;
+  std::vector<double> paired_ratios;
+  paired_differences.reserve(samples);
+  paired_ratios.reserve(samples);
+  for (std::size_t index = 0; index < aos_samples.size(); ++index) {
+    paired_differences.push_back(
+        static_cast<double>(aos_samples[index] - soa_samples[index]));
+    paired_ratios.push_back(
+        static_cast<double>(soa_samples[index]) /
+        static_cast<double>(aos_samples[index]));
+  }
+  const auto [difference_median, difference_iqr] =
+      median_and_iqr(paired_differences);
+  const auto [ratio_median, ratio_iqr] = median_and_iqr(paired_ratios);
+
   std::cout << std::fixed << std::setprecision(2)
             << "benchmark-ok rows=" << rows << " samples=" << samples
             << " warmups=" << warmups
@@ -214,6 +248,10 @@ int main() {
             << " clock=steady_clock\n";
   print_samples("aos", aos_samples);
   print_samples("soa", soa_samples);
+  std::cout << "paired-aos-minus-soa-us median=" << difference_median
+            << " iqr=" << difference_iqr
+            << " paired-soa-over-aos median=" << ratio_median
+            << " iqr=" << ratio_iqr << '\n';
   std::cout << "checksum-guard=" << checksum_guard
             << " conclusion=environment-specific\n";
 

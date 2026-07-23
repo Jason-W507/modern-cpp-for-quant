@@ -35,9 +35,18 @@ CHAPTER_REFERENCE = re.compile(r"ch(\d{2})")
 LISTING_REFERENCE = re.compile(r"\\lstinputlisting(?:\[[^\]]*\])?\{([^}]+)\}")
 CHAPTER_INCLUDE = re.compile(r"\\include\{chapters/ch(\d{2})\}")
 APPENDIX_INCLUDE = re.compile(r"\\include\{(appendices/[a-z_]+)\}")
-APPENDIX_MARKER = re.compile(r"^\s*%\s*appendix:([a-z-]+)\s*$", re.MULTILINE)
+APPENDIX_MARKER = re.compile(r"^\s*%\s*appendix:([a-z0-9-]+)\s*$", re.MULTILINE)
 SOLUTION_SECTION = re.compile(r"^\\section\{第 (\d+) 章\}", re.MULTILINE)
-EXPECTED_APPENDICES = ["toolchain", "glossary", "solutions", "learning_path"]
+EXPECTED_APPENDICES = [
+    "toolchain",
+    "glossary",
+    "solutions",
+    "learning_path",
+    "modern_cpp_map",
+    "advanced_concurrency",
+    "capstones",
+    "interview_algorithms",
+]
 
 
 def strip_tex_comments(text: str) -> str:
@@ -568,6 +577,7 @@ def validate_code_evidence(
         root / "CMakeLists.txt",
         root / "project" / "CMakeLists.txt",
         *sorted((root / "code").glob("**/CMakeLists.txt")),
+        *sorted((root / "capstones").glob("**/CMakeLists.txt")),
     ]
     cmake_text = "\n".join(read_text(path, errors) for path in cmake_files)
     for index, entry in enumerate(listings, start=1):

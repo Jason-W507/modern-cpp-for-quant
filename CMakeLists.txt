@@ -4,10 +4,14 @@ project(modern_cpp_for_quant VERSION 0.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+option(QUANT_BUILD_FUZZERS "Build Clang/libFuzzer parser targets" OFF)
 
 include(CTest)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
+find_package(Threads REQUIRED)
 
 function(quant_target target source)
   add_executable(${target} ${source})
@@ -17,6 +21,37 @@ function(quant_target target source)
     target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
   endif()
 endfunction()
+
+quant_target(appendix_interview_algorithms
+  code/appendix_algorithms/interview_algorithms.cpp)
+quant_target(appendix_spsc_demo
+  code/appendix_concurrency/spsc_demo.cpp)
+target_link_libraries(appendix_spsc_demo PRIVATE Threads::Threads)
+
+if(BUILD_TESTING)
+  add_test(NAME appendix_interview_algorithms_have_independent_oracles
+    COMMAND appendix_interview_algorithms)
+  set_tests_properties(appendix_interview_algorithms_have_independent_oracles
+    PROPERTIES PASS_REGULAR_EXPRESSION
+      "algorithms-ok top=9 lower-bound=3 lru-hit=10 window-max=8 mean=3.00 drawdown=0.25 merged=6")
+  add_test(NAME appendix_spsc_preserves_every_item
+    COMMAND appendix_spsc_demo)
+  set_tests_properties(appendix_spsc_preserves_every_item PROPERTIES
+    PASS_REGULAR_EXPRESSION
+      "spsc-ok produced=10000 consumed=10000 checksum=50005000")
+endif()
+
+if(QUANT_BUILD_FUZZERS)
+  if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    message(FATAL_ERROR "QUANT_BUILD_FUZZERS requires Clang with libFuzzer")
+  endif()
+  quant_target(quant_csv_fuzzer code/ch12/fuzz/csv_parser_fuzz.cpp)
+  target_include_directories(quant_csv_fuzzer PRIVATE project/include)
+  target_compile_options(quant_csv_fuzzer PRIVATE
+    -fsanitize=fuzzer,address,undefined -fno-omit-frame-pointer)
+  target_link_options(quant_csv_fuzzer PRIVATE
+    -fsanitize=fuzzer,address,undefined)
+endif()
 
 quant_target(ch01_first_program code/ch01/first_program.cpp)
 quant_target(ch02_objects_and_literals code/ch02/objects_and_literals.cpp)
@@ -292,22 +327,24 @@ add_test(NAME ch11_missing_target_dependency_fails_during_linking
           --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch11/failures/missing_target_link.cpp
           --work-dir ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch11-link
           --diagnostic "undefined reference|unresolved external symbol")
-add_test(NAME ch11_sanitized_configuration_builds_and_runs
-  COMMAND ${Python3_EXECUTABLE}
-          ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
-          --cmake ${CMAKE_COMMAND}
-          --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch11
-          --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch11/expected/market_report.txt
-          --target ch11_market_report
-          --generator "${CMAKE_GENERATOR}"
-          --compiler ${CMAKE_CXX_COMPILER}
-          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests/ch11-sanitized
-          --config $<CONFIG>
-          --cmake-argument=-DCMAKE_BUILD_TYPE=Debug
-          --cmake-argument=-DCH11_ENABLE_SANITIZERS=ON
-          --build-all
-          --ctest ${CMAKE_CTEST_COMMAND}
-          --run-ctest)
+if(NOT WIN32 AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  add_test(NAME ch11_sanitized_configuration_builds_and_runs
+    COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_clean_cmake_project.py
+            --cmake ${CMAKE_COMMAND}
+            --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch11
+            --expected ${CMAKE_CURRENT_SOURCE_DIR}/code/ch11/expected/market_report.txt
+            --target ch11_market_report
+            --generator "${CMAKE_GENERATOR}"
+            --compiler ${CMAKE_CXX_COMPILER}
+            --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests/ch11-sanitized
+            --config $<CONFIG>
+            --cmake-argument=-DCMAKE_BUILD_TYPE=Debug
+            --cmake-argument=-DCH11_ENABLE_SANITIZERS=ON
+            --build-all
+            --ctest ${CMAKE_CTEST_COMMAND}
+            --run-ctest)
+endif()
 
 add_test(NAME ch12_clean_quality_lab_configures_builds_and_runs
   COMMAND ${Python3_EXECUTABLE}
@@ -530,6 +567,7 @@ add_test(NAME ch08_clean_domain_pipeline_configures_builds_and_runs
           --config $<CONFIG>)
 
 add_subdirectory(project ch17-project)
+add_subdirectory(capstones/order_book order-book-capstone)
 
 add_test(NAME ch17_clean_final_backtest_configures_builds_tests_and_runs
   COMMAND ${Python3_EXECUTABLE}
@@ -974,7 +1012,7 @@ add_test(NAME book_contract
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_book_contract.py
           --root ${CMAKE_CURRENT_SOURCE_DIR})
 set_tests_properties(book_contract PROPERTIES
-  PASS_REGULAR_EXPRESSION "18 chapters.*150 planned pages")
+  PASS_REGULAR_EXPRESSION "18 chapters.*195 planned pages")
 
 add_test(NAME book_contract_rejects_invalid_authoring_evidence
   COMMAND ${Python3_EXECUTABLE}

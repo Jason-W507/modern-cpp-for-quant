@@ -80,7 +80,7 @@ print(b[0])          # 11
 int rounded_price{100.5};  // intentional compile failure
 \end{lstlisting}
 
-用 \texttt{g++ -std=c++20 code/ch02/failures/narrowing.cpp} 单独触发它。预期诊断类别是“列表初始化拒绝窄化转换”，具体英文措辞可随 GCC 版本变化。根因是从 \texttt{double} 字面量到 \texttt{int} 会丢掉小数；正确修复需要先决定业务舍入规则，再显式转换，换成圆括号只会绕开检查。
+用 \path{g++ -std=c++20 code/ch02/failures/narrowing.cpp} 单独触发它。预期诊断类别是“列表初始化拒绝窄化转换”，具体英文措辞可随 GCC 版本变化。根因是从 \texttt{double} 字面量到 \texttt{int} 会丢掉小数；正确修复需要先决定业务舍入规则，再显式转换，换成圆括号只会绕开检查。
 
 立即练习：分别编译 \texttt{double price\{10\};} 与 \texttt{int quantity\{10.0\};}。前者的整数常量 10 能被 \texttt{double} 精确表示，可以通过；后者从浮点类型转为整数，即使写成 10.0 也属于列表初始化禁止的窄化，必须被拒绝。再把它改成 10.5，说明同一诊断规则，而不是误记成“没有小数部分就可以”。
 

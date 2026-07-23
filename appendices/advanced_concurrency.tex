@@ -1,0 +1,78 @@
+% appendix:memory-order
+% appendix:lockfree-literacy
+\chapter{原子与无锁结构识读}
+
+第 15 章把 mutex、条件变量、停止协议和有界队列作为并发主线。本附录补齐量化面试常见的原子与无锁识读能力。目标是能说明正确性条件、识别错误和运行实验；它不鼓励在没有测量与评审时把锁替换成自制无锁结构。
+
+\section{原子保证一个对象的操作，不保证业务事务}
+
+\texttt{atomic<int>} 能防止该整数的读写形成 data race，并为每次原子操作提供内存序语义。若现金与持仓分别存进两个 atomic，读线程仍可能在两次读取之间看到写线程的一半更新。复合快照需要锁、版本协议、不可变对象或其他能证明整体一致性的设计。
+
+\texttt{memory\_order\_relaxed} 只保证该原子对象的操作不可撕裂并参与修改顺序，不为其他普通内存建立发布/获取关系。它适合独立计数、统计或已有同步协议内部的索引更新；把默认 \texttt{seq\_cst} 机械换成 relaxed，可能让依赖的数据尚未对另一线程可见。
+
+\section{release/acquire：发布数据而非“刷新缓存”}
+
+典型消息传递由三步组成：生产者先写普通数据，再对标志执行 release store；消费者用 acquire load 观察到该值后，才能读取生产者此前发布的数据。正确性来自标准内存模型的 synchronizes-with 与 happens-before，不应解释成某个 CPU 指令必然“刷新所有缓存”。
+
+\begin{lstlisting}[language=C++,numbers=none]
+payload = build_message();                       // ordinary writes
+ready.store(true, std::memory_order_release);    // publish
+
+if (ready.load(std::memory_order_acquire)) {     // observe publication
+  consume(payload);
+}
+\end{lstlisting}
+
+这段模型还要求只有一个线程在发布前修改 payload，消费者不会绕过 ready 提前读取，而且 payload 的生命周期覆盖消费。内存序无法修复悬空对象或多个写者的领域冲突。
+
+\section{SPSC ring buffer 的最小证明}
+
+\path{code/appendix_concurrency/spsc_demo.cpp} 实现固定容量、单生产者单消费者队列。数组实际保留 \(Capacity+1\) 个槽位，始终空出一个位置来区分“空”和“满”。协议依赖四条不变量：
+
+\begin{enumerate}
+  \item 只有生产者写 head 和对应的新槽位；
+  \item 只有消费者写 tail 和已经读取的槽位；
+  \item 生产者写完元素后 release 发布 head，消费者 acquire 观察 head 后才能读取元素；
+  \item 消费者清理槽位后 release 发布 tail，生产者 acquire 观察 tail 后才能复用空间。
+\end{enumerate}
+
+\lstinputlisting[caption={可构建的单生产者单消费者 ring buffer}]{code/appendix_concurrency/spsc_demo.cpp}
+
+固定输出为：
+
+\begin{lstlisting}[numbers=none]
+spsc-ok produced=10000 consumed=10000 checksum=50005000
+\end{lstlisting}
+
+该 checksum 证明每个整数的总和正确，却不能单独证明没有重复与丢失；更严格测试还应记录序列单调性。ThreadSanitizer 能发现一部分错误访问，但一次未报告不构成对所有交错的形式化证明。
+
+\section{False sharing 与对齐}
+
+示例把 head 与 tail 写成 \texttt{alignas(64)}，目的是隔离实验中的两个高频写索引。64 只是待验证的硬件假设，不是 C++ 保证的缓存行大小；对象地址、分配器、相邻对象和平台干涉大小都会影响结果。C++17 的 \path{hardware_destructive_interference_size} 在实现提供有意义值时可辅助布局，但仍需在目标机器上用同一独立判定基准测量。
+
+False sharing 指线程修改不同对象，却因它们落在同一一致性粒度中而反复争用缓存行。修复可能增加内存占用并伤害遍历局部性，因此先用 profiler 或硬件计数器定位，再比较填充前后的吞吐与尾延迟。
+
+\section{CAS、ABA 与内存回收}
+
+compare-and-swap（CAS）只有在当前值等于 expected 时才写入 desired，并把实际值反馈给失败分支。循环必须解释：失败后 expected 是否更新，何时重试，是否可能活锁，以及成功/失败分别使用什么内存序。
+
+ABA 问题表示位置从 A 变成 B 又回到 A，CAS 只比较当前比特而误以为“没有变化”。指针无锁栈尤其危险：节点还可能被另一线程释放并复用。常见方案包括版本标签、hazard pointers、epoch-based reclamation 或受控垃圾回收；仅把指针改成 atomic 无法解决对象生命周期。
+
+\section{lock-free 与 wait-free 的区别}
+
+\begin{itemize}
+  \item \textbf{blocking：}某线程持锁或阻塞时，其他线程可能无法推进。
+  \item \textbf{lock-free：}系统整体保证持续有操作完成，单个线程仍可能长期失败或饥饿。
+  \item \textbf{wait-free：}每个操作都在有界步骤内完成，证明和实现成本更高。
+\end{itemize}
+
+这些性质描述进展保证，不直接等于更低延迟。CAS 重试、缓存行争用、内存回收和更大的状态空间都可能让 lock-free 实现慢于清楚的 mutex。报告至少包含正确性 oracle、线程数、绑定策略、队列占用、重试次数、吞吐、p50/p99/p99.9 和停止协议。
+
+\section{练习门}
+
+\begin{enumerate}
+  \item 把 SPSC 的 head 发布改为 relaxed，画出消费者可能先看到索引、后看到槽位内容的缺失关系；恢复 release/acquire。
+  \item 增加严格递增检查，证明 1 到 10000 每个值恰好消费一次。
+  \item 解释为什么这个结构不能直接扩展为两个生产者：两个线程会同时拥有 head 和同一槽位的写权限。
+  \item 为队列满设计 block、drop-newest 与 reject 三种策略，并说明每种策略的业务指标。
+\end{enumerate}

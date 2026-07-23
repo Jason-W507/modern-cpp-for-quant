@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "edition": "0.2",
+  "edition": "0.3",
   "calibration_chapters": [2, 6],
   "target_pages": {
-    "minimum": 145,
-    "planned": 150,
-    "maximum": 170,
+    "minimum": 180,
+    "planned": 195,
+    "maximum": 220,
     "front_matter": 6,
-    "appendices": 12
+    "appendices": 57
   },
   "required_syntax_ids": [
     "program-entry",

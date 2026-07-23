@@ -98,7 +98,7 @@ std::cout << "quant-cpp-ready\n"
 return 0;
 \end{lstlisting}
 
-运行 \texttt{g++ -std=c++20 -c code/ch01/failures/missing\_semicolon.cpp}。编译器会在读到 \texttt{return} 附近报告“期望分号”类别；箭头位置可能落在下一行，因为解析器直到看到下一个记号才确认上一条语句没有结束。根因是语法不完整，修复是在输出语句后恢复分号。立即练习：只删除 \texttt{return 0;} 后的分号，比较首个诊断位置，然后恢复文件。
+运行 \path{g++ -std=c++20 -c code/ch01/failures/missing_semicolon.cpp}。编译器会在读到 \texttt{return} 附近报告“期望分号”类别；箭头位置可能落在下一行，因为解析器直到看到下一个记号才确认上一条语句没有结束。根因是语法不完整，修复是在输出语句后恢复分号。立即练习：只删除 \texttt{return 0;} 后的分号，比较首个诊断位置，然后恢复文件。
 
 \subsection{链接失败：声明存在，定义缺失}
 

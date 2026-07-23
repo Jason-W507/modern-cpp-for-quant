@@ -3,12 +3,13 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <utility>
 
 namespace quant::ch05 {
 
 MarketQuote::MarketQuote(std::string symbol, const double price,
                          const int quantity)
-    : symbol_{symbol}, price_{price}, quantity_{quantity} {
+    : symbol_{std::move(symbol)}, price_{price}, quantity_{quantity} {
   if (symbol_.empty()) {
     throw std::invalid_argument{"symbol must not be empty"};
   }
@@ -26,7 +27,8 @@ double MarketQuote::price() const { return price_; }
 
 int MarketQuote::quantity() const { return quantity_; }
 
-MarketAnalyzer::MarketAnalyzer(std::string symbol) : symbol_{symbol} {
+MarketAnalyzer::MarketAnalyzer(std::string symbol)
+    : symbol_{std::move(symbol)} {
   if (symbol_.empty()) {
     throw std::invalid_argument{"analyzer symbol must not be empty"};
   }

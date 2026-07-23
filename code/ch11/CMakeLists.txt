@@ -36,10 +36,6 @@ target_link_libraries(ch11_market_report PRIVATE ch11_market)
 add_executable(ch11_market_example examples/market_example.cpp)
 target_link_libraries(ch11_market_example PRIVATE ch11_market)
 
-add_executable(ch11_market_tests tests/test_market_summary.cpp)
-target_link_libraries(ch11_market_tests PRIVATE ch11_market)
-add_test(NAME ch11_market_summary_behavior COMMAND ch11_market_tests)
-
 add_executable(ch11_notional_solution exercises/notional_report_solution.cpp)
 target_link_libraries(ch11_notional_solution PRIVATE ch11_market)
 
@@ -48,13 +44,19 @@ add_executable(ch11_missing_target_link_failure EXCLUDE_FROM_ALL
 target_link_libraries(ch11_missing_target_link_failure PRIVATE
   ch11_project_options)
 
-add_test(NAME ch11_market_report_runs COMMAND ch11_market_report)
-set_tests_properties(ch11_market_report_runs PROPERTIES
-  PASS_REGULAR_EXPRESSION
-    "rows=3 quantity=25 notional=2525.00 vwap=101.00")
-add_test(NAME ch11_market_example_runs COMMAND ch11_market_example)
-set_tests_properties(ch11_market_example_runs PROPERTIES
-  PASS_REGULAR_EXPRESSION "example-quantity=4 example-vwap=100")
-add_test(NAME ch11_notional_solution_runs COMMAND ch11_notional_solution)
-set_tests_properties(ch11_notional_solution_runs PROPERTIES
-  PASS_REGULAR_EXPRESSION "exercise-notional=200.00")
+if(BUILD_TESTING)
+  add_executable(ch11_market_tests tests/test_market_summary.cpp)
+  target_link_libraries(ch11_market_tests PRIVATE ch11_market)
+  add_test(NAME ch11_market_summary_behavior COMMAND ch11_market_tests)
+
+  add_test(NAME ch11_market_report_runs COMMAND ch11_market_report)
+  set_tests_properties(ch11_market_report_runs PROPERTIES
+    PASS_REGULAR_EXPRESSION
+      "rows=3 quantity=25 notional=2525.00 vwap=101.00")
+  add_test(NAME ch11_market_example_runs COMMAND ch11_market_example)
+  set_tests_properties(ch11_market_example_runs PROPERTIES
+    PASS_REGULAR_EXPRESSION "example-quantity=4 example-vwap=100")
+  add_test(NAME ch11_notional_solution_runs COMMAND ch11_notional_solution)
+  set_tests_properties(ch11_notional_solution_runs PROPERTIES
+    PASS_REGULAR_EXPRESSION "exercise-notional=200.00")
+endif()

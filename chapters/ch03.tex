@@ -138,13 +138,13 @@ Python 后定义的同名函数通常替换前一个绑定，常用默认参数�
 
 \texttt{namespace quant::chapter3 \{ ... \}} 把名称放进项目自己的命名空间，降低与其他库同名函数冲突的风险。调用点写全限定名 \texttt{quant::chapter3::add\_trade}；头文件不写 \texttt{using namespace}，避免把选择强加给每个包含者。
 
-include guard 立即练习：只在入口中连续写两次同一个项目头文件，然后运行预处理命令 \texttt{g++ -E -P -I code/ch03/include code/ch03/src/main.cpp}。输出中两个 \texttt{trade\_notional} 重载声明应各出现一次，而不是各出现两次；这就是 guard 跳过第二次展开的可观察证据。删除重复的 include 后再继续构建。
+include guard 立即练习：只在入口中连续写两次同一个项目头文件，然后运行预处理命令 \path{g++ -E -P -I code/ch03/include code/ch03/src/main.cpp}。输出中两个 \texttt{trade\_notional} 重载声明应各出现一次，而不是各出现两次；这就是 guard 跳过第二次展开的可观察证据。删除重复的 include 后再继续构建。
 
 入口文件只负责读取、调用和输出：
 
 \lstinputlisting[caption={多文件行情工具入口}]{code/ch03/src/main.cpp}
 
-\texttt{std::cin >> price >> quantity} 每轮创建一组输入值；\texttt{add\_trade} 通过两个可变引用更新循环外的累计对象。输入因文件结束而停止是正常路径；若因为无法转换的文本停止，程序向 \texttt{std::cerr} 写出稳定类别并返回 2。\texttt{const double vwap\{...\}} 表示结果初始化后只读。输出用 \texttt{std::fixed} 和 \texttt{std::setprecision(2)} 固定两位小数；它们改变后续流格式，不改变内部 \texttt{double} 值。
+\texttt{price} 和 \texttt{quantity} 在进入循环前创建；每次 \texttt{std::cin >> price >> quantity} 都向同一组对象写入新值，覆盖上一轮内容，循环不会重新创建它们。\texttt{add\_trade} 通过两个可变引用更新循环外的累计对象。输入因文件结束而停止是正常路径；若因为无法转换的文本停止，程序向 \texttt{std::cerr} 写出稳定类别并返回 2。\texttt{const double vwap\{...\}} 表示结果初始化后只读。输出用 \texttt{std::fixed} 和 \texttt{std::setprecision(2)} 固定两位小数；它们改变后续流格式，不改变内部 \texttt{double} 值。
 
 独立快照的 \path{code/ch03/CMakeLists.txt} 同时列出两个 \texttt{.cpp}，并用 \texttt{target\_include\_directories} 把 \path{include/} 加入该目标的头文件搜索路径。头文件本身不需要列为编译源；真正分别产生目标文件的是两个实现源文件。
 
@@ -187,7 +187,7 @@ cmake --build build-linux
 ctest --test-dir build-linux -R ch03_ --output-on-failure
 \end{lstlisting}
 
-前三条命令证明章节快照不依赖后续项目源码并得到精确输出；后三条从仓库根项目建立 Linux/WSL 测试构建树，再运行全部第 3 章证据。Windows 可改用 \texttt{cmake -S . -B build-mingw -G "MinGW Makefiles"}；多配置生成器还可能把可执行文件放在 \path{build\ch03\Debug} 并加 \texttt{.exe}，但源文件边界、声明/定义规则与测试预期不变。
+前三条命令证明章节快照不依赖后续项目源码并得到精确输出；后三条从仓库根项目建立 Linux/WSL 测试构建树，再运行全部第 3 章证据。Windows 可改用 \path{cmake -S . -B build-mingw -G "MinGW Makefiles"}；多配置生成器还可能把可执行文件放在 \path{build/ch03/Debug/} 并加 \path{.exe}，但源文件边界、声明/定义规则与测试预期不变。
 
 \section{自测、编码任务与面试表达}
 

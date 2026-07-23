@@ -141,6 +141,37 @@ ctest --test-dir build/ch11-release --output-on-failure
 
 多配置生成器（如 Visual Studio）通常在一次配置中生成 Debug 与 Release，\texttt{CMAKE\_BUILD\_TYPE} 会被忽略；构建和测试时写 \texttt{cmake --build build --config Release} 与 \texttt{ctest --test-dir build -C Release}。MinGW Makefiles 通常仍是单配置生成器，沿用 \texttt{CMAKE\_BUILD\_TYPE} 和 GCC 风格选项，可执行文件带 \path{.exe}；它不能与 MSVC 编译出的不兼容 ABI 库随意混用。平台改变了选择配置的命令位置和产物后缀，没有改变目标、属性和依赖边的模型。
 
+\section{Presets、clangd 与 CI 共享同一配置事实}
+
+根目录的 \path{CMakePresets.json} 把常用 Linux/WSL Debug、Linux/WSL Release 和 Windows MinGW Release 配置登记为版本化名称。它不保存开发者本机的绝对路径或密钥；这些个人覆盖应放进不提交的 \path{CMakeUserPresets.json}。在 WSL 中可直接运行：
+
+\begin{lstlisting}[language=bash,numbers=none]
+cmake --preset linux-debug
+cmake --build --preset linux-debug
+ctest --preset linux-debug
+\end{lstlisting}
+
+所有 preset 都打开 \texttt{CMAKE\_EXPORT\_COMPILE\_COMMANDS}，生成的 \path{compile_commands.json} 让 clangd、clang-tidy 和编辑器取得每个翻译单元真实的 include 路径、宏与语言标准。项目同时提交 \path{.clang-format} 和 \path{.clang-tidy}，但格式化与静态分析仍应在单独改动中运行并审阅；自动改写整仓不能替代编译和行为测试。
+
+\texttt{include(CTest)} 提供 \texttt{BUILD\_TESTING} 选项。测试专用 executable 与 \texttt{add\_test} 应放在 \texttt{if(BUILD\_TESTING)} 内，使只消费库或应用的构建不必编译测试框架；正常应用、示例与 benchmark 是否保留，则由部署范围决定。\path{code/ch11/CMakeLists.txt} 和最终项目都采用这条边界。
+
+\path{.github/workflows/ci.yml} 在 GCC/Clang 与 Debug/Release 的四个组合中执行配置、构建和 CTest，另用独立 job 验收书稿契约。矩阵的价值在于让编译器和配置成为显式变量，不在于追求格子数量；sanitizer、fuzzing 或昂贵 benchmark 应按运行时间拆成独立 job，并保留失败产物。
+
+\section{依赖锁定、测试框架与 fuzzing 的采用边界}
+
+Conan 或 vcpkg 都可以把外部库解析为 CMake imported target，但可复现性还需要提交 manifest、版本约束和 lockfile/baseline。二者不应同时成为同一项目的默认依赖来源。GoogleTest 或 Catch2 适合 fixture、参数化测试和更清楚的失败差异；本书前半部继续使用无依赖测试程序展示“退出码就是最小测试协议”，后半部项目迁移框架时，四个公开行为边界与独立期望值仍保持不变。
+
+解析器适合用 coverage-guided fuzzing 补充手写样例。根项目的可选目标 \texttt{quant\_csv\_fuzzer} 只在显式设置 \texttt{-DQUANT\_BUILD\_FUZZERS=ON} 且使用 Clang/libFuzzer 时生成：
+
+\begin{lstlisting}[language=bash,numbers=none]
+CC=clang CXX=clang++ cmake -S . -B build/fuzz \
+  -DQUANT_BUILD_FUZZERS=ON -DBUILD_TESTING=OFF
+cmake --build build/fuzz --target quant_csv_fuzzer -j
+./build/fuzz/quant_csv_fuzzer -max_total_time=60 corpus/csv
+\end{lstlisting}
+
+fuzzer 的 oracle 不是“永不报错”：任意字节输入都可以被拒绝，但成功结果必须只包含非空代码、有限正价格与正数量，而且 sanitizer 不得报告内存或未定义行为。发现崩溃后保存最小语料，并转成普通回归测试；持续随机运行不能替代稳定复现。
+
 \section{外部依赖也应表现为目标}
 
 现代包提供的 CMake 配置通常暴露命名空间目标。以下只是语法示意，本章不下载 fmt：

@@ -57,7 +57,7 @@ Python 的 \texttt{dataclass} 与 C++ 聚合都适合透明记录，但 Python �
 
 \lstinputlisting[caption={有效行情与被拒绝行情}]{code/ch05/class_invariants.cpp}
 
-\texttt{class} 的成员默认私有。类声明中的 \texttt{public:} 与 \texttt{private:} 是访问标签，冒号后直到下一个标签的声明共享该权限。构造函数与类同名、没有返回类型；\texttt{MarketQuote(std::string symbol, double price, int quantity)} 在函数体运行前通过成员初始化列表建立字段。
+\texttt{class} 的成员默认私有。类声明中的 \texttt{public:} 与 \texttt{private:} 是访问标签，冒号后直到下一个标签的声明共享该权限。构造函数与类同名、没有返回类型；\texttt{MarketQuote(std::string symbol, double price, int quantity)} 在函数体运行前通过成员初始化列表建立字段。这里的 \texttt{symbol} 是按值接收的 sink parameter：调用者允许构造函数取得自己的字符串副本，成员再用 \texttt{std::move(symbol)} 接管该参数已经拥有的缓冲区，避免从参数向成员做第二次无必要复制。移动后不再读取参数。
 
 接口中的 \texttt{double price() const;} 末尾 \texttt{const} 修饰成员函数，承诺调用不会修改该对象的非 \texttt{mutable} 状态。因此 \texttt{const MarketQuote valid} 仍可调用 \texttt{price()}。返回代码时使用 \texttt{const std::string\&}，让调用者只读借用类所拥有的字符串；借用不能比对象活得更久。
 

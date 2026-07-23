@@ -100,7 +100,7 @@ CSV 读取层见 \path{code/ch05/src/csv_reader.cpp}，它保留表头、列数�
 \subsection*{自测答案}
 \begin{enumerate}
   \item 构造成功后对象生命周期开始，析构完成后结束；存储中的旧比特不会让已析构对象重新存在。自动对象按逆构造顺序销毁。
-  \item \texttt{std::move} 只把表达式转换为可选择移动操作的值类别。移动后的源对象仍可析构、可赋值，但除非类型契约另有保证，不能假定保留原值。
+  \item \texttt{std::move} 只把表达式转换为可选择移动操作的值类别。移动后的源对象仍可安全析构；其他操作必须满足其当前状态的前置条件。具体值通常未指定，是否可重新赋值取决于类型本身。
   \item 引用和裸指针通常只借用；\texttt{unique\_ptr} 是可转移的唯一所有者；\texttt{shared\_ptr} 让多个参与者共同决定寿命。直接值仍是最简单的默认所有权。
   \item C 数组退化为指针后不再携带长度。\texttt{new[]} 建立的数组必须由 \texttt{delete[]} 释放；与标量释放形式混用是未定义行为。
   \item RAII 让栈展开和所有提前离开路径都触发析构；Rule of Zero 把释放交给可靠成员，避免外层类型手写一组容易不一致的复制、移动和析构操作。
@@ -235,7 +235,7 @@ CSV 读取层见 \path{code/ch05/src/csv_reader.cpp}，它保留表头、列数�
 
 \section{第 15 章}
 \begin{enumerate}
-  \item data race 是未由 happens-before 排序的冲突访问，且至少一个是写；它属于 UB。一般竞态只表示结果依赖合法调度顺序，不必然含有未同步内存冲突。
+  \item data race 是两个潜在并发、未由 happens-before 排序的冲突访问，其中至少一个为非原子操作；它属于 UB。纯原子访问不会仅因缺少普通 happens-before 就构成 data race。一般竞态只表示结果依赖合法调度顺序，不必然含有未同步内存冲突。
   \item 工作线程完成同步于成功返回的 join，因此线程内写入 happens-before 之后读取；引用捕获还要求被借用对象至少活到 join 完成。
   \item atomic 只使各自对象的操作原子化；读取 cash 后、读取 position 前，另一个线程仍可完成一半更新，所以二者不组成同一快照。
   \item 条件变量可伪唤醒；wait 必须在同一 mutex 下重查“已关闭或队列非空”等谓词，睡眠时释放锁，返回前重新取得锁。

@@ -55,9 +55,9 @@ soa-raw-us=[21 values omitted] median-us=725.00 iqr-us=151.00
 checksum-guard=220971839999.68 conclusion=environment-specific
 \end{lstlisting}
 
-完整程序输出两组各 21 个原始样本。这里的中位数相差 25 微秒，但样本范围重叠，而且只运行了一个进程实例；证据只支持“这次实验通过正确性门并观察到小差异”，不支持“所有机器上 SoA 快 3.3\%”。下一步应保存原始输出，交替启动多个独立进程，并调查异常样本，而不是删除不喜欢的点。
+完整程序输出两组各 21 个原始样本。由于第 \(i\) 轮 AoS 与 SoA 共享起点和相邻测量窗口，它们构成一对观测；程序因此额外报告每对 \(AoS_i-SoA_i\) 的差值，以及 \(SoA_i/AoS_i\) 的比率，并分别给出中位数与 IQR。配对摘要保留了同轮背景负载，单独比较两个边际中位数会丢失这层信息。即便配对中位数偏向 SoA，单个进程仍不足以支持“所有机器上 SoA 快 3.3\%”；下一步应保存原始输出，交替启动多个独立进程，并调查异常样本。
 
-立即练习：把测量顺序改成永远先 AoS，重新运行三个独立进程；比较两种协议的中位数与 IQR。即使方向未变，也要解释为什么交替顺序仍是更可信的设计。
+立即练习：把测量顺序改成永远先 AoS，重新运行三个独立进程；同时比较边际摘要与配对差值/比率。即使方向未变，也要解释固定顺序如何把位置效应混入配对结果，以及为什么交替顺序更可信。
 
 \section{分布与指标：一个数字回答不了四个问题}
 
@@ -79,6 +79,28 @@ Python 的 \texttt{timeit} 也会重复运行并通常报告多次结果，但�
 \end{pythonbridge}
 
 立即练习：为 bursty 样本再增加 100 个 10 微秒请求，重新计算中位数、IQR 和 nearest-rank $p_{99}$。解释为什么分位数会跳变，以及原来的 8 个样本为何不能支持尾延迟 SLA。
+
+\section{硬件证据：从耗时追到 cycles、缓存与向量化}
+
+墙钟时间回答“这次运行用了多久”，却不能解释时间花在哪里。准备硬件实验时先记录 CPU 型号、逻辑/物理核、NUMA 拓扑、内核、编译器、优化选项和电源策略。CPU affinity 可以减少进程在核心间迁移带来的噪声；频率调节与 Turbo 会改变同一段代码的 cycles-to-time 换算；多插槽机器还要说明内存页位于哪个 NUMA node。固定 affinity 并不自动让结果代表生产，它只控制了一个变量。
+
+Linux \texttt{perf stat} 可以在同一次受控运行中收集硬件事件：
+
+\begin{lstlisting}[language=bash,numbers=none]
+taskset -c 2 perf stat -r 7 \
+  -e cycles,instructions,branches,branch-misses,cache-misses \
+  ./build/ch14-release/ch14_layout_benchmark
+numactl --hardware
+lscpu
+\end{lstlisting}
+
+IPC 由 instructions/cycles 得到，只能在相近工作负载和同类微架构上辅助解释；cache miss 与 branch miss 也要结合事件定义、采样区域和复用比例阅读。权限受限、虚拟机或 WSL 可能无法访问 PMU，此时报告“计数器不可用”比伪造一组数字更可靠。TLB miss、预取效果与内存带宽通常需要更具体的事件或供应商工具，不能从一个通用 \texttt{cache-misses} 推断全部内存行为。
+
+编译器是否向量化应由报告和生成代码确认。GCC 可使用 \path{-fopt-info-vec-optimized -fopt-info-vec-missed}，Clang 可使用 \path{-Rpass=loop-vectorize -Rpass-missed=loop-vectorize}；随后用 \path{objdump -d -C} 或 Compiler Explorer 检查热点。报告要区分“编译器声称已向量化”“汇编出现 SIMD 指令”和“端到端更快”三个事实。C++26 之前，可移植的 \texttt{std::simd} 尚不能作为本书 C++20 主线保证；实验可用编译器自动向量化、供应商 intrinsic 或受控第三方库，但必须记录平台边界。
+
+分配热点同样需要证据。先统计分配次数、字节和调用栈，再比较预留、arena 或对象复用；只看总耗时无法判断收益来自减少 allocator 竞争、改善局部性还是偶然缓存状态。可选工具包括 heap profiler、替换 allocator 的统计接口或在受控实验中重载分配入口，生产结论仍需回到真实工作负载。
+
+最后，把每个独立进程视为一个实验单位。对交替测量得到的配对差值或比率，保存所有进程级摘要，再报告区间或 bootstrap 置信区间；同一进程内的 21 次循环不能冒充 21 个独立样本。样本量、停止规则和最小实际收益应在看结果前确定。
 
 \section{Profiler 先定位，再用 Amdahl 约束收益}
 

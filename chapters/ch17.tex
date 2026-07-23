@@ -65,6 +65,8 @@ struct BacktestConfig final {
 
 零成本基线为 99 买 25 股、末价 103：现金 7525、权益 10100、总收益 1\%。成本 tracer bullet 使用同一序列、1 元费用和 10 bps 滑点：执行价 99.099、现金 7521.525、权益 10096.525、总收益 0.96525\%。首个事件后的权益为 9996.525，所以最大回撤是 0.03475\%，不是零。这个差异正说明为什么 expected 不能调用生产统计函数重新生成。
 
+这里保留小规模 \texttt{double} 账本，是为了与前面章节的教学快照连续，并不把它升级为生产金额契约。若资产规模、币种或最小报价单位改变，必须先迁移到整数定点或领域金额类型，再重新定义费用、滑点、舍入、溢出和跨币种估值测试；仅增加有限性检查无法解决精度损失。
+
 \begin{lstlisting}[language=bash,numbers=none]
 ctest --test-dir build -R \
   "market_data_input|strategy_decision|execution_portfolio|end_to_end"

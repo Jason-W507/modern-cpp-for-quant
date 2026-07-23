@@ -1,0 +1,69 @@
+% appendix:cpp23-map
+% appendix:adoption-boundary
+\chapter{C++20 之后的版本地图}
+
+本书以 C++20 为最低基线，因为语言、标准库、CMake 和量化基础设施需要共同可用。版本号本身不会自动改善设计；新特性只有在编译器、标准库、依赖、ABI、部署镜像和团队工具全部允许时，才成为可交付能力。本附录给出 2026 年求职与工作中的识读地图，不改变正文代码的 C++20 构建契约。
+
+\section{采用新特性前回答六个问题}
+
+\begin{enumerate}
+  \item 目标编译器与标准库分别支持到什么程度？语言前端通过不代表库组件已经存在。
+  \item 该类型是否出现在共享库、插件、Python 扩展或网络边界的 ABI 中？
+  \item 所有部署平台、CI 镜像和开发容器是否使用同一最低版本？
+  \item 新特性替代了多少自定义代码，失败诊断和调试体验是否改善？
+  \item 第三方依赖是否也要求更高标准，或反过来限制标准升级？
+  \item 能否用一个小 target 验证编译、链接、运行和性能，而非只查特性宏？
+\end{enumerate}
+
+特性测试宏适合条件编译实验，却不应把业务代码切成难以维护的多套语义。团队通常先提高 CI 矩阵中的最低工具链，再把新能力放进内部实现，最后才考虑公开接口。
+
+\section{C++23：可以优先评估的四类能力}
+
+\subsection{\texttt{std::expected}: 显式的值或错误}
+
+第 10 章用 \texttt{variant<T,E>} 建立显式错误值。C++23 的 \texttt{std::expected<T,E>} 为同一意图提供标准接口：成功分支持有 \texttt{T}，失败分支持有 \texttt{E}。它适合高频、可恢复且调用者必须处理的错误，但不会替你决定错误域、上下文、日志边界或跨 ABI 表示。采用前应验证标准库支持，并避免在需要稳定 C ABI 的接口中直接暴露实现相关布局。
+
+\subsection{\texttt{std::print}: 更直接的格式化输出}
+
+\texttt{std::print} 能减少 \texttt{iomanip} 状态和字符串拼接样板，适合 CLI、诊断和报告。替换前要检查格式串是否编译期校验、Unicode/终端行为、性能边界以及现有日志库的结构化字段；交易热路径通常不会因为换了输出 API 就允许同步 I/O。
+
+\subsection{\texttt{std::mdspan}: 非拥有多维视图}
+
+\texttt{mdspan} 把数据句柄、维度和布局映射组合为非拥有视图，很适合矩阵、因子面板和 Python/Arrow 批量边界的内部适配。它不拥有底层缓冲，也不自动证明 dtype、对齐、stride 或线程安全。第 16 章的 owner 契约仍然成立：视图使用期间，底层存储和元数据都必须有效。
+
+\subsection{ranges 的补充能力}
+
+较新的 ranges 工具可减少“先声明容器，再手工复制”的样板。例如将 view 物化为容器的能力能让借用边界更醒目。采用时仍要审查分配次数、元素复制/移动、异常保证和返回容器类型；管道更短不等于成本更低。
+
+\section{Modules：构建模型先于语法演示}
+
+Modules 旨在减少文本包含和宏污染，并改善依赖表达。现实项目的采用难点常落在构建扫描、BMI 缓存、包管理、IDE、混合头文件依赖和编译器互操作，而非 \texttt{export module} 的几行语法。适合的试点是一个无宏、依赖少、ABI 边界清楚的内部库，并同时记录：
+
+\begin{itemize}
+  \item clean build 与增量 build 时间；
+  \item GCC、Clang、MSVC 和所选生成器的实际支持范围；
+  \item 第三方头文件如何进入 module；
+  \item 安装、导出和消费 target 的方式；
+  \item 失败时能否回到普通头文件接口。
+\end{itemize}
+
+在这些问题有答案前，把 modules 写进公共库主线只会扩大构建风险。本书因此保留 include guard、翻译单元和 target-based CMake 作为可迁移基础。
+
+\section{采用分级表}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{p{0.21\textwidth}X X}
+\toprule
+阶段 & 适合动作 & 验收证据 \\
+\midrule
+立即使用 C++20 & RAII、span、ranges、concepts、jthread、target-based CMake & 全平台 clean build、行为测试与工具链记录 \\
+局部试点 C++23 & expected、print、mdspan、补充 ranges 能力 & 单一 target、特性宏、ABI 与性能边界 \\
+等待基础设施成熟 & modules、大范围标准升级、公开 ABI 新类型 & 多编译器构建、包管理与部署链闭环 \\
+实验性优化 & SIMD、协程框架、执行器或供应商 intrinsic & 同一业务 oracle、生成代码、硬件计数器和回滚 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+面试中被问“会不会 C++23”时，可靠回答应包含一个已经理解的特性、一个采用前置条件和一个团队边界。例如：“我会用 expected 表达高频可恢复错误，但会先确认最低标准库版本，并避免直接穿过稳定 C ABI。”这比罗列特性名称更接近工作能力。
+

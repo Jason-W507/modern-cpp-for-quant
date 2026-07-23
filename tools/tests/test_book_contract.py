@@ -30,7 +30,7 @@ class BookContractCliTest(unittest.TestCase):
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertIn("18 chapters", result.stdout)
-        self.assertIn("150 planned pages", result.stdout)
+        self.assertIn("195 planned pages", result.stdout)
 
     def test_practice_cannot_precede_first_teaching(self) -> None:
         invalid_coverage = (

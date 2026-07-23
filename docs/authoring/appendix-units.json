@@ -2,10 +2,10 @@
   "schema_version": 1,
   "state": "accepted",
   "publication": {
-    "rendered_pages": 17,
-    "complete_book_pages": 168,
-    "guardrail": 170,
-    "note": "The appendices exceed the original twelve-page allocation because all eighteen chapter recovery paths, the Linux/WSL and MiKTeX workflow, the expanded Python-boundary glossary and the evidence-gated route are reader-facing acceptance material; the complete book remains within the user-approved guardrail."
+    "rendered_pages": 36,
+    "complete_book_pages": 190,
+    "guardrail": 220,
+    "note": "The expanded appendices are reader-facing material: they preserve the original recovery paths and add C++23 adoption guidance, memory-order literacy, role-specific capstones and interview algorithms. The higher guardrail reflects the user's decision that the former 155-page ceiling should not force excessive compression."
   },
   "units": [
     {
@@ -31,6 +31,30 @@
       "tex": "appendices/learning_path.tex",
       "required_markers": ["chapter-output", "evidence-gates"],
       "publication_note": "The route advances by chapter outputs and observable evidence rather than days read or pages completed."
+    },
+    {
+      "id": "modern_cpp_map",
+      "tex": "appendices/modern_cpp_map.tex",
+      "required_markers": ["cpp23-map", "adoption-boundary"],
+      "publication_note": "C++23 facilities are mapped to existing chapters with explicit compiler, library and team-adoption boundaries."
+    },
+    {
+      "id": "advanced_concurrency",
+      "tex": "appendices/advanced_concurrency.tex",
+      "required_markers": ["memory-order", "lockfree-literacy"],
+      "publication_note": "The concurrency extension teaches acquire-release reasoning through a tested SPSC queue and separates lock-free literacy from production readiness."
+    },
+    {
+      "id": "capstones",
+      "tex": "appendices/capstones.tex",
+      "required_markers": ["role-capstones", "order-book-evidence"],
+      "publication_note": "Research Engineer and Quant Developer routes end in different evidence packages, including a buildable price-time order-book core."
+    },
+    {
+      "id": "interview_algorithms",
+      "tex": "appendices/interview_algorithms.tex",
+      "required_markers": ["algorithm-drills", "complexity-evidence"],
+      "publication_note": "Interview drills connect standard data structures and algorithms to quant-flavored invariants, complexity claims and runnable evidence."
     }
   ],
   "foundation_runnable_answers": [
