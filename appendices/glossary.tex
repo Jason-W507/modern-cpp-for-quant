@@ -60,7 +60,7 @@ Python 直觉 & 可以迁移 & 不能直接等同 \\
 \midrule
 名称绑定对象 & 先画数据流与可变状态 & C++ 声明同时确定对象、类型、存储与作用域 \\
 \texttt{with} 管理资源 & 让释放跟随作用域 & 普通 Python 对象析构时机不等于 C++ 自动对象确定性析构 \\
-切片与 NumPy view & 区分拥有与借用 & \texttt{span}/view 不自动持有 owner；还须证明 dtype 与 stride \\
+切片与 NumPy view & 区分拥有与借用 & \texttt{span}/view 不自动持有所有者；还须证明 dtype 与 stride \\
 pytest 行为测试 & 从公开接口验证事实 & C++ 测试程序还必须成为 CMake target 并真正链接 \\
 异常与 traceback & 在掌握策略的边界保留上下文 & C++ 栈展开触发析构；重复 catch-and-log 会重复记录 \\
 线程与扩展 & 批量边界可释放 GIL & GIL 不是 C++ 共享状态的 mutex，也不组成复合快照 \\

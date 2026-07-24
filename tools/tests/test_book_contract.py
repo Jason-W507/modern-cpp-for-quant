@@ -33,20 +33,59 @@ class BookContractCliTest(unittest.TestCase):
         self.assertIn("18 chapters", result.stdout)
         self.assertIn("235 planned pages", result.stdout)
 
-    def test_final_chapter_publication_note_matches_revised_guardrail(self) -> None:
-        units = json.loads(
-            (REPOSITORY_ROOT / "docs" / "authoring" / "chapter-units.json").read_text(
+    def test_authoring_registry_does_not_duplicate_rendered_page_count(self) -> None:
+        manifest = json.loads(
+            (REPOSITORY_ROOT / "docs" / "authoring" / "book-manifest.json").read_text(
                 encoding="utf-8"
             )
         )
+        units = manifest["chapter_units"]
         final_chapter = next(
             chapter for chapter in units["chapters"] if chapter["number"] == 18
         )
         note = final_chapter["evidence"]["publication_note"]
-        self.assertIn("235-page PDF", note)
-        self.assertIn("250-page guardrail", note)
+        self.assertNotIn("235-page PDF", note)
+        self.assertNotIn("234-page PDF", note)
+        self.assertEqual(250, manifest["contract"]["target_pages"]["maximum"])
         self.assertNotIn("166-page", note)
         self.assertNotIn("170-page", note)
+
+        appendices = manifest["appendix_units"]
+        self.assertNotIn("complete_book_pages", appendices["publication"])
+        self.assertNotIn("rendered_pages", appendices["publication"])
+        self.assertNotRegex(
+            json.dumps(manifest["chapter_units"]),
+            r"rendered Chapter \d+ (?:spans|uses|meets|stays near).+?pages",
+        )
+
+    def test_default_authoring_inputs_are_declared_by_one_manifest(self) -> None:
+        manifest = json.loads(
+            (REPOSITORY_ROOT / "docs" / "authoring" / "book-manifest.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(2, manifest["schema_version"])
+        self.assertEqual(
+            {
+                "coverage",
+                "checklist",
+                "code_policy",
+                "main",
+                "pdf",
+            },
+            set(manifest["sources"]),
+        )
+        for section in ("contract", "chapter_units", "appendix_units", "code_evidence"):
+            self.assertIn(section, manifest)
+        for obsolete in (
+            "book-contract.json",
+            "chapter-units.json",
+            "appendix-units.json",
+            "code-evidence.json",
+        ):
+            self.assertFalse(
+                (REPOSITORY_ROOT / "docs" / "authoring" / obsolete).exists()
+            )
 
     def test_practice_cannot_precede_first_teaching(self) -> None:
         invalid_coverage = (

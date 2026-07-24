@@ -76,7 +76,7 @@ Python 的 \texttt{timeit} 也会重复运行并通常报告多次结果，但�
 
 墙钟时间回答“这次运行用了多久”，却不能解释时间花在哪里。准备硬件实验时先记录 CPU 型号、逻辑/物理核、NUMA 拓扑、内核、编译器、优化选项和电源策略。CPU affinity 可以减少进程在核心间迁移带来的噪声；频率调节与 Turbo 会改变同一段代码的 cycles-to-time 换算；多插槽机器还要说明内存页位于哪个 NUMA node。固定 affinity 并不自动让结果代表生产，它只控制了一个变量。
 
-Linux \texttt{perf stat} 可以在同一次受控运行中收集硬件事件：
+Linux \texttt{perf stat} 可以在同一次受控运行中收集硬件事件；系统化性能分析还需把计数器放回工作负载、硬件与实验环境中解释\autocite{gregg2020systems}：
 
 \begin{lstlisting}[language=bash,numbers=none]
 taskset -c 2 perf stat -r 7 \
@@ -138,7 +138,7 @@ ctest --test-dir build/ch14-debug -R ch14_checksum_mismatch \
 本机一次观察中，SoA 与 AoS 中位数相差约 3.3\%。这个差异小于任一版本一次明显异常样本的幅度，并且两组区间重叠。合格结论可以写成：
 
 \begin{quote}
-在记录环境的一次 Release 进程中，两种实现均通过 4603580000 的 checksum；观察到 SoA 中位数略低，但现有证据不足以确认稳定且具有实际意义的收益，因此暂不改变项目实现，下一步进行多进程复测并检查硬件计数器。
+在记录环境的一次 Release 进程中，两种实现均通过 4603580000 的 checksum；观察到 SoA 中位数略低，但现有证据不足以确认稳定且具有实际意义的收益，因此暂不改变项目实现，下一步进行多进程复测并检查硬件计数器。若把实验迁移到 Google Benchmark，应继续保留本章的独立判定基准、配对输入与原始样本要求，而不是把框架输出本身当作结论\autocite{googlebenchmark}。
 \end{quote}
 
 “实际意义”也应在看结果前定义。例如只有端到端吞吐至少提高 5\%、内存不超预算且尾延迟不退化，改造成本才合理；5\% 只是示例，真实阈值来自容量计划和业务 SLO。统计显著不自动等于值得上线，未达统计显著也不代表系统一定相同。

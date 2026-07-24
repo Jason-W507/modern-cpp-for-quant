@@ -2,7 +2,7 @@
 
 一本面向已会 Python、准备量化投资求职或进入量化开发工作的 C++20 中文自学教程。
 
-**[下载 v0.3.1 PDF（234 页）](https://github.com/Jason-W507/modern-cpp-for-quant/releases/download/v0.3.1/python-quant-modern-cpp-v0.3.1.pdf)** · [校验和](https://github.com/Jason-W507/modern-cpp-for-quant/releases/download/v0.3.1/SHA256SUMS) · [查看最新 Release](https://github.com/Jason-W507/modern-cpp-for-quant/releases/latest)
+**[下载 v0.3.2 PDF（234 页）](https://github.com/Jason-W507/modern-cpp-for-quant/releases/download/v0.3.2/python-quant-modern-cpp-v0.3.2.pdf)** · [校验和](https://github.com/Jason-W507/modern-cpp-for-quant/releases/download/v0.3.2/SHA256SUMS) · [查看最新 Release](https://github.com/Jason-W507/modern-cpp-for-quant/releases/latest)
 
 ## 项目概览
 
@@ -12,7 +12,7 @@
 |---|---|---|
 | C++ 基础 | 类型、引用、类、RAII、STL、模板 | 独立示例、练习与编译诊断 |
 | 量化工程 | 数据管线、回测、测试、构建、性能与并发 | CMake/CTest、基准原始样本 |
-| 岗位作品集 | 批量因子核、订单簿与行情回放 | Python oracle、协议测试、性能报告 |
+| 岗位作品集 | 批量因子核、订单簿与行情回放 | Python 独立判定基准、协议测试、性能报告 |
 
 ## 三条学习路线
 
@@ -25,7 +25,7 @@
 ## 两个岗位分流 Capstone
 
 - [`capstones/order_book`](capstones/order_book)：整数 tick、价格—时间优先撮合、32 字节大端序协议、有界乱序缓存、SPSC 交付与 correctness-gated benchmark。它是教学切片，不声称具备交易所级网络、持久化、快照或生产延迟。
-- [`capstones/factor_kernel`](capstones/factor_kernel)：独立于 Python 的批量因子核、shape/有限值检查、NumPy/Arrow 独立 oracle 与 pybind11 绑定。绑定在纯 C++ kernel 期间释放 GIL，返回数组拥有自己的内存。
+- [`capstones/factor_kernel`](capstones/factor_kernel)：独立于 Python 的批量因子核、shape/有限值检查、NumPy/Arrow 独立判定基准与 pybind11 绑定。绑定在纯 C++ kernel 期间释放 GIL，返回数组拥有自己的内存。
 
 ## 30 秒开始构建代码
 
@@ -60,7 +60,7 @@ latexmk -xelatex -interaction=nonstopmode -halt-on-error -outdir=build-book main
 ## 仓库结构
 
 ```text
-parts/                 五篇正文
+chapters/              前言与 18 章正文（五篇结构由 main.tex 编排）
 appendices/            速查、练习、面试与 Capstone 指南
 code/ch01..ch16/       逐章可独立构建代码
 project/               事件驱动回测器
@@ -74,7 +74,7 @@ output/pdf/            经验证的滚动版 PDF
 
 ## 已验证环境
 
-- GitHub Actions：Ubuntu 24.04，GCC 与 Clang，Debug/Release；另有 Clang ASan/UBSan 作业。
+- GitHub Actions：Ubuntu 24.04 上的 GCC/Clang Debug/Release 与 Clang ASan/UBSan；Windows 上的 MSVC Debug/Release。
 - 本地发布路径：Windows + MinGW + CPython 3.12 锁定环境；WSL/Linux 可使用仓库预设。
 - 书稿：XeLaTeX；本项目维护者使用 MiKTeX，发布前会检查引用、严重 overfull 和实际页数。
 

@@ -30,11 +30,19 @@
 
 \subsection{\texttt{std::mdspan}: 非拥有多维视图}
 
-\texttt{mdspan} 把数据句柄、维度和布局映射组合为非拥有视图，很适合矩阵、因子面板和 Python/Arrow 批量边界的内部适配。它不拥有底层缓冲，也不自动证明 dtype、对齐、stride 或线程安全。第 16 章的 owner 契约仍然成立：视图使用期间，底层存储和元数据都必须有效。
+\texttt{mdspan} 把数据句柄、维度和布局映射组合为非拥有视图，很适合矩阵、因子面板和 Python/Arrow 批量边界的内部适配。它不拥有底层缓冲，也不自动证明 dtype、对齐、stride 或线程安全。第 16 章的所有者契约仍然成立：视图使用期间，底层存储和元数据都必须有效。
 
-\subsection{ranges 的补充能力}
+\subsection{\texttt{std::ranges::to}: 把视图物化为容器}
 
-较新的 ranges 工具可减少“先声明容器，再手工复制”的样板。例如将 view 物化为容器的能力能让借用边界更醒目。采用时仍要审查分配次数、元素复制/移动、异常保证和返回容器类型；管道更短不等于成本更低。
+C++23 的 \texttt{std::ranges::to} 可减少“先声明容器，再手工复制”的样板。下面只展示物化步骤，假设 \texttt{quotes} 与价格投影 \texttt{price} 已定义：
+
+\begin{lstlisting}[language=C++]
+auto prices = quotes
+            | std::views::transform(price)
+            | std::ranges::to<std::vector>();
+\end{lstlisting}
+
+这段管道把惰性视图物化为拥有元素的 \texttt{vector}。它让借用边界更醒目，也明确发生了一次容器构造。采用时仍要审查分配次数、元素复制或移动、异常保证和返回容器类型；管道更短不等于成本更低。本例仅用于识读 C++23，不进入全书的 C++20 构建主线。
 
 \section{Modules：构建模型先于语法演示}
 

@@ -14,7 +14,7 @@
 证据 & Research Engineer & Quant Developer \\
 \midrule
 业务判定基准 & Python/NumPy 独立结果与容差政策 & 手算订单、成交、盘口和序列状态 \\
-数据边界 & dtype、shape、stride、owner、缺失值 & 协议版本、序号、价格 tick、数量和消息类型 \\
+数据边界 & dtype、shape、stride、所有者、缺失值 & 协议版本、序号、价格 tick、数量和消息类型 \\
 性能边界 & 批量大小、复制次数、kernel 热点 & p50/p99/p99.9、吞吐、队列水位、丢弃 \\
 失败实验 & 错 dtype、非连续数组、生命周期 & 重复、乱序、丢包、越界取消、队列满 \\
 交付物 & Python 包、基准报告、数值一致性测试 & replay 工具、订单簿、协议测试、延迟报告 \\
@@ -30,7 +30,7 @@
   \item Python 生成固定因子输入和独立 expected，保存数据版本与 schema；
   \item C++ 核心只接收连续 span/mdspan 风格视图，不依赖 Python API；
   \item Eigen 或 BLAS 只负责明确的矩阵 kernel，并记录线程数与数值口径；
-  \item pybind11 在一次调用中处理整批数据，验证 dtype、维度、stride 和 owner；
+  \item pybind11 在一次调用中处理整批数据，验证 dtype、维度、stride 和所有者；
   \item Python/C++ 结果按绝对/相对容差和 NaN 政策逐字段比较；
   \item profiler 先定位 Python 边界、复制、kernel 或分配热点，再提交优化；
   \item benchmark 保存批量大小、预热、原始样本、配对差值和端到端比例。

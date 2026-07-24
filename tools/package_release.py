@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import shutil
 from pathlib import Path
 
@@ -11,7 +12,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def package_release(output_dir: Path) -> Path:
     version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
-    source = ROOT / "output" / "pdf" / "python-quant-modern-cpp.pdf"
+    manifest = json.loads(
+        (ROOT / "docs" / "authoring" / "book-manifest.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    source = ROOT / manifest["sources"]["pdf"]
     if not source.is_file():
         raise FileNotFoundError(f"verified PDF not found: {source}")
 

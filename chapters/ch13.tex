@@ -49,7 +49,7 @@ false-sharing-layout-ok assumed-line-bytes=64
 \begin{pythonbridge}
 NumPy 的结构化 dtype 也可能有偏移与对齐，\texttt{itemsize} 类似数组步长；普通 Python 对象还包含运行时元数据和间接引用，\texttt{sys.getsizeof} 通常不含它引用的全部对象。两边都不能只把字段标称大小相加就声称得到真实工作集。
 
-\pythoncompare{NumPy dtype 与 C++ 对象布局都描述元素表示和步长。}{NumPy 数组由 owner 管理缓冲；C++ span 或指针通常不拥有。}{NumPy 在构造或运算时验 dtype；C++ 布局由编译器和 ABI 决定。}{Python 常抛 shape/dtype 错误；C++ 错误步长可能静默读错或越界。}
+\pythoncompare{NumPy dtype 与 C++ 对象布局都描述元素表示和步长。}{NumPy 数组由所有者管理缓冲；C++ span 或指针通常不拥有。}{NumPy 在构造或运算时验 dtype；C++ 布局由编译器和 ABI 决定。}{Python 常抛 shape/dtype 错误；C++ 错误步长可能静默读错或越界。}
 \end{pythonbridge}
 
 \section{连续访问与无关字段：AoS 还是 SoA}

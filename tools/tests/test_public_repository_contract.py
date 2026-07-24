@@ -8,6 +8,12 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class PublicRepositoryContractTest(unittest.TestCase):
+    def test_readme_describes_real_layout_and_verified_windows_ci(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("chapters/", readme)
+        self.assertNotIn("parts/", readme)
+        self.assertIn("MSVC", readme)
+
     def test_license_layers_are_explicit(self) -> None:
         overview = (ROOT / "LICENSE.md").read_text(encoding="utf-8")
         self.assertIn("MIT License", overview)

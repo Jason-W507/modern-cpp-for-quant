@@ -255,11 +255,11 @@ CSV 读取层见 \path{code/ch05/src/csv_reader.cpp}，它保留表头、列数�
   \item 每个新值先令 count 加一，以与旧 mean 的差更新 mean，再用新旧均值之间的两个差更新平方离差和；样本方差最后除以 $n-1$，少于两个值时拒绝。
   \item 金额有最小货币单位和舍入规则，收益率是价格比值，方差单位是收益率平方且有 sample/population 分母。名称、类型与口径必须一起保存。
   \item 批量复制支付分配和复制成本，换得独立寿命与目标布局；零拷贝省去复制，却要求 dtype、stride 和源对象寿命一直满足协议。
-  \item dtype 决定字节解释，shape 决定元素范围，stride 决定逻辑相邻地址，owner 阻止底层缓冲先于视图销毁。任一缺失都可能造成错误值或悬空访问。
+  \item dtype 决定字节解释，shape 决定元素范围，stride 决定逻辑相邻地址，所有者阻止底层缓冲先于视图销毁。任一缺失都可能造成错误值或悬空访问。
   \item 释放 GIL 允许其他 Python 线程推进；它不保护 C++ 共享对象，也不允许在释放区间调用 Python API。C++ 同步仍需第 15 章的所有权与 happens-before 协议。
 \end{enumerate}
 
-\noindent\textbf{完整实现：}三价格 $100\rightarrow125\rightarrow100$ 的两期 simple return 为 0.25 与 $-0.2$；答案位于 \path{code/ch16/exercises/return_statistics_solution.cpp}。\textbf{分层反馈：}提示是先声明表示、分母和容差来源；验收精确输出 \texttt{return-stats-ok periods=2 mean=0.025000 sample-variance=0.101250}；常见错误是只写“零拷贝”却没有 dtype、stride 与 owner 契约。
+\noindent\textbf{完整实现：}三价格 $100\rightarrow125\rightarrow100$ 的两期 simple return 为 0.25 与 $-0.2$；答案位于 \path{code/ch16/exercises/return_statistics_solution.cpp}。\textbf{分层反馈：}提示是先声明表示、分母和容差来源；验收精确输出 \texttt{return-stats-ok periods=2 mean=0.025000 sample-variance=0.101250}；常见错误是只写“零拷贝”却没有 dtype、stride 与所有者契约。
 
 \section{第 17 章}
 \begin{enumerate}
@@ -281,7 +281,7 @@ CSV 读取层见 \path{code/ch05/src/csv_reader.cpp}，它保留表头、列数�
 \section{第 18 章}
 \begin{enumerate}
   \item 定义给出语言或对象模型保证；场景说明何时使用与可观察结果；代价交代时间、空间、间接层或接口约束；失败给出反例、诊断和修复。只有定义无法证明会选用、会权衡或会排错。
-  \item RAII 保证 owner 在作用域退出或栈展开时执行清理，却不跟踪所有裸指针、引用或 span。观察者活得更久仍会悬空。Python \texttt{with} 同样表达成对进入/退出，C++ 自动对象还以确定的作用域析构覆盖普通控制流与异常展开。
+  \item RAII 保证所有者在作用域退出或栈展开时执行清理，却不跟踪所有裸指针、引用或 span。观察者活得更久仍会悬空。Python \texttt{with} 同样表达成对进入/退出，C++ 自动对象还以确定的作用域析构覆盖普通控制流与异常展开。
   \item 回撤是某时刻相对“不晚于该时刻”的峰值下降。若先取最终全局最大值，会让未来新高倒流到更早样本；序列 \(100,80,120,90\) 会把正确的 25\% 错算为 33.3\%。
   \item 至少缺业务判定基准、代表性 workload、CPU/编译器/Release 配置、预热与重复方法、原始样本及中心/离散统计、测量边界。若还没有 profiler 热点与端到端占比，也不能把局部结果归因到整体。
   \item 价格映射必须绑定估值时刻或不晚于它的时间规则，还要定义缺失、陈旧阈值、币种和公司行动口径。直接填零或静默使用未来价都会把未知数据伪装成确定事实。

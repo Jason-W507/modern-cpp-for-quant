@@ -9,7 +9,7 @@ Python 研究代码移到 C++ 时，两个问题常被错误地混在一起：�
 
 \begin{pythonbridge}
 NumPy 数组表达式和 C++ 批量 kernel 都能把逐元素循环移出 Python；真正的边界由 dtype、布局、所有者和错误政策共同决定。
-\pythoncompare{NumPy 用数组与 ufunc；C++ 暴露接收连续批次的静态类型函数。}{Python 数组通过 owner/base 保活；C++ span 只借用，返回数组必须拥有结果。}{NumPy 在调用时检查 dtype/shape；C++ 核心接口先编译，绑定再验证运行期元数据。}{Python 侧通常抛 TypeError/ValueError；未验证的 C++ 借用可能悬空或越界。}
+\pythoncompare{NumPy 用数组与 ufunc；C++ 暴露接收连续批次的静态类型函数。}{Python 数组通过所有者或 base 对象保活；C++ span 只借用，返回数组必须拥有结果。}{NumPy 在调用时检查 dtype/shape；C++ 核心接口先编译，绑定再验证运行期元数据。}{Python 侧通常抛 TypeError/ValueError；未验证的 C++ 借用可能悬空或越界。}
 \end{pythonbridge}
 
 从项目根目录运行独立快照：
@@ -144,7 +144,7 @@ Python 的线程同样受 GIL 约束，但 NumPy 或其他扩展是否释放、�
   \item Welford 方差的 count、mean 与平方离差和如何逐步变化？
   \item 金额、收益率和样本方差为何不应共用一种表示口径？
   \item 批量复制与零拷贝各把什么成本和责任交给调用者？
-  \item dtype、shape、stride 与 owner 各阻止哪类错误？
+  \item dtype、shape、stride 与所有者各阻止哪类错误？
   \item 释放 GIL 能解决什么，又绝不能替代什么？
 \end{enumerate}
 

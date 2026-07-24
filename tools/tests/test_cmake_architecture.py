@@ -27,7 +27,14 @@ class CMakeArchitectureTest(unittest.TestCase):
         integration = (ROOT / "cmake" / "QuantIntegrationTests.cmake").read_text(
             encoding="utf-8"
         )
-        self.assertIn("QUANT_BUILD_NEGATIVE_TESTS", integration)
+        self.assertLess(len(integration.splitlines()), 80)
+        for module in (
+            "QuantAuthoringTests.cmake",
+            "QuantChapterIntegrationTests.cmake",
+            "QuantAdvancedIntegrationTests.cmake",
+        ):
+            self.assertIn(module, integration)
+            self.assertTrue((ROOT / "cmake" / module).is_file())
 
     def test_all_components_can_be_disabled_without_python(self) -> None:
         binary_dir = ROOT / "build" / (

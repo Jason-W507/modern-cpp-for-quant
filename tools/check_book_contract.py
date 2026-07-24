@@ -71,6 +71,11 @@ def strip_tex_comments(text: str) -> str:
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Validate the second-edition book contract.")
     parser.add_argument(
+        "--manifest",
+        type=Path,
+        help="Override the canonical authoring manifest.",
+    )
+    parser.add_argument(
         "--root",
         type=Path,
         default=Path(__file__).resolve().parents[1],
@@ -648,17 +653,34 @@ def main() -> int:
     authoring = root / "docs" / "authoring"
     errors: list[str] = []
 
-    contract = load_json_document(authoring / "book-contract.json", errors)
+    manifest_path = args.manifest.resolve() if args.manifest else authoring / "book-manifest.json"
+    manifest = load_json_document(manifest_path, errors)
+    sources = manifest.get("sources", {})
+    if manifest.get("schema_version") != 2 or not isinstance(sources, dict):
+        errors.append("authoring manifest has an unsupported schema")
+        sources = {}
+
+    def source_path(name: str, fallback: str) -> Path:
+        relative = sources.get(name, fallback)
+        if not isinstance(relative, str):
+            errors.append(f"authoring manifest source {name} must be a path")
+            relative = fallback
+        return root / relative
+
+    contract = manifest.get("contract", {})
+    if not isinstance(contract, dict):
+        errors.append("authoring manifest contract must be an object")
+        contract = {}
     chapter_count, planned_pages, chapter_numbers, required_syntax_ids = validate_contract(
         contract, errors
     )
-    main_path = args.main.resolve() if args.main else root / "main.tex"
+    main_path = args.main.resolve() if args.main else source_path("main", "main.tex")
     main_text = read_text(main_path, errors)
     validate_main_chapter_includes(
         main_text, chapter_numbers, errors
     )
 
-    coverage_path = args.coverage.resolve() if args.coverage else authoring / "syntax-coverage.md"
+    coverage_path = args.coverage.resolve() if args.coverage else source_path("coverage", "docs/authoring/syntax-coverage.md")
     coverage_text = read_text(coverage_path, errors)
     coverage_count = validate_coverage(
         coverage_text, chapter_numbers, required_syntax_ids, errors
@@ -674,35 +696,49 @@ def main() -> int:
     else:
         calibration_chapters = set(raw_calibration_chapters)
 
-    units_path = args.units.resolve() if args.units else authoring / "chapter-units.json"
-    units = load_json_document(units_path, errors)
+    units = (
+        load_json_document(args.units.resolve(), errors)
+        if args.units
+        else manifest.get("chapter_units", {})
+    )
+    if not isinstance(units, dict):
+        errors.append("authoring manifest chapter_units must be an object")
+        units = {}
     accepted_units = validate_chapter_units(
         units, chapter_numbers, calibration_chapters, root, errors
     )
 
-    appendices_path = (
-        args.appendices.resolve()
+    appendices = (
+        load_json_document(args.appendices.resolve(), errors)
         if args.appendices
-        else authoring / "appendix-units.json"
+        else manifest.get("appendix_units", {})
     )
-    appendices = load_json_document(appendices_path, errors)
+    if not isinstance(appendices, dict):
+        errors.append("authoring manifest appendix_units must be an object")
+        appendices = {}
     accepted_appendices = validate_appendix_units(
         appendices, root, main_text, errors
     )
 
-    evidence_path = (
-        args.code_evidence.resolve()
+    code_evidence = (
+        load_json_document(args.code_evidence.resolve(), errors)
         if args.code_evidence
-        else authoring / "code-evidence.json"
+        else manifest.get("code_evidence", {})
     )
-    code_evidence = load_json_document(evidence_path, errors)
+    if not isinstance(code_evidence, dict):
+        errors.append("authoring manifest code_evidence must be an object")
+        code_evidence = {}
     listing_count = validate_code_evidence(code_evidence, root, errors)
 
-    checklist_text = read_text(authoring / "chapter-acceptance-checklist.md", errors)
+    checklist_text = read_text(source_path("checklist", "docs/authoring/chapter-acceptance-checklist.md"), errors)
     validate_markers(checklist_text, CHECKLIST_MARKERS, "chapter checklist", errors)
 
-    policy_text = read_text(authoring / "code-example-policy.md", errors)
+    policy_text = read_text(source_path("code_policy", "docs/authoring/code-example-policy.md"), errors)
     validate_markers(policy_text, POLICY_MARKERS, "code policy", errors)
+
+    published_pdf = source_path("pdf", "output/pdf/python-quant-modern-cpp.pdf")
+    if not published_pdf.is_file():
+        errors.append("authoring manifest PDF artifact does not exist")
 
     if errors:
         for error in errors:
