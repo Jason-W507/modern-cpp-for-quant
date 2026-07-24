@@ -52,6 +52,13 @@ class CIContractTest(unittest.TestCase):
         )
         self.assertIn("POSITION_INDEPENDENT_CODE ON", cmake)
 
+    def test_replay_benchmark_reports_a_portable_compiler_name(self) -> None:
+        source = (
+            ROOT / "capstones" / "order_book" / "benchmarks" / "replay_benchmark.cpp"
+        ).read_text(encoding="utf-8")
+        self.assertIn("compiler_name()", source)
+        self.assertNotIn("<< __VERSION__", source)
+
 
 if __name__ == "__main__":
     unittest.main()

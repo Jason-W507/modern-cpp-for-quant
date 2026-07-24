@@ -53,6 +53,18 @@ void write_samples(std::ostream& output,
   output << ']';
 }
 
+constexpr std::string_view compiler_name() {
+#if defined(__clang__)
+  return "Clang " __clang_version__;
+#elif defined(__GNUC__)
+  return "GCC " __VERSION__;
+#elif defined(_MSC_VER)
+  return "MSVC";
+#else
+  return "unknown";
+#endif
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -99,7 +111,7 @@ int main(int argc, char** argv) {
       return 3;
     }
     output << "{\n  \"schema\": 1,\n  \"environment\": {\"compiler\": \""
-           << __VERSION__
+           << compiler_name()
            << "\", \"clock\": \"std::chrono::steady_clock\"},\n"
               "  \"workload\": {\"messages\": "
            << message_count
