@@ -78,6 +78,13 @@ if(Python3_Development.Module_FOUND AND NOT MINGW)
   target_link_libraries(ch16_gil_probe PRIVATE
     ch16_project_options
     Threads::Threads)
+  # The probe is loaded by the system CPython executable, which is not linked
+  # to the sanitizer runtime. Keep this functional GIL test uninstrumented in
+  # an otherwise sanitized build so the extension remains loadable.
+  if(CMAKE_CXX_FLAGS MATCHES "(^|[ ;])-fsanitize=")
+    target_compile_options(ch16_gil_probe PRIVATE -fno-sanitize=all)
+    target_link_options(ch16_gil_probe PRIVATE -fno-sanitize=all)
+  endif()
   add_test(NAME ch16_gil_probe_distinguishes_held_and_released_progress
     COMMAND ${CMAKE_COMMAND} -E env
             "PYTHONPATH=$<TARGET_FILE_DIR:ch16_gil_probe>"
