@@ -25,6 +25,14 @@ class PublicRepositoryContractTest(unittest.TestCase):
         self.assertIn("PRs as a request surface: yes", issue_tracker)
         self.assertFalse((ROOT / "tickets.md").exists())
         self.assertFalse((ROOT / ".scratch").exists())
+        labels = (ROOT / "docs" / "agents" / "triage-labels.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("local Markdown issue tracker", labels)
+        self.assertFalse((ROOT / "docs" / "superpowers").exists())
+        self.assertFalse(
+            (ROOT / "docs" / "archive" / "first-edition-tickets.md").exists()
+        )
 
 
 if __name__ == "__main__":

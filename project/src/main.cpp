@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
   quant::BacktestResult result;
   try {
     result = engine.run(parsed.events, strategy);
-  } catch (const std::invalid_argument& error) {
+  } catch (const std::exception& error) {
     std::cerr << "model-boundary-error " << error.what() << '\n';
     return 2;
   }

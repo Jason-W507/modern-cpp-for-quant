@@ -67,6 +67,14 @@ if(BUILD_TESTING)
             ${CMAKE_CURRENT_LIST_DIR}/expected/mixed_symbols_error.txt
           -- $<TARGET_FILE:quant_backtest>
              ${CMAKE_CURRENT_LIST_DIR}/data/mixed_symbols.csv)
+  add_test(NAME ch17_cli_reports_the_cash_account_boundary
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_LIST_DIR}/../tools/expect_process.py
+          --expected-exit 2
+          --expected-stderr
+            ${CMAKE_CURRENT_LIST_DIR}/expected/cash_account_error.txt
+          -- $<TARGET_FILE:quant_backtest>
+             ${CMAKE_CURRENT_LIST_DIR}/data/sample.csv 10000.0 0.0)
   add_test(NAME ch17_backtest_benchmark_preserves_the_hand_ledger
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_LIST_DIR}/../tools/validate_ch17_benchmark.py

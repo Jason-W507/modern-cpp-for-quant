@@ -13,6 +13,32 @@ using Timestamp = std::chrono::sys_time<std::chrono::milliseconds>;
 
 enum class Side : std::uint8_t { buy, sell };
 
+namespace detail {
+
+inline void validate_nonempty_symbol(const std::string& symbol,
+                                     const char* owner) {
+  if (symbol.empty()) {
+    throw std::invalid_argument{std::string{owner} +
+                                " requires a nonempty symbol"};
+  }
+}
+
+inline void validate_positive_finite(double value, const char* field) {
+  if (!std::isfinite(value) || value <= 0.0) {
+    throw std::invalid_argument{std::string{field} +
+                                " must be finite and positive"};
+  }
+}
+
+inline void validate_positive_quantity(std::int64_t value,
+                                       const char* field) {
+  if (value <= 0) {
+    throw std::invalid_argument{std::string{field} + " must be positive"};
+  }
+}
+
+}  // namespace detail
+
 class MarketEvent final {
  public:
   MarketEvent(Timestamp timestamp, std::string symbol, double price,
@@ -21,9 +47,9 @@ class MarketEvent final {
         symbol_(std::move(symbol)),
         price_(price),
         quantity_(quantity) {
-    validate_symbol(symbol_, "market event");
-    validate_positive_finite(price_, "market event price");
-    validate_positive_quantity(quantity_, "market event quantity");
+    detail::validate_nonempty_symbol(symbol_, "market event");
+    detail::validate_positive_finite(price_, "market event price");
+    detail::validate_positive_quantity(quantity_, "market event quantity");
   }
 
   [[nodiscard]] Timestamp timestamp() const noexcept { return timestamp_; }
@@ -32,28 +58,6 @@ class MarketEvent final {
   [[nodiscard]] std::int64_t quantity() const noexcept { return quantity_; }
 
  private:
-  static void validate_symbol(const std::string& symbol,
-                              const char* owner) {
-    if (symbol.empty()) {
-      throw std::invalid_argument{std::string{owner} +
-                                  " requires a nonempty symbol"};
-    }
-  }
-
-  static void validate_positive_finite(double value, const char* field) {
-    if (!std::isfinite(value) || value <= 0.0) {
-      throw std::invalid_argument{std::string{field} +
-                                  " must be finite and positive"};
-    }
-  }
-
-  static void validate_positive_quantity(std::int64_t value,
-                                         const char* field) {
-    if (value <= 0) {
-      throw std::invalid_argument{std::string{field} + " must be positive"};
-    }
-  }
-
   Timestamp timestamp_;
   std::string symbol_;
   double price_;
@@ -64,12 +68,8 @@ class OrderIntent final {
  public:
   OrderIntent(std::string symbol, Side side, std::int64_t quantity)
       : symbol_(std::move(symbol)), side_(side), quantity_(quantity) {
-    if (symbol_.empty()) {
-      throw std::invalid_argument{"order intent requires a nonempty symbol"};
-    }
-    if (quantity_ <= 0) {
-      throw std::invalid_argument{"order intent quantity must be positive"};
-    }
+    detail::validate_nonempty_symbol(symbol_, "order intent");
+    detail::validate_positive_quantity(quantity_, "order intent quantity");
   }
 
   [[nodiscard]] const std::string& symbol() const noexcept { return symbol_; }
@@ -92,15 +92,9 @@ class Fill final {
         quantity_(quantity),
         price_(price),
         fee_(fee) {
-    if (symbol_.empty()) {
-      throw std::invalid_argument{"fill requires a nonempty symbol"};
-    }
-    if (quantity_ <= 0) {
-      throw std::invalid_argument{"fill quantity must be positive"};
-    }
-    if (!std::isfinite(price_) || price_ <= 0.0) {
-      throw std::invalid_argument{"fill price must be finite and positive"};
-    }
+    detail::validate_nonempty_symbol(symbol_, "fill");
+    detail::validate_positive_quantity(quantity_, "fill quantity");
+    detail::validate_positive_finite(price_, "fill price");
     if (!std::isfinite(fee_) || fee_ < 0.0) {
       throw std::invalid_argument{"fill fee must be finite and nonnegative"};
     }
