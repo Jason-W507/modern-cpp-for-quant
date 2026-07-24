@@ -1,18 +1,11 @@
 \chapter{并发、任务与背压}
 \index{data race}\index{mutex}\index{condition variable}\index{atomic}\index{backpressure}
 
-\begin{introduction}
-  \item 从所有权和 happens-before 判断并发程序是否正确
-  \item 比较顺序、\texttt{jthread} 与 \texttt{async} 的结果和失败边界
-  \item 用 mutex 维护复合不变量，用有界队列表达背压
-  \item 设计可停止、可关闭、可传播异常且无需 \texttt{sleep} 的协议
-\end{introduction}
+\chapteropening{能从所有权和 happens-before 判断并发正确性，用 mutex 维护复合不变量，以有界队列表达背压，并设计关闭、停止和异常传播。}{一组按“状态、所有者、同步边、停止协议、故障实验”说明的顺序、线程、任务和队列实验。}{第 6、12、14 章；能推理对象寿命、运行 sanitizer，并先验证结果再测量。}
 
-\chaptermeta{已完成第 6、12、14 章，能够推理对象寿命、运行 sanitizer，并先验证结果再测量。}{Python 线程、\texttt{concurrent.futures} 与 \texttt{queue.Queue} 提供相似外形；C++ 没有替共享对象自动加锁，数据竞争直接属于未定义行为。}{先画对象所有者、读写者和停止边；若只能靠延时“等线程差不多启动”，协议尚未建立。}
+\section{状态与交付：同一结果，三种执行模型}
 
-\section{本章输出：同一结果，三种执行模型}
-
-量化流水线常把行情批次分片计算，但完成判据必须落在结果和协议上，不能只写“开两个线程”。\path{code/ch15/experiments/pipeline_compare.cpp} 先用 8 条整数分行情建立顺序 oracle，再让两个 \texttt{std::jthread} 和两个 \texttt{std::async} 任务计算同一分区。独立手算为 201100 分；三条路径不一致时，任何吞吐比较立即作废。
+量化流水线常把行情批次分片计算，完成判据仍应落在结果和协议上；“开两个线程”只描述实现外形。\path{code/ch15/experiments/pipeline_compare.cpp} 用 8 条整数分行情建立顺序基准，再让两个 \texttt{std::jthread} 和两个 \texttt{std::async} 任务计算同一分区。独立手算为 201100 分；三条路径不一致时，任何吞吐比较立即作废。
 
 从项目根目录构建独立快照：
 
@@ -34,7 +27,7 @@ pipeline-ok rows=8 sequential-cents=201100
 
 \section{所有权与 happens-before}
 
-线程启动后可以与创建者交错执行。两个潜在并发的冲突访问中，若至少一个为非原子操作，且二者之间没有 happens-before，程序就存在 data race；其行为未定义，后果远不止“偶尔少算”。两个原子操作即使没有普通的 happens-before，也不会仅因此构成 data race；这只说明单个原子对象的访问受原子语义约束，复合业务不变量仍需额外协议。先问谁拥有数据、谁只读、谁写入，再选同步工具。
+线程启动后可以与创建者交错执行。两个潜在并发的冲突访问中，若至少一个为非原子操作，且二者之间没有 happens-before，程序就存在 data race；其行为未定义，后果远不止“偶尔少算”\autocite{cppdraft,williams2019concurrency}。两个原子操作即使没有普通的 happens-before，也不会仅因此构成 data race；这只说明单个原子对象的访问受原子语义约束，复合业务不变量仍需额外协议。先问谁拥有数据、谁只读、谁写入，再选同步工具。
 
 线程版把只读 \texttt{quotes} 借给两个工作线程，每个线程只写 \texttt{partials} 的不同数组元素：
 
@@ -91,7 +84,7 @@ not_full_.notify_one();
 
 \section{缓冲满就是业务协议}
 
-无界队列把下游变慢转化为内存增长；有界队列必须在满时作决定。常见策略是阻塞生产者、拒绝并让上游重试、丢弃最新/最旧、合并更新或溢写磁盘。选择取决于行情是否可丢、顺序要求、延迟预算和恢复成本，不能只写“使用无锁队列”。
+无界队列把下游变慢转化为内存增长；有界队列则把“满时怎么办”暴露为接口决策。常见策略是阻塞生产者、拒绝并让上游重试、丢弃最新/最旧、合并更新或溢写磁盘。选择取决于行情是否可丢、顺序要求、延迟预算和恢复成本，“使用无锁队列”没有回答这些问题。
 
 \path{code/ch15/tests/bounded_queue_behavior.cpp} 固定容量 2，前两次 \texttt{try\_push} 返回 \texttt{accepted}，第三次返回 \texttt{full}；排空后关闭，后续写入返回 \texttt{closed}：
 
@@ -116,7 +109,7 @@ protocol-ok started=true consumer-stop=true producer-stop=true
   exception-propagated=true queues-closed=true
 \end{lstlisting}
 
-停止请求不是强制杀线程；代码必须在阻塞点或循环边界协作检查。若任务正在无法取消的外部调用中，请求也不能保证立即结束。
+停止请求不是强制杀线程；只有代码在阻塞点或循环边界协作检查，请求才会生效。若任务正在无法取消的外部调用中，请求也不能保证立即结束。
 
 这个永久等待可由“空队列、无 stop-aware wait、生产者退出且未 close”稳定触发；诊断类别是 join 卡住，根因是消费者没有终止事件，修复是把 stop 或 close 纳入等待谓词并负责唤醒。Python \texttt{threading.Event} 也只是协作信号，\texttt{Thread} 没有安全的强制取消；Event 本身不会自动唤醒任意队列等待，同样需要完整关闭协议。
 
@@ -140,7 +133,7 @@ ctest --test-dir build/ch15-root -R ch15_data_race \
 
 \section{测量开销，不追求无锁炫技}
 
-并发实验仍遵守第 14 章证据链：先比对 oracle，再记录 Release 环境、核心数、数据规模、线程数和原始样本。单批耗时需包含还是排除线程池启动必须写明；队列还应报告阻塞时间、满次数、丢弃率和尾延迟。若工作量太小、内存带宽已饱和或竞争集中，并发可能更慢。
+并发实验仍遵守第 14 章证据链：先比对独立判定基准，再记录 Release 环境、核心数、数据规模、线程数和原始样本。单批耗时需包含还是排除线程池启动必须写明；队列还应报告阻塞时间、满次数、丢弃率和尾延迟。若工作量太小、内存带宽已饱和或竞争集中，并发可能更慢。
 
 顺序、线程和任务版本只能在相同输入及结果下比较。不要从这个 8 行正确性样本推断吞吐，也不要用 \texttt{hardware\_concurrency()} 返回值当成可用核心或最佳线程数保证。先测端到端瓶颈，再决定是否值得引入并发状态空间。
 
@@ -149,7 +142,7 @@ ctest --test-dir build/ch15-root -R ch15_data_race \
 \subsection*{随堂验证汇总}
 
 \begin{enumerate}
-  \item 只把最后一条数量从 2 改为 3，先手算新 oracle 211150，再修改常量并要求三条路径同时通过。
+  \item 只把最后一条数量从 2 改为 3，先手算新独立判定基准211150，再修改常量并要求三条路径同时通过。
   \item 把线程作用域后的求和移动到作用域内部，解释它为何可能与写入并发；正确修复要恢复明确的 join 边，\texttt{sleep} 无法建立同步关系。
   \item 在 \path{pipeline_compare.cpp} 的任务版移除显式 \texttt{std::launch::async}，打印任务与主调方线程 ID；仍须得到 \texttt{checksum-match=true}，并记录实现实际选择，但不要把一次观察写成标准保证。
   \item 把 \texttt{closed\_} 改为 atomic 却让 deque 保持原样，画出“读到已关闭但仍未看见最后一项”的错误推理；再解释为什么统一锁更直接。
@@ -159,7 +152,7 @@ ctest --test-dir build/ch15-root -R ch15_data_race \
 
 复现层验证顺序版、任务版与有界队列；修改层替换一种满策略并冻结完整计数；开放层画出一个真实管道的所有权、停止和恢复协议。
 
-输出任务：提交 \path{code/ch15} 的 clean-build 命令与四项证据：三种执行模型都得到 201100；容量 2 的 drop-newest 报告完整计数；启动、双向停止、关闭和异常传播协议图；ThreadSanitizer 的稳定竞态类别。另写一段测量计划，说明 oracle、样本、线程数、队列指标和停止条件，不要求实现无锁结构。
+输出任务：提交 \path{code/ch15} 的 clean-build 命令与四项证据：三种执行模型都得到 201100；容量 2 的 drop-newest 报告完整计数；启动、双向停止、关闭和异常传播协议图；ThreadSanitizer 的稳定竞态类别。另写一段测量计划，说明独立判定基准、样本、线程数、队列指标和停止条件，不要求实现无锁结构。
 
 自测：
 \begin{enumerate}
@@ -176,4 +169,4 @@ ctest --test-dir build/ch15-root -R ch15_data_race \
 
 \section{本章小结}
 
-并发正确性来自所有权与明确同步，一次正确输出不足为证；背压和停止属于接口协议，不能降格为队列实现细节。先保留顺序 oracle，用 join、mutex、future 和 stop-aware 等待建立可推理边界，再用 sanitizer 与受控测量补证据，才能安全地把并发带入量化系统。
+并发正确性来自所有权与明确同步，一次正确输出不足为证；背压和停止属于接口协议，不能降格为队列实现细节。先保留顺序基准，用 join、mutex、future 和 stop-aware 等待建立可推理边界，再用 sanitizer 与受控测量补证据，才能安全地把并发带入量化系统。

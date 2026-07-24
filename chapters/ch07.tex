@@ -1,14 +1,7 @@
 \chapter{STL 与 ranges}
 \index{STL}\index{ranges}\index{view}\index{borrowed range}
 
-\begin{introduction}
-  \item 按访问模式、迭代器稳定性和所有权选择容器
-  \item 用 ranges 算法和 view 组合行情处理步骤
-  \item 解释 view 的惰性、借用关系与悬空风险
-  \item 识别浮点归约对顺序的依赖
-\end{introduction}
-
-\chaptermeta{已完成第 4--6 章，会使用 vector、迭代器、lambda、类、引用和 RAII。}{Python 的 list comprehension、生成器和 dict 能表达相似管道，但 C++ 容器的存储、迭代器失效和 view 生命周期都必须显式推理。}{若管道结果异常，依次检查源容器是否仍存活、view 是否仍借用同一数据、算法是否改变了顺序，以及归约是否依赖浮点结合律。}
+\chapteropening{能按访问模式和失效规则选择容器，用 ranges 与 view 组合行情管道，并解释惰性借用、悬空和浮点归约顺序。}{一个可独立构建的成交管道，以及 view 生命周期和归约次序的可运行证据。}{第 4--6 章；会使用容器、迭代器、lambda、类、引用和 RAII。}
 
 本章把第五章的行情分析器演化为可独立构建的成交管道。固定输入中 AAPL 有三笔成交，程序必须精确输出：
 

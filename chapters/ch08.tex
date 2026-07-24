@@ -1,14 +1,7 @@
 \chapter{接口与值语义}
 \index{value semantics}\index{interface}\index{strong invariant}
 
-\begin{introduction}
-  \item 从订单、成交与组合失败场景推导公开接口
-  \item 用值语义表达可独立复制的领域事实
-  \item 用组合装配默认路径，并识别运行时多态的适用边界
-  \item 在修改状态前维护数量、价格、现金和持仓不变量
-\end{introduction}
-
-\chaptermeta{已完成第 3--7 章，会使用类、构造函数、引用、异常、容器和 ranges。}{Python 对象通常通过名字共享引用；C++ 对象默认按值拥有自己的状态，复制会得到独立对象。Python 的鸭子类型可以直接替换策略，C++ 需要具体类型、模板约束或虚函数接口。}{若组合结果错误，先检查无效值是否在构造边界被拒绝，再检查“无订单/无成交”是否被当成正常缺席，最后检查组合更新是否在验证完成前修改了状态。}
+\chapteropening{能从失败场景推导订单、成交和组合接口，用值语义与组合装配组件，并在修改前维护价格、数量、现金和持仓不变量。}{一个从行情到订单、成交和组合快照的最小纵向闭环，以及两个公开行为测试边界。}{第 3--7 章；会使用类、异常、容器和 ranges。}
 
 本章把脚本式分析流程演化为四类组件：行情事件是输入事实，策略产生订单，交易所把可成交订单变为成交，组合只接受合法成交并给出快照。固定场景从 10000 现金开始，在 99 元买入 25 股，以 101 元估值，必须精确输出：
 
@@ -16,7 +9,7 @@
 orders=1 fills=1 symbol=AAPL quantity=25 cash=7525.00 equity=10050.00
 \end{lstlisting}
 
-完成判据不只是“能打印”。零数量、非有限价格、超现金买入和超持仓卖出都必须在越过领域边界前失败；策略决策与成交/组合两个公开 seam 由独立行为测试保护；\path{code/ch08} 能从空构建目录独立配置。
+完成判据不只是“能打印”。零数量、非有限价格、超现金买入和超持仓卖出都必须在越过领域边界前失败；策略决策与成交/组合两个公开边界由独立行为测试保护；\path{code/ch08} 能从空构建目录独立配置。
 
 \begin{remark}
 本章为突出对象边界，暂用 \texttt{double} 表示价格和现金。这是教学简化，不是生产默认值。真实系统需要根据资产、币种、最小报价单位和舍入规则选择整数定点或专门金额类型；大数量与 \texttt{double} 相乘还可能丢失整数精度，\texttt{isfinite} 只能排除 NaN 和无穷，不能恢复已经舍入掉的低位。第 16 章会建立完整的表示策略。
@@ -90,7 +83,7 @@ Python 的 \texttt{b = a} 通常让两个名字指向同一对象；要得到独
 
 \texttt{ThresholdStrategy} 的构造参数同样有不变量。若把非法下单数量留到 \texttt{on\_event} 才判断，错误配置可能潜伏到某条特定行情才出现。配置对象应在建成时就有效。
 
-策略行为测试只从公开 seam 观察结果：低价空仓得到 AAPL 买单，高价与已有持仓都得到空 optional。测试不检查阈值字段叫什么，也不要求内部执行几次比较，所以成员布局可以重构而不改测试。
+策略行为测试只从公开边界观察结果：低价空仓得到 AAPL 买单，高价与已有持仓都得到空 optional。测试不检查阈值字段叫什么，也不要求内部执行几次比较，所以成员布局可以重构而不改测试。
 
 \paragraph{与 Python 对照。}
 Python 常用 \texttt{None} 表示没有订单；\texttt{optional<Order>} 把这条可能性写进静态类型，调用者不能把结果直接当 \texttt{Order} 使用。它与 Python 异常承担不同语义：无值是预期分支，非法策略配置才在构造边界失败。
@@ -113,7 +106,7 @@ Python 常用 \texttt{None} 表示没有订单；\texttt{optional<Order>} 把这
 
 这就是组合：较大行为由现成对象协作得到，无须通过继承把交易所、策略和组合塞进同一父类。默认先选具体成员和值成员，因为依赖、生命和调用成本在代码中直接可见。只有真实需求要求运行时替换一种能力时，才引入动态接口。
 
-成交/组合 seam 测试手算两笔成交。99 元买 25 股后现金 7525；101 元卖 10 股后现金 8535、持仓 15、权益 10050。它还验证错误代码与流动性不足都不成交、超卖与第二个代码都在修改前被拒绝。策略 seam 另外拒绝事件与快照代码不一致。测试只调用 \texttt{match}、\texttt{apply} 与 \texttt{snapshot}，不读取私有状态。本章快照明确限定一次运行一个代码；多资产总权益需要一组完整估值价格，留到第 17 章统一设计，不能只拿最后一个代码的价格冒充总权益。
+成交/组合边界测试手算两笔成交。99 元买 25 股后现金 7525；101 元卖 10 股后现金 8535、持仓 15、权益 10050。它还验证错误代码与流动性不足都不成交、超卖与第二个代码都在修改前被拒绝。策略边界另外拒绝事件与快照代码不一致。测试只调用 \texttt{match}、\texttt{apply} 与 \texttt{snapshot}，不读取私有状态。本章快照明确限定一次运行一个代码；多资产总权益需要一组完整估值价格，留到第 17 章统一设计，不能只拿最后一个代码的价格冒充总权益。
 
 \paragraph{与 Python 对照。}
 Python 可把策略对象作为参数传入循环，只要它有所需方法；对象生命由引用计数或垃圾回收协助管理。C++ 的具体局部对象让所有权和销毁点完全可见，引用参数只借用它们。不要为了模仿 Python 的可替换性，提前把每个组件都放进 \texttt{shared\_ptr}。
@@ -157,7 +150,7 @@ ctest --test-dir build/ch08 --output-on-failure
 ./build/ch08/ch08_domain_pipeline code/ch08/data/events.csv
 \end{lstlisting}
 
-最后一行必须与章首输出逐字一致。根项目还运行 8 项 ch08 检查：策略 seam、成交/组合 seam、主流水线、运行时替换、非法值、核心练习、错误覆盖诊断以及从空目录配置的快照。Windows 可选择 Visual Studio 生成器；多配置生成器的可执行文件通常位于 \texttt{Debug} 或 \texttt{Release} 子目录，接口与值语义规则不变。
+最后一行必须与章首输出逐字一致。根项目还运行 8 项 ch08 检查：策略边界、成交/组合边界、主流水线、运行时替换、非法值、核心练习、错误覆盖诊断以及从空目录配置的快照。Windows 可选择 Visual Studio 生成器；多配置生成器的可执行文件通常位于 \texttt{Debug} 或 \texttt{Release} 子目录，接口与值语义规则不变。
 
 \section{章末三层练习}
 
@@ -166,7 +159,7 @@ ctest --test-dir build/ch08 --output-on-failure
 \begin{enumerate}
   \item 为“订单数量大于行情可用数量时不成交”补一句用例。规则属于 \texttt{SimulatedExchange}，而非 \texttt{Portfolio}：撮合时已经同时拥有订单与行情，组合不应重新推断市场流动性。
   \item 在 \path{code/ch08/tests/test_invalid_values.cpp} 中把零数量改为负数，把 NaN 改为正无穷。两种构造仍应抛出 \texttt{invalid\_argument}，测试最终精确输出 \texttt{domain invariants ok}。
-  \item 把阈值改为 98。测试中的 99 元事件应不再产生订单；先观察策略 seam 以“cheap event should create an order”失败，再同步修改用例或恢复阈值。失败消息证明测试保护的是行为而非内部实现。
+  \item 把阈值改为 98。测试中的 99 元事件应不再产生订单；先观察策略边界以“cheap event should create an order”失败，再同步修改用例或恢复阈值。失败消息证明测试保护的是行为而非内部实现。
   \item 运行 \path{code/ch08/exercises/sell_down_solution.cpp}，解释为何买入 25、卖出 10 后精确输出 \texttt{quantity=15 cash=8535.00 equity=10050.00}。再把卖出数量改为 26，程序应在产生输出前以状态不一致失败。
   \item 在 \texttt{HoldStrategy::on\_event} 参数末尾删除成员函数的 \texttt{const}，保留 \texttt{override}。预测并验证编译失败；恢复 \texttt{const} 后输出重新变为 \texttt{threshold=1 hold=0}。
 \end{enumerate}

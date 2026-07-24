@@ -1,17 +1,9 @@
 \chapter{类型、表达式与控制流：写出第一个行情筛选器}
 \index{static type}\index{initialization}\index{control flow}\index{narrowing conversion}
 
-\begin{introduction}
-  \item 把 Python 的“名称绑定对象”心智模型切换为 C++ 的“声明对象并初始化”
-  \item 选择基本类型、定宽整数、字面量和 \texttt{auto}，并识别窄化
-  \item 用算术、比较、布尔表达式和显式转换计算行情指标
-  \item 用 \texttt{if}/\texttt{else}、\texttt{switch}、\texttt{for} 和 \texttt{while} 控制执行路径
-  \item 从标准输入读取固定行情，筛选有效买单并汇总名义金额
-\end{introduction}
+\chapteropening{能从 Python 名称绑定切换到 C++ 对象模型，使用基础类型、表达式、分支和循环，并识别窄化与整数除法。}{一个读取五行数值行情、筛选有效买单并汇总名义金额的单文件程序。}{第 1 章；不要求函数、容器、类、引用或指针。}
 
-\chaptermeta{已完成第 1 章，能在 Linux/WSL 中编译、链接并运行单文件程序；本章不要求会自定义函数、容器、类、引用或指针。}{Python 变量是可重新绑定的名称；C++ 声明会创建具有固定类型和作用域的对象，复制一个基础类型对象会得到独立的值。}{先区分编译诊断与运行结果，再检查初始化、整数除法、隐式转换、分支边界和循环是否终止。}
-
-\section{本章任务：从五行行情得到一个确定答案}
+\section{交付：从五行行情得到一个确定答案}
 
 研究原型里，一条筛选可能只是几行 DataFrame 表达式；面试白板题或低延迟数据入口却常要求你明确说明：每个字段是什么类型，坏数据走哪条分支，循环何时停止，累计值如何更新。本章的输出任务只使用基础语法，不借助尚未教学的自定义函数、结构体或容器。
 

@@ -1,17 +1,9 @@
 \chapter{首次构建与诊断}
 \index{compiler}\index{linker}\index{CMake}\index{CTest}\index{diagnostics}
 
-\begin{introduction}
-  \item 从空目录写出、编译并运行第一个 C++ 程序
-  \item 逐个读懂 \texttt{\#include}、\texttt{main}、花括号、分号和标准输出
-  \item 区分源文件、目标文件、可执行文件以及编译与链接
-  \item 用最小 CMake 目标完成一次全新的目录外构建
-  \item 通过三个隔离实验辨认编译、链接和运行期故障
-\end{introduction}
+\chapteropening{能从空目录写出、编译并运行第一个 C++ 程序，解释最小程序的符号，并区分编译、链接与运行期故障。}{一个可由直接编译和全新 CMake 构建共同复现、输出 \texttt{quant-cpp-ready} 的程序。}{会在终端进入目录、保存文本文件并运行 Python 脚本；不要求 C++ 经验。}
 
-\chaptermeta{会在终端进入目录、用文本编辑器保存文件，并能运行 Python 脚本；不要求任何 C++ 语法或编译经验。}{Python 可以直接运行 \texttt{python script.py}；C++ 源文件必须先变成当前平台的可执行文件。}{先记录完整命令和退出状态，再判断失败发生在编译、链接还是程序已经启动之后。}
-
-\section{本章输出：从空目录得到一行确定结果}
+\section{交付：从空目录得到一行确定结果}
 
 量化开发的第一个交付物不应是“编辑器里看起来像代码”，而是一条别人可以复现的构建链。本章任务从一个空目录开始，创建 \path{first_program.cpp} 与 \path{CMakeLists.txt}，最终得到：
 

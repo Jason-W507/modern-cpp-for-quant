@@ -1,14 +1,7 @@
 \chapter{标准数据工具、算法与 CSV}
 \index{vector}\index{array}\index{iterator}\index{lambda}\index{CSV parser}
 
-\begin{introduction}
-  \item 使用 \texttt{string}、\texttt{vector} 与 \texttt{array} 保存文本和行情列
-  \item 用范围 \texttt{for}、迭代器与标准算法遍历数据
-  \item 从普通函数逐步改写出可读的 lambda 谓词
-  \item 从文件读取并校验 CSV，产生带行号的稳定错误
-\end{introduction}
-
-\chaptermeta{已完成第 3 章，会定义函数、使用引用和指针，并能构建多文件程序。}{Python 的列表同时承担多种职责；C++ 容器把元素类型、存储方式和失效规则写入接口。}{先检查文件是否打开，再检查表头、列数、空字段和数值转换；容器异常则检查索引范围、大小/容量与迭代器是否失效。}
+\chapteropening{能用 \texttt{string}、\texttt{vector}、\texttt{array}、迭代器、算法和 lambda 处理类型明确的数据列，并校验 CSV。}{一个读取三列 CSV、输出数量、名义金额和 VWAP，并对坏输入给出行号的工具。}{第 3 章；会定义函数、使用引用和指针并构建多文件程序。}
 
 量化工作中的第一批 C++ 数据通常来自文本文件：代码列是字符串，价格和数量是数值列，最终还要排序、筛选和汇总。本章不提前使用第 5 章才教学的 \texttt{struct}；先用三个等长 \texttt{vector} 保存三列，亲手看清容器、迭代和校验边界。章末交付物 \texttt{ch04\_csv\_stats} 从文件读取固定 CSV，并精确输出：
 

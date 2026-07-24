@@ -54,7 +54,7 @@ Modules 旨在减少文本包含和宏污染，并改善依赖表达。现实项
 
 \path{code/appendix_performance/simd_factor.cpp} 给出一个可单独构建的点积实验。若标准库提供 \texttt{<experimental/simd>}，程序使用原生向量宽度成批计算，并用标量尾循环处理不能整除的 1027 个元素；缺少该头文件时，同一 target 明确回退到标量实现。验收先比较独立标量结果，再报告实际 pack 宽度与 checksum。这里的宽度只说明编译目标选择了哪种向量类型，不等于端到端提速。
 
-这个实验刻意保留三个采用条件：输入长度相同且连续；尾部元素不能丢失；浮点归约次序变化只能在事先约定的误差界内接受。若要写入作品集，还应保存 \path{-fopt-info-vec} 或 \path{-Rpass=loop-vectorize} 报告、热点汇编、CPU 型号与成对原始样本。只有业务 oracle、生成代码和测量结果同时成立，SIMD 才从“用了新 API”升级为可审查的优化证据。
+这个实验刻意保留三个采用条件：输入长度相同且连续；尾部元素不能丢失；浮点归约次序变化只能在事先约定的误差界内接受。若要写入作品集，还应保存 \path{-fopt-info-vec} 或 \path{-Rpass=loop-vectorize} 报告、热点汇编、CPU 型号与成对原始样本。只有业务判定基准、生成代码和测量结果同时成立，SIMD 才从“用了新 API”升级为可审查的优化证据。
 
 \section{采用分级表}
 
@@ -67,7 +67,7 @@ Modules 旨在减少文本包含和宏污染，并改善依赖表达。现实项
 立即使用 C++20 & RAII、span、ranges、concepts、jthread、target-based CMake & 全平台 clean build、行为测试与工具链记录 \\
 局部试点 C++23 & expected、print、mdspan、补充 ranges 能力 & 单一 target、特性宏、ABI 与性能边界 \\
 等待基础设施成熟 & modules、大范围标准升级、公开 ABI 新类型 & 多编译器构建、包管理与部署链闭环 \\
-实验性优化 & SIMD、协程框架、执行器或供应商 intrinsic & 同一业务 oracle、生成代码、硬件计数器和回滚 \\
+实验性优化 & SIMD、协程框架、执行器或供应商 intrinsic & 同一业务判定基准、生成代码、硬件计数器和回滚 \\
 \bottomrule
 \end{tabularx}
 \end{center}

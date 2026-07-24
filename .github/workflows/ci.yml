@@ -49,6 +49,80 @@ jobs:
       - name: Test
         run: ctest --test-dir build/sanitized --output-on-failure
 
+  windows-msvc:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure MSVC x64
+        run: cmake -S . -B build/msvc -A x64 -DBUILD_TESTING=ON -DQUANT_BUILD_PYTHON=OFF
+      - name: Build
+        run: cmake --build build/msvc --config ${{ matrix.build_type }} --parallel 2
+      - name: Test
+        run: ctest --test-dir build/msvc -C ${{ matrix.build_type }} --output-on-failure
+
+  locked-python:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: '0.11.16'
+          enable-cache: true
+      - name: Restore locked Python environment
+        run: uv sync --frozen --python 3.12
+      - name: Locate Python and pybind11
+        run: |
+          echo "PYTHON_EXECUTABLE=$(uv run python -c 'import sys; print(sys.executable)')" >> "$GITHUB_ENV"
+          echo "PYBIND11_DIR=$(uv run python -m pybind11 --cmakedir)" >> "$GITHUB_ENV"
+      - name: Configure factor-kernel binding
+        run: >-
+          cmake -S capstones/factor_kernel -B build/factor-python
+          -DBUILD_TESTING=ON
+          -DPython3_EXECUTABLE="$PYTHON_EXECUTABLE"
+          -Dpybind11_DIR="$PYBIND11_DIR"
+      - name: Build and test factor-kernel binding
+        run: |
+          cmake --build build/factor-python --parallel 2
+          ctest --test-dir build/factor-python --output-on-failure --no-tests=error -R capstone_factor_kernel_pybind_matches_arrow_numpy
+      - name: Configure chapter 16 binding
+        run: >-
+          cmake -S code/ch16 -B build/ch16-python
+          -DBUILD_TESTING=ON
+          -DCH16_BUILD_PYTHON=ON
+          -DPython3_EXECUTABLE="$PYTHON_EXECUTABLE"
+          -Dpybind11_DIR="$PYBIND11_DIR"
+      - name: Build and test chapter 16 binding
+        run: |
+          cmake --build build/ch16-python --parallel 2
+          ctest --test-dir build/ch16-python --output-on-failure --no-tests=error -R ch16_optional_pybind_module_preserves_core_behavior
+
+  book:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XeLaTeX, Biber, and PDF inspection tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y latexmk texlive-xetex texlive-lang-chinese texlive-latex-extra texlive-fonts-extra biber poppler-utils
+      - name: Build book
+        run: latexmk -xelatex -interaction=nonstopmode -halt-on-error -outdir=build/book main.tex
+      - name: Check references, layout, and page count with pdfinfo
+        run: python tools/check_pdf_build.py --log build/book/main.log --pdf build/book/main.pdf --min-pages 200 --max-pages 280
+      - name: Stage named PDF artifact
+        run: cp build/book/main.pdf build/book/python-quant-modern-cpp.pdf
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-quant-modern-cpp-pdf
+          path: build/book/python-quant-modern-cpp.pdf
+          if-no-files-found: error
+
   authoring-contract:
     runs-on: ubuntu-24.04
     steps:
@@ -57,4 +131,10 @@ jobs:
         with:
           python-version: '3.12'
       - run: python tools/check_book_contract.py
-      - run: python -m unittest tools.tests.test_book_contract tools.tests.test_output_contract
+      - run: >-
+          python -m unittest
+          tools.tests.test_book_contract
+          tools.tests.test_output_contract
+          tools.tests.test_p2_editorial_contract
+          tools.tests.test_ci_contract
+          tools.tests.test_pdf_build_check

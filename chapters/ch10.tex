@@ -1,14 +1,7 @@
 \chapter{错误处理与可观测性}
 \index{optional}\index{variant}\index{expected}\index{exception}\index{error code}
 
-\begin{introduction}
-  \item 区分正常缺席、可恢复输入错误、外部失败与程序员错误
-  \item 使用 optional、variant、异常与 assert 表达不同契约
-  \item 通过候选状态和提交点提供强异常保证
-  \item 在系统边界只记录一次错误，并保留可聚合指标
-\end{introduction}
-
-\chaptermeta{已完成第 4、5、8 章，会读取 CSV、使用 optional、构造有效领域对象并观察组合快照。}{Python 的 None、返回错误对象、raise 和 assert 分别有相近角色；C++ 还要求调用方从函数类型看见一部分失败契约，并明确对象在异常后的状态。}{先问失败属于正常分支、输入问题、环境问题还是不可能状态；再检查错误是否保留行号与字段、是否被重复记录、对象状态是否半更新。}
+\chapteropening{能区分正常缺席、可恢复输入错误、外部失败与程序员错误，选择 optional、variant、异常或 assert，并维护强异常保证。}{一个能跳过坏行、只记录一次错误且不会半更新组合状态的 CSV 管道。}{第 4、5、8 章；会读取 CSV、使用 optional 并观察组合快照。}
 
 本章把第 8 章的成交与组合边界扩展为一个可恢复 CSV 管道。三行数据中有两行合法、一行数量字段损坏；程序继续处理后续合法行，并精确输出：
 
@@ -160,7 +153,7 @@ fatal context=missing.csv message=cannot open input file
 
 \begin{enumerate}
   \item 先把最新价查询的代码参数暂时改为空字符串。Debug 构建应在 assert 处终止；再配置独立 Release 构建：
-  \item 把坏行的 side 改为 \texttt{hold}。测试应得到 \texttt{field=side} 与 \texttt{expected buy or sell}；恢复后重新运行输入 seam。
+  \item 把坏行的 side 改为 \texttt{hold}。测试应得到 \texttt{field=side} 与 \texttt{expected buy or sell}；恢复后重新运行输入边界。
   \item 把失败批次第二笔改成合法 AAPL 买单。此时不应抛异常，快照应一次增加 6 股；随后恢复错配代码，确认强保证测试重新绿色。
   \item 在输入末尾加入一行 \texttt{MSFT,buy,1,420.0}。解析会成功，但组合边界应记录 \texttt{field=portfolio}，rejected 与 rolled back 各增加 1；AAPL 状态不变。
 \end{enumerate}

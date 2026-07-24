@@ -1,14 +1,7 @@
 \chapter{类与行情分析器}
 \index{class}\index{struct}\index{constructor}\index{invariant}
 
-\begin{introduction}
-  \item 用 \texttt{struct} 和作用域枚举表达公开数据记录
-  \item 用 \texttt{class}、访问控制和构造函数维护行情不变量
-  \item 编写成员函数并理解尾随 \texttt{const} 与 \texttt{this}
-  \item 用异常把非法 CSV 转成带行号的稳定诊断
-\end{introduction}
-
-\chaptermeta{已完成第 4 章，会使用 string、vector、文件流并校验三列 CSV。}{Python 的类成员通常可在运行期任意增删；C++ 类型先固定成员与访问边界，并让构造函数建立有效状态。}{若程序在 \texttt{front()}、除法或统计阶段崩溃，先追查无效对象为何越过构造和输入边界，而不是在每个使用点补零值。}
+\chapteropening{能用 \texttt{struct}、作用域枚举和类表达行情记录，以构造函数和访问控制维护不变量，并编写 const 成员函数。}{一个从 CSV 构造有效行情对象、汇总单一代码并保留行号错误的分析器。}{第 4 章；会使用 string、vector、文件流并校验 CSV。}
 
 基础篇最后要把第 4 章的三条平行列收束为真正的行情对象，并交付可独立构建的 \texttt{ch05\_market\_analyzer}。固定输入中 AAPL 有两行，程序必须精确输出：
 

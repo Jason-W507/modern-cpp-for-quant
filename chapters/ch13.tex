@@ -1,16 +1,9 @@
 \chapter{数据布局、缓存与分配}
 \index{cache}\index{AoS}\index{SoA}\index{allocation}\index{false sharing}
 
-\begin{introduction}
-  \item 用 \texttt{sizeof}、\texttt{alignof} 与 \texttt{offsetof} 区分语言保证和本机观察
-  \item 在相同 checksum 下比较 AoS 与 SoA 搬运的字段集合
-  \item 观察 \texttt{vector::reserve} 与 arena 对分配、移动和生命周期的影响
-  \item 把 false sharing 写成带缓存行假设的实验，而不是固定硬件真理
-\end{introduction}
+\chapteropening{能区分对象布局的语言保证与本机观察，在同一结果下比较 AoS/SoA、预分配和 arena，并把 false sharing 写成带条件的假设。}{一份记录源码、环境、数据规模、checksum、布局事实、模型假设和未测内容的布局报告。}{第 6、7、12 章；理解对象生命周期、vector 失效规则与 sanitizer。}
 
-\chaptermeta{已完成第 6、7、12 章，理解对象生命周期、vector 失效规则与 sanitizer。}{NumPy 的 dtype、shape、strides 和 contiguous 属性显式描述数组布局；C++ 对象布局还受成员顺序、对齐、填充和实现选择影响。}{先验证两种布局产生相同结果，再记录编译器、目标架构、数据规模和布局事实；若结果不同，性能数字全部作废。}
-
-\section{本章输出：正确性受控的布局报告}
+\section{证据：正确性受控的布局报告}
 
 “SoA 更快”“arena 没有分配”“64 字节一定是缓存行”都不是可以脱离条件复述的结论。本章先交付一份布局报告，再允许修改项目快照。报告至少包含：源码与命令、编译器和架构、数据规模、两种实现的同一 checksum、\texttt{sizeof}/\texttt{alignof} 等观察、模型假设以及没有测量的内容。计时留给第 14 章。
 

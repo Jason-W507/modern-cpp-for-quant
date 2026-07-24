@@ -2,7 +2,7 @@
 
 一本面向已会 Python、准备量化投资求职或进入量化开发工作的 C++20 中文自学教程。
 
-**[下载 v0.3.0 PDF（236 页）](https://github.com/Jason-W507/modern-cpp-for-quant/releases/download/v0.3.0/python-quant-modern-cpp-v0.3.0.pdf)** · [校验和](https://github.com/Jason-W507/modern-cpp-for-quant/releases/download/v0.3.0/SHA256SUMS) · [查看最新 Release](https://github.com/Jason-W507/modern-cpp-for-quant/releases/latest)
+**[下载 v0.3.1 PDF（234 页）](https://github.com/Jason-W507/modern-cpp-for-quant/releases/download/v0.3.1/python-quant-modern-cpp-v0.3.1.pdf)** · [校验和](https://github.com/Jason-W507/modern-cpp-for-quant/releases/download/v0.3.1/SHA256SUMS) · [查看最新 Release](https://github.com/Jason-W507/modern-cpp-for-quant/releases/latest)
 
 ## 项目概览
 

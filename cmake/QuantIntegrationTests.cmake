@@ -453,6 +453,18 @@ add_test(NAME output_harness_rejects_whitespace_drift
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/test_output_contract.py)
 
+add_test(NAME p2_editorial_contract
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/test_p2_editorial_contract.py)
+
+add_test(NAME ci_workflow_contract
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/test_ci_contract.py)
+
+add_test(NAME pdf_build_log_contract
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/test_pdf_build_check.py)
+
 add_test(NAME version_contract_has_one_source
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/test_version_contract.py)

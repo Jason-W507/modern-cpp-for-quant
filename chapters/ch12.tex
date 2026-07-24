@@ -1,22 +1,15 @@
 \chapter{测试与调试工具}
 \index{unit test}\index{GDB}\index{AddressSanitizer}\index{UndefinedBehaviorSanitizer}\index{fuzzing}
 
-\begin{introduction}
-  \item 把需求写成不依赖实现细节的行为测试，并完成一次红---绿循环
-  \item 在 Debug 构建中用 GDB 从失败输出追到错误表达式
-  \item 用编译器警告、静态分析、ASan 与 UBSan 各自回答合适的问题
-  \item 识别 Release 下消失的 \texttt{assert}，让测试始终执行真实检查
-\end{introduction}
+\chapteropening{能把需求写成行为测试，完成红---绿循环，并按症状选择警告、调试器、静态分析或 sanitizer 取得证据。}{一份含症状、最小复现、失败层级、稳定诊断、根因和回归测试的故障报告。}{第 6、10、11 章；理解生命周期、错误分类、CMake 目标与构建配置。}
 
-\chaptermeta{已完成第 6、10、11 章，理解生命周期、错误分类、CMake 目标与构建配置。}{pytest 异常通常仍由解释器管理；C++ 还可能在没有语言级异常的情况下发生未定义行为，所以需要编译器、调试器和 sanitizer 共同取证。}{先保存最小复现、退出码和行为差异，再按症状选择工具；工具报告的是证据，不自动证明业务根因。}
-
-\section{本章输出：一份可复核的故障诊断报告}
+\section{证据：一份可复核的故障诊断报告}
 
 量化系统最危险的失败不一定崩溃。手续费符号写反仍会生成看似合理的净值；悬空指针可能在测试机上“碰巧可用”；只含 \texttt{assert} 的测试会在 Release 中安静通过。本章最终交付一份包含六项证据的诊断报告，调试命令只是取得证据的工具：症状与期望、最小复现命令、失败层级、工具输出中的稳定类别、根因、修复后的回归测试。
 
-仓库已有四条公开行为 seam，可作为测试先例：\path{project/tests/test_csv_reader.cpp} 保护行情输入，\path{project/tests/test_strategy.cpp} 保护策略决策，\path{project/tests/test_execution_portfolio.cpp} 保护成交与组合，\path{project/tests/test_backtest.cpp} 保护端到端手算账本。它们只观察输入、返回值、状态和输出，不断言某个私有成员或某次内部调用，因此重构实现时仍有价值。
+仓库已有四条公开行为边界，可作为测试先例：\path{project/tests/test_csv_reader.cpp} 保护行情输入，\path{project/tests/test_strategy.cpp} 保护策略决策，\path{project/tests/test_execution_portfolio.cpp} 保护成交与组合，\path{project/tests/test_backtest.cpp} 保护端到端手算账本。它们只观察输入、返回值、状态和输出，不断言某个私有成员或某次内部调用，因此重构实现时仍有价值。
 
-本章新增一个更小的成交/组合 seam。初始现金为 1000，以 100 买入 2 份并支付 1 元手续费，标记价格为 110；手算得到现金 799、权益 1019。完整测试如下：
+本章新增一个更小的成交/组合边界。初始现金为 1000，以 100 买入 2 份并支付 1 元手续费，标记价格为 110；手算得到现金 799、权益 1019。完整测试如下：
 
 \lstinputlisting[caption={Release 中仍执行真实分支检查的组合行为测试}]{code/ch12/tests/test_portfolio.cpp}
 
@@ -174,7 +167,7 @@ g++ -std=c++20 -O0 -g -fsanitize=undefined \
 
 预期类别是 \texttt{signed integer overflow}。量化代码中的数量乘价格、时间单位换算和累计计数都应在运算前检查范围；把溢出后的结果再转成更宽类型已经太迟。若确实需要模运算，使用无符号类型并在接口中明确语义，不要依赖有符号回绕。
 
-ASan 和 UBSan 应在 Debug/Sanitized 配置中编译并链接相同选项；它们增加内存与时间开销，不用于性能结论。MSVC 近年支持 AddressSanitizer，但选项和覆盖范围与 GCC/Clang 不同；本章自动故障类别测试会在不支持的编译器上显式跳过，避免伪造通过。
+ASan 和 UBSan 应在 Debug/Sanitized 配置中编译并链接相同选项；它们通过插桩发现特定类别的运行期错误，覆盖范围、平台支持和额外开销都有边界，因此一次无报告不能证明程序没有缺陷，也不能用其耗时作性能结论\autocite{clangasan,clangubsan}。MSVC 近年支持 AddressSanitizer，但选项和覆盖范围与 GCC/Clang 不同；本章自动故障类别测试会在不支持的编译器上显式跳过，避免伪造通过。
 
 \paragraph{与 Python 对照。}
 Python 列表越界通常抛出 \texttt{IndexError}，整数自动扩展，普通对象由运行时维持生命周期；这会降低一类内存错误，却不会阻止 NumPy/C 扩展、ctypes 或原生库中的 UB。C++ sanitizer 更像“带观测器的特殊构建”，其职责与异常处理机制不同：发现错误后应修复所有权、边界或范围，并留下行为回归测试。
@@ -205,7 +198,7 @@ Python 列表越界通常抛出 \texttt{IndexError}，整数自动扩展，普�
 \subsection*{随堂验证汇总}
 
 \begin{enumerate}
-  \item 把正确实现中的费用暂改为 0，先写下你预测的现金和权益，再运行测试。确认失败来自数值差异后恢复代码；若你先改期望值让测试变绿，就失去了手续费需求的独立 oracle。
+  \item 把正确实现中的费用暂改为 0，先写下你预测的现金和权益，再运行测试。确认失败来自数值差异后恢复代码；若你先改期望值让测试变绿，就失去了手续费需求的独立判定基准。
   \item 删除第一次 \texttt{delete} 后复跑 analyzer，确认类别消失；再把裸资源改为 \texttt{std::unique\_ptr<int>}。解释为什么所有权类型既减少错误路径，也比局部抑制警告提供更强的设计证据。
 \end{enumerate}
 
@@ -216,7 +209,7 @@ Python 列表越界通常抛出 \texttt{IndexError}，整数自动扩展，普�
 \begin{enumerate}
   \item 写出独立手算的预期现金以及程序实际输出、退出码。
   \item 用 Debug 信息编译，在 \texttt{cash\_after\_buy} 入口停住，记录四个参数、\texttt{notional} 和返回值。
-  \item 解释为什么 ASan/UBSan 不应报告这个逻辑错误，为什么行为 oracle 会报告。
+  \item 解释为什么 ASan/UBSan 不应报告这个逻辑错误，为什么行为独立判定基准会报告。
   \item 指出首次产生差异的表达式，只修改根因，不修改期望值。
   \item 增加不依赖 \texttt{assert} 的回归检查，在 Debug 与 Release 都运行。
   \item 最终程序精确输出 \texttt{fixed-cash=799}，报告同时保留复现命令与限制。
@@ -241,4 +234,4 @@ Python 列表越界通常抛出 \texttt{IndexError}，整数自动扩展，普�
 \enlargethispage{4\baselineskip}
 \section{本章小结}
 
-可靠诊断从可观察行为开始。行为测试提供 oracle，GDB 展开具体数据流，警告与静态分析检查未运行路径，ASan 和 UBSan 把部分未定义行为变成稳定类别。每种工具都有盲区；逻辑错误不会因 sanitizer 自动现形，Release 成功也可能只是断言消失。保存复现、选择最小工具、解释全部证据、最小修复并留下回归测试，才是一条能用于量化求职项目和真实工作的调试闭环。
+可靠诊断从可观察行为开始。行为测试提供独立判定基准，GDB 展开具体数据流，警告与静态分析检查未运行路径，ASan 和 UBSan 把部分未定义行为变成稳定类别。每种工具都有盲区；逻辑错误不会因 sanitizer 自动现形，Release 成功也可能只是断言消失。保存复现、选择最小工具、解释全部证据、最小修复并留下回归测试，才是一条能用于量化求职项目和真实工作的调试闭环。

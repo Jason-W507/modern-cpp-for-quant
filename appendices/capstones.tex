@@ -13,7 +13,7 @@
 \toprule
 证据 & Research Engineer & Quant Developer \\
 \midrule
-业务 oracle & Python/NumPy 独立结果与容差政策 & 手算订单、成交、盘口和序列状态 \\
+业务判定基准 & Python/NumPy 独立结果与容差政策 & 手算订单、成交、盘口和序列状态 \\
 数据边界 & dtype、shape、stride、owner、缺失值 & 协议版本、序号、价格 tick、数量和消息类型 \\
 性能边界 & 批量大小、复制次数、kernel 热点 & p50/p99/p99.9、吞吐、队列水位、丢弃 \\
 失败实验 & 错 dtype、非连续数组、生命周期 & 重复、乱序、丢包、越界取消、队列满 \\
@@ -103,7 +103,9 @@ price/quantity & 24 & 8 & 两个大端序有符号 32 位整数 \\
 \end{tabular}
 \end{center}
 
-\texttt{MarketReplay::apply} 是协议测试的公开边界（seam）。解码错误不推进序号；旧序号计为 duplicate/stale；允许范围内的未来序号进入有序缓存且保持 next expected；只有缺口闭合后才按连续序号进入订单簿。统计把 \texttt{sequence\_accepted}、\texttt{book\_accepted} 与 \texttt{book\_rejected} 分开，单次结果也会汇总连带恢复消息的接受或拒绝，避免把“序号已消费”误写成“订单已进入簿”。结果、buffered/recovered 计数、待处理数量与盘口都可从公开接口观察：
+\texttt{MarketReplay::apply} 是协议测试的公开边界。解码错误不推进序号；旧序号计为 duplicate/stale；允许范围内的未来序号进入有序缓存并维持预期序号，只有缺口闭合后才按连续序号进入订单簿。
+
+统计分别记录 \texttt{sequence\_accepted}、\texttt{book\_accepted} 与 \texttt{book\_rejected}。单次结果也会汇总连带恢复消息的接受或拒绝，避免把“序号已消费”误写成“订单已进入簿”。结果、buffered/recovered 计数、待处理数量与盘口都可从公开接口观察：
 
 \lstinputlisting[caption={replay 公开结果、统计与入口}]{capstones/order_book/include/quant/capstone/market_replay.hpp}
 
@@ -115,7 +117,7 @@ price/quantity & 24 & 8 & 两个大端序有符号 32 位整数 \\
 
 \section{从教学订单簿演化到作品集}
 
-按以下顺序增加能力，每一步都保留旧 oracle：
+按以下顺序增加能力，每一步都保留旧独立判定基准：
 
 \begin{enumerate}
   \item cancel/replace：定义未知 ID、部分成交后取消和价格修改是否失去时间优先；
@@ -136,7 +138,7 @@ README.md              scope, build, exact examples, limitations
 CMakePresets.json      reproducible Debug/Release/Sanitized configs
 include/               public domain and protocol contracts
 src/                   implementation
-tests/                 independent behavior oracles
+tests/                 independent behavior tests
 failures/              isolated malformed/replay fixtures
 benchmarks/            correctness-gated raw measurements
 reports/               environment, profiler, paired statistics

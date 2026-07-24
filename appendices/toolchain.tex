@@ -63,7 +63,7 @@ Windows 原生构建只补充差异，不改变 WSL 主线。MinGW Makefiles 通
 链接 & undefined / multiple definition 类别 & 核对定义是否唯一且目标是否真正链接 \\
 运行 & stderr、退出状态、最小失败输入 & 先复现，再用 GDB 或行为测试缩小边界 \\
 内存/UB & ASan、UBSan、TSan 类别与调用栈 & 重建分配、释放、访问或 happens-before 图 \\
-性能 & 正确性 oracle、原始样本、profiler 热点 & 先守住 checksum，再解释环境与测量边界 \\
+性能 & 正确性独立判定基准、原始样本、profiler 热点 & 先守住 checksum，再解释环境与测量边界 \\
 \bottomrule
 \end{tabularx}
 \end{center}
@@ -78,7 +78,7 @@ cmake --build build/ch11-sanitized -j2
 ctest --test-dir build/ch11-sanitized --output-on-failure
 \end{lstlisting}
 
-具体开关以对应章节的 CMake 入口为准。AddressSanitizer 与 UndefinedBehaviorSanitizer 常组合使用；ThreadSanitizer 通常单独构建。\texttt{sleep} 无法代替同步，故意 UB 的输出值也不能充当 oracle。
+具体开关以对应章节的 CMake 入口为准。AddressSanitizer 与 UndefinedBehaviorSanitizer 常组合使用；ThreadSanitizer 通常单独构建。\texttt{sleep} 无法代替同步，故意 UB 的输出值也不能充当独立判定基准。
 
 % appendix:miktex-build
 \section{在 Windows / MiKTeX 构建本书}

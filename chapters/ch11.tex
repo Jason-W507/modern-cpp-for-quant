@@ -1,16 +1,9 @@
 \chapter{CMake 与依赖}
 \index{CMake Presets}\index{dependency management}\index{compile commands@compile\_commands.json}
 
-\begin{introduction}
-  \item 区分配置、生成、构建与测试，读懂源目录和构建目录
-  \item 用库、应用、示例和测试组成 target-based CMake 构建图
-  \item 准确选择 \texttt{PRIVATE}、\texttt{PUBLIC} 与 \texttt{INTERFACE}
-  \item 从干净目录复现 Debug、Sanitized 与 Release 配置
-\end{introduction}
+\chapteropening{能区分配置、生成、构建和测试，用目标与依赖边组织库、应用、示例和测试，并解释属性传播。}{一个可从干净目录复现 Debug、Sanitized 与 Release 配置的 target-based CMake 快照。}{第 1、3、5 章；能编译多文件程序并理解头文件与链接。}
 
-\chaptermeta{已完成第 1、3、5 章，能编译多文件程序并理解头文件与链接。}{Python 的 \path{pyproject.toml} 主要描述包和工具；CMake 描述原生目标、编译要求与目标之间的依赖边。}{先确认失败发生在配置、生成、编译、链接、测试哪一步，再检查目标图；不要用全局 include 路径掩盖缺失依赖。}
-
-\section{本章输出：从源码树复现一个目标图}
+\section{问题：从源码树复现一个目标图}
 
 量化程序从一个可执行文件增长为公共计算库、命令行应用、研究示例和行为测试后，继续复制编译选项与源文件列表会产生漂移。本章把一个 VWAP 汇总器组织成六个正常目标：\texttt{ch11\_project\_options} 保存共同构建要求，\texttt{ch11\_market} 提供静态库，报告程序、示例、测试和练习答案只声明自己对该库的依赖。另有一个 \texttt{EXCLUDE\_FROM\_ALL} 故障目标，仅供显式触发链接实验，不属于正常构建。
 
@@ -33,7 +26,7 @@ rows=3 quantity=25 notional=2525.00 vwap=101.00
 
 \section{配置不是编译：先读四个阶段}
 
-\subsection{场景：为什么旧可执行文件会制造假绿}
+\subsection{旧可执行文件为什么会制造假绿}
 
 \texttt{cmake -S ... -B ...} 先读取 \path{CMakeLists.txt}、检测编译器和依赖，再生成 Ninja 或 Make 等底层构建文件。它通常不编译 C++。\texttt{cmake --build ...} 才按依赖图调用编译器与链接器；\texttt{ctest --test-dir ...} 运行已经登记且已经构建的测试。若只运行最后一步，旧二进制可能让错误源码看起来仍然通过。
 
@@ -142,7 +135,7 @@ ctest --test-dir build/ch11-release --output-on-failure
 
 \section{Presets、clangd 与 CI 共享同一配置事实}
 
-根目录的 \path{CMakePresets.json} 把常用 Linux/WSL Debug、Linux/WSL Release 和 Windows MinGW Release 配置登记为版本化名称。它不保存开发者本机的绝对路径或密钥；这些个人覆盖应放进不提交的 \path{CMakeUserPresets.json}。在 WSL 中可直接运行：
+根目录的 \path{CMakePresets.json} 把常用 Linux/WSL Debug、Linux/WSL Release 和 Windows MinGW Release 配置登记为版本化名称。CMake Presets 的版本化项目配置与用户本地覆盖有明确分工\autocite{cmakepresets}；因此它不保存开发者本机的绝对路径或密钥，这些个人覆盖应放进不提交的 \path{CMakeUserPresets.json}。在 WSL 中可直接运行：
 
 \begin{lstlisting}[language=bash,numbers=none]
 cmake --preset linux-debug
@@ -169,7 +162,7 @@ cmake --build build/fuzz --target quant_csv_fuzzer -j
 ./build/fuzz/quant_csv_fuzzer -max_total_time=60 corpus/csv
 \end{lstlisting}
 
-fuzzer 的 oracle 不是“永不报错”：任意字节输入都可以被拒绝，但成功结果必须只包含非空代码、有限正价格与正数量，而且 sanitizer 不得报告内存或未定义行为。发现崩溃后保存最小语料，并转成普通回归测试；持续随机运行不能替代稳定复现。
+fuzzer 的独立判定基准不是“永不报错”：任意字节输入都可以被拒绝，但成功结果必须只包含非空代码、有限正价格与正数量，而且 sanitizer 不得报告内存或未定义行为。发现崩溃后保存最小语料，并转成普通回归测试；持续随机运行不能替代稳定复现。
 
 \section{外部依赖也应表现为目标}
 

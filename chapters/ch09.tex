@@ -1,14 +1,7 @@
 \chapter{模板、concepts 与多态}
 \index{template}\index{concept}\index{static polymorphism}\index{dynamic polymorphism}
 
-\begin{introduction}
-  \item 从只接受一种策略的普通函数演化出函数模板
-  \item 读懂模板参数、实参推导、实例化与类模板语法
-  \item 用 requires 表达式和 concept 给泛型接口命名并约束能力
-  \item 比较静态多态与运行时多态的适用场景及工程代价
-\end{introduction}
-
-\chaptermeta{已完成第 3--8 章，会使用函数、类、optional、值语义、组合和虚函数接口。}{Python 函数天然可以接收任何具有所需方法的对象；C++ 模板也按表达式能力工作，但会在编译期为实际类型检查并实例化代码。Python Protocol 更接近 concept，而抽象基类更接近虚函数接口。}{模板错误先找最早的“哪项表达式无效”或“哪项约束不满足”；运行结果错误则回到策略决策 seam，不能把“编译通过”误当作业务语义正确。}
+\chapteropening{能从普通函数演化到函数模板和 concept，解释推导与实例化，并比较静态多态和运行时多态的边界。}{一个在多种策略实现间保持同一决策行为的管道，以及无约束与受约束模板的诊断对照。}{第 3--8 章；会使用函数、类、optional、值语义和虚函数接口。}
 
 本章保持第 8 章的领域边界与同一公开行为：事件仍验证非空代码、正有限价格和正数量，订单仍验证非空代码和正数量；99 元、空仓的 AAPL 事件使阈值策略下单，持有策略不下单。最终独立快照必须精确输出：
 
@@ -95,7 +88,7 @@ g++ -std=c++20 -c code/ch09/failures/constrained_strategy.cpp
 
 无约束版本先实例化函数体，再报告整数没有 \texttt{on\_event} 成员。真实模板库中，这类错误可能嵌套许多层。受约束版本在候选入口检查 \texttt{EventStrategy}，诊断类别变为“constraints not satisfied”，并可继续指出 requires 中哪条表达式无效。测试只匹配类别，不锁定 GCC 与 Clang 的整段措辞。
 
-concept 改善的是错误发生位置和接口文档，并不替代行为测试。一个 \texttt{AlwaysBuyStrategy} 完全可以满足返回类型，却在任何价格下买入。\path{code/ch09/tests/test_static_strategy.cpp} 仍通过公开策略 seam 验证：阈值策略给出一笔数量 25 的 AAPL 订单，持有策略没有订单。
+concept 改善的是错误发生位置和接口文档，并不替代行为测试。一个 \texttt{AlwaysBuyStrategy} 完全可以满足返回类型，却在任何价格下买入。\path{code/ch09/tests/test_static_strategy.cpp} 仍通过公开策略边界验证：阈值策略给出一笔数量 25 的 AAPL 订单，持有策略没有订单。
 
 \paragraph{与 Python 对照。}
 Python 静态检查器也能在调用前指出对象不满足 Protocol；若不运行检查器，错误可能到执行方法访问时才出现。C++ concept 检查属于编译本身，但它同样只看到声明的能力，无法替代 pytest 中的业务样例。
@@ -151,7 +144,7 @@ ctest --test-dir build/ch09 --output-on-failure
 ./build/ch09/ch09_constrained_pipeline
 \end{lstlisting}
 
-最后一行必须与章首逐字一致。根项目还验证普通函数、函数模板、静态策略 seam、静态/动态对照、两种编译诊断、练习答案与干净快照。concept 只负责编译期能力，输出测试负责运行期语义，两类证据不可互相替代。
+最后一行必须与章首逐字一致。根项目还验证普通函数、函数模板、静态策略边界、静态/动态对照、两种编译诊断、练习答案与干净快照。concept 只负责编译期能力，输出测试负责运行期语义，两类证据不可互相替代。
 
 \section{章末三层练习}
 
@@ -160,7 +153,7 @@ ctest --test-dir build/ch09 --output-on-failure
 \begin{enumerate}
   \item 把事件价格从 99 改为 101，其他代码不变。输出应变为 \texttt{ordinary=none}；若仍为 buy，先检查阈值比较而不是模板语法。
   \item 删除 \texttt{HoldStrategy} 调用并重新构建。输出只剩阈值结果，同时编译器不再需要持有策略对应的 \texttt{decide} 实例；源码模板仍然存在。
-  \item 把 \texttt{HoldStrategy::on\_event} 返回类型暂时改为 \texttt{bool}，并把函数体改成 \texttt{return false;}。构建持有策略对应的运行器特化时，应报告 \texttt{MarketStrategy} 约束不满足；恢复原返回类型与函数体后，静态策略 seam 重新绿色。
+  \item 把 \texttt{HoldStrategy::on\_event} 返回类型暂时改为 \texttt{bool}，并把函数体改成 \texttt{return false;}。构建持有策略对应的运行器特化时，应报告 \texttt{MarketStrategy} 约束不满足；恢复原返回类型与函数体后，静态策略边界重新绿色。
   \item 在受约束失败示例中为整数换成一个含 \texttt{int on\_event(const Event\&) const} 的小类。约束应通过；随后把返回类型改为 \texttt{double}，观察 \texttt{same\_as<int>} 失败。
   \item 把 \texttt{RuntimeStrategy\&} 改为具体 \texttt{RuntimeThreshold\&}。输出不变，但调用点不再展示运行时替换能力；这说明“用了继承类”本身不等于调用发生了动态分派。
 \end{enumerate}

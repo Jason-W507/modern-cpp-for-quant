@@ -132,7 +132,7 @@ order book & \(O(\log L)\) 插入 & \(O(orders)\) & cancel 索引、序号、快
   \subsection{#1}
   \textbf{题面：}#2
 
-  \textbf{手算 oracle：}#3
+  \textbf{手算基准：}#3
 
   \textbf{循环不变量与复杂度：}#4
 
@@ -268,7 +268,7 @@ order book & \(O(\log L)\) 插入 & \(O(orders)\) & cancel 索引、序号、快
 {Dijkstra 每次确定未访问的最小距离；二叉堆实现为 \(O((V+E)\log V)\)。}
 {负权、随时间变化的报价和容量约束会使原模型哪里失效？}
 
-\algorithmdrill{随机测试不替代 oracle}
+\algorithmdrill{随机测试不替代独立判定基准}
 {为二分、heap 与 replay 各设计一个 property，并说明如何缩减失败输入。}
 {二分结果前元素均小于阈值；top-k 不遗漏任何优于堆顶的元素；replay 只连续推进序号。}
 {property 通过公开结果观察，随机生成只是扩大输入覆盖，不改变确定性契约。}
@@ -277,7 +277,7 @@ order book & \(O(\log L)\) 插入 & \(O(orders)\) & cancel 索引、序号、快
 \clearpage
 \section{参考答案与可构建实现索引}
 
-题卡的手算 oracle 用于开始作答，下面的索引用于完成后核对。\path{code/appendix_algorithms/interview_algorithms.cpp} 不是只展示函数签名：同一个可执行文件对二分、旋转数组、top-k、滑动窗口、中位数、在线方差、回撤、LRU/TTL、区间、Fenwick tree、并查集、拓扑排序、Dijkstra 与取消索引执行固定 oracle。并发、序号恢复和完整订单簿复用已经在附录 F、附录 G 构建并测试的实现，避免为了附录页数复制第二套协议代码。
+题卡的手算基准用于开始作答，下面的索引用于完成后核对。\path{code/appendix_algorithms/interview_algorithms.cpp} 不是只展示函数签名：同一个可执行文件对二分、旋转数组、top-k、滑动窗口、中位数、在线方差、回撤、LRU/TTL、区间、Fenwick tree、并查集、拓扑排序、Dijkstra 与取消索引执行固定独立判定基准。并发、序号恢复和完整订单簿复用已经在附录 F、附录 G 构建并测试的实现，避免为了附录页数复制第二套协议代码。
 
 \begin{center}
 \small
@@ -296,7 +296,7 @@ ring 与 SPSC & \path{code/appendix_concurrency/spsc_demo.cpp} & 满/空区分�
 区间与前缀累计 & \path{merge_intervals}, \path{FenwickTree} & 端点语义；0/1-based 索引转换 \\
 风险分组与任务图 & \path{DisjointSet}, \path{topological_order} & 路径压缩；稳定的零入度选择；环诊断 \\
 最低成本路径 & \path{shortest_cost} & 非负边、陈旧堆项、溢出保护 \\
-property 与 fuzz & 各函数的 main oracle；\path{market_replay_fuzz.cpp} & 随机输入扩大覆盖，固定 oracle 决定对错 \\
+property 与 fuzz & 各函数的 主判定基准；\path{market_replay_fuzz.cpp} & 随机输入扩大覆盖，固定独立判定基准决定对错 \\
 \bottomrule
 \end{tabularx}
 \end{center}
@@ -321,7 +321,7 @@ LRU 的 list 和 hash index 描述同一组活节点，每次命中、覆盖和�
 
 \subsection{cache-aware 不是新的大 O 记号}
 
-面试中的清楚实现先保证复杂度与边界；工作代码还要问数据是否连续、节点是否频繁分配、热字段能否装入更少缓存行、分支是否可预测。vector 排序有 \(O(n\log n)\) 复杂度，却可能因连续存储在中小规模上优于节点 heap；链表 LRU 有平均 \(O(1)\) 操作，却会增加指针追踪与分配。结论必须来自同一 oracle 下的成对样本和 profiler/hardware-counter 证据，不能从复杂度或容器名称直接推导。
+面试中的清楚实现先保证复杂度与边界；工作代码还要问数据是否连续、节点是否频繁分配、热字段能否装入更少缓存行、分支是否可预测。vector 排序有 \(O(n\log n)\) 复杂度，却可能因连续存储在中小规模上优于节点 heap；链表 LRU 有平均 \(O(1)\) 操作，却会增加指针追踪与分配。结论必须来自同一独立判定基准下的成对样本和 profiler/hardware-counter 证据，不能从复杂度或容器名称直接推导。
 
 \section{分层练习}
 
@@ -329,6 +329,6 @@ LRU 的 list 和 hash index 描述同一组活节点，每次命中、覆盖和�
   \item \textbf{复现：}从空文件重写 binary search、top-k 与 drawdown，并用附录固定输入验收。
   \item \textbf{修改：}让 sliding window 接受时间戳和毫秒窗口，明确相同时间戳与过期边界。
   \item \textbf{开放：}为订单簿增加 cancel，使用 ID 索引保持平均常数定位，并证明删除后价位与哈希表一致。
-  \item \textbf{性能：}比较 vector 排序与 heap top-k，在多个 \(n,k\) 组合中保存原始配对样本和业务 oracle。
+  \item \textbf{性能：}比较 vector 排序与 heap top-k，在多个 \(n,k\) 组合中保存原始配对样本和业务判定基准。
   \item \textbf{系统：}把 merge sorted streams 接入 sequence gate，定义重复、gap 与恢复后的确定性顺序。
 \end{enumerate}

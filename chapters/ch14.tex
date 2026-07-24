@@ -1,18 +1,11 @@
 \chapter{Benchmark 与 profiling}
 \index{benchmark}\index{profiling}\index{percentile}\index{paired measurement}
 
-\begin{introduction}
-  \item 把“更快”改写成可反驳假设和正确性受控的实验
-  \item 用预热、重复样本、交替顺序和结果消费减少常见测量偏差
-  \item 区分中位数、IQR、吞吐与尾延迟回答的问题
-  \item 用 profiler 和 Amdahl 定律选择端到端优化优先级
-\end{introduction}
+\chapteropening{能把“更快”改写成可反驳假设，设计有预热、重复、交替顺序和结果消费的实验，并解释统计量与 profiler 证据。}{一份包含假设、实验协议、原始数据、结论和有效性威胁的性能报告。}{第 12--13 章；能构建 Release 目标并解释 checksum 与布局实验。}
 
-\chaptermeta{已完成第 12、13 章，能够构建 Release 目标并解释 checksum 与布局实验。}{Python 的 \texttt{timeit}、\texttt{cProfile} 和 NumPy 经验有帮助，但 C++ 优化器、编译配置和原生 profiler 改变了证据边界。}{先写正确性 oracle 与环境，再收集原始样本；若结果不同或工作负载不代表目标系统，全部性能结论作废。}
+\section{假设与交付：一份可被推翻的性能报告}
 
-\section{本章输出：一份可被推翻的性能报告}
-
-“SoA 比 AoS 快”缺少程序、输入、机器、编译器、配置和指标，尚不能构成实验假设。可检验版本是：在本章固定的 100 万行热字段扫描、GCC 13.3、x86-64、Release 配置下，SoA 的单进程批处理耗时中位数低于 AoS；两者必须先得到同一手算 checksum。
+“SoA 比 AoS 快”缺少程序、输入、机器、编译器、配置和指标，尚不能构成实验假设。可检验版本是：在本章固定的 100 万行热字段扫描、GCC 13.3、x86-64、Release 配置下，SoA 的单进程批处理耗时中位数低于 AoS；只有两者先得到同一手算 checksum，耗时差异才值得讨论。
 
 从项目根目录构建独立实验：
 
@@ -27,7 +20,7 @@ ctest --test-dir build/ch14-release --output-on-failure
 
 \section{微基准协议：先保护语义，再开始计时}
 
-\path{code/ch14/experiments/layout_benchmark.cpp} 固定 100 万行，使每 200 行的手算名义金额为 920716，总 oracle 为 4603580000。程序在计时前分别预热 3 次，收集 21 对样本；偶数轮先测 AoS，奇数轮先测 SoA，以减少固定“第一个/第二个”位置偏差。每轮还按运行期样本编号轮换起点，两个布局仍按相同次序处理全部元素。下面只是核心片段，容器构造、计时函数、统计和输出见完整源码：
+\path{code/ch14/experiments/layout_benchmark.cpp} 固定 100 万行，使每 200 行的手算名义金额为 920716，总独立判定基准为 4603580000。程序在计时前分别预热 3 次，收集 21 对样本；偶数轮先测 AoS，奇数轮先测 SoA，以减少固定“第一个/第二个”位置偏差。每轮还按运行期样本编号轮换起点，两个布局仍按相同次序处理全部元素。下面只是核心片段，容器构造、计时函数、统计和输出见完整源码：
 
 \begin{lstlisting}[language=C++,numbers=none]
 for (int sample = 0; sample < samples; ++sample) {
@@ -42,7 +35,7 @@ for (int sample = 0; sample < samples; ++sample) {
 }
 \end{lstlisting}
 
-“消费结果”不是随手加 \texttt{volatile}。本例让返回值参与 oracle 和最终输出，轮换起点又让扫描依赖运行期样本编号；计时函数还用 GCC/Clang 或 MSVC 的编译器屏障把本轮乘加留在两次读钟之间，I/O 则在计时区外。屏障是编译器相关的测量细节，并非 C++ 对优化的通用禁令；仍须记录编译器与配置，必要时检查生成代码。预热能减少首次页错误、冷代码等一次性影响，却不保证缓存状态代表生产流量。
+“消费结果”不是随手加 \texttt{volatile}。本例让返回值参与独立判定基准和最终输出，轮换起点又让扫描依赖运行期样本编号；计时函数还用 GCC/Clang 或 MSVC 的编译器屏障把本轮乘加留在两次读钟之间，I/O 则在计时区外。屏障是编译器相关的测量细节，并非 C++ 对优化的通用禁令；仍须记录编译器与配置，必要时检查生成代码。预热能减少首次页错误、冷代码等一次性影响，却不保证缓存状态代表生产流量。
 
 本机 WSL2、GCC 13.3、x86-64 的一次 Release 运行得到。以下是格式化摘录，保留程序真实字段名；教材页内省略了两组 \texttt{raw-us} 的 21 个具体值，正式实验报告不得省略：
 
@@ -76,7 +69,7 @@ bursty median-us=10.00 iqr-us=37.50 p99-us=100
 \begin{pythonbridge}
 Python 的 \texttt{timeit} 也会重复运行并通常报告多次结果，但不能自动证明输入、线程数和底层 BLAS 状态相同；\texttt{cProfile} 是确定性调用 profiler，开销模型不同于采样 profiler。NumPy 调用把工作移进原生库时，应同时记录 Python 边界和原生热点，不能只看 Python 行级时间。
 
-\pythoncompare{timeit/cProfile 与 C++ benchmark/profiler 分别测时间和热点。}{两边都必须让输入、结果与报告对象活过计时区间。}{工具不会替语言做业务检查；oracle 必须在测量前独立通过。}{错误做法通常得到可信外观的错数字，而非自动报错。}
+\pythoncompare{timeit/cProfile 与 C++ benchmark/profiler 分别测时间和热点。}{两边都应让输入、结果与报告对象活过计时区间。}{工具不会替语言做业务检查；独立判定基准未通过时，测量结果没有解释价值。}{错误做法通常得到可信外观的错数字，而非自动报错。}
 \end{pythonbridge}
 
 \section{硬件证据：从耗时追到 cycles、缓存与向量化}
@@ -186,11 +179,11 @@ limitations-and-next-test:
 
 复现层重跑已有样本与统计；修改层只改变一个工作负载维度并交替测量；开放层用 profiler 热点和 Amdahl 上限决定采用、拒绝或继续实验。
 
-输出任务：提交布局实验的假设、命令、环境、oracle、全部原始样本、中位数/IQR、结论与限制；附 profiler 命令和热点表，并代入 Amdahl 模型。不得只交截图、最快一次或脱离环境的百分比。
+输出任务：提交布局实验的假设、命令、环境、独立判定基准、全部原始样本、中位数/IQR、结论与限制；附 profiler 命令和热点表，并代入 Amdahl 模型。不得只交截图、最快一次或脱离环境的百分比。
 
 自测：
 \begin{enumerate}
-  \item 为什么 oracle 必须先通过，输出 checksum 又为何不能禁止所有合法优化？
+  \item 为什么独立判定基准必须先通过，输出 checksum 又为何不能禁止所有合法优化？
   \item 预热、重复样本和交替顺序分别减少什么偏差，又不能保证什么？
   \item 中位数相同的两组样本为何仍可能具有完全不同的工程风险？
   \item IQR、吞吐与 $p_{99}$ 各依赖什么口径，为什么 8 个样本不足以支持尾延迟 SLA？

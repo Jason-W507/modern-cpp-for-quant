@@ -1,18 +1,9 @@
 \chapter{对象生命周期、RAII 与所有权}
 \index{object lifetime}\index{RAII}\index{move semantics}\index{unique ptr@unique\_ptr}\index{shared ptr@shared\_ptr}
 
-\begin{introduction}
-  \item 从构造、使用到析构，画出自动对象与动态对象的生命周期
-  \item 区分值、引用、裸指针，以及左值、右值和移动后的有效状态
-  \item 识读 C 数组、\texttt{new}/\texttt{delete} 和典型悬空风险，同时坚持现代默认路径
-  \item 用 RAII 和 Rule of Zero 把文件等资源的释放绑定到对象生命周期
-  \item 在直接值与三种智能指针之间做有理由的所有权选择
-  \item 用 AddressSanitizer 取得一次真实的 heap-use-after-free 诊断
-\end{introduction}
+\chapteropening{能画出对象生命周期，区分值、借用与所有权，解释移动后的有效状态，并用 RAII 和智能指针表达资源关系。}{一个可观察复制、移动、共享和弱引用状态的程序，以及一次 AddressSanitizer 悬空诊断。}{第 1--5 章；会使用函数、引用、容器、类和构造函数。}
 
-\chaptermeta{已完成基础篇，能读写函数、引用、\texttt{const}、\texttt{string}/\texttt{vector}、\texttt{struct}/\texttt{class} 和构造函数；关键语法会在首次实验处复习。}{Python 名称和垃圾回收不等于 C++ 所有权；最接近 RAII 的 Python 心智模型是显式的 \texttt{with} 边界，而不是等待 \texttt{\_\_del\_\_}。}{出现悬空、重复释放或泄漏时，先画“谁创建、谁拥有、谁借用、何时销毁”，再用 sanitizer 取得失败类别。}
-
-\section{本章输出：让所有权状态可以被观察}
+\section{交付：让所有权状态可以被观察}
 
 低延迟系统里，“这个指针应该还活着”不是可靠论证。行情快照、文件句柄、锁和异步任务都要求同一个问题有明确答案：对象从何时存在，到何时销毁，谁有权延长它的寿命？本章最终任务是重写一个所有权选择程序，并得到如下精确输出：
 
@@ -43,7 +34,7 @@ Trace moved{std::move(original)};
 
 \lstinputlisting[caption={复制、移动与逆序析构轨迹}]{code/ch06/lifetime_trace.cpp}
 
-\texttt{original} 先以标签 \texttt{quote} 构造。内部作用域复制出 \texttt{quote-copy}，随后把 \texttt{original} 的字符串资源移动给 \texttt{moved}；本实验主动把源标签设为 \texttt{moved-from}，所以这一状态可测试。离开内部作用域时，\texttt{moved} 后构造、先析构，然后才是 \texttt{copied}。最外层结束时，源对象仍能安全析构。
+\texttt{original} 先以标签 \texttt{quote} 构造。内部作用域复制出 \texttt{quote-copy}，随后把 \texttt{original} 的字符串资源移动给 \texttt{moved}；本实验主动把源标签设为 \texttt{moved-from}，所以这一状态可测试。C++ 标准只保证移动后的标准库对象处于有效但未指定的状态，业务代码不应依赖某个偶然值\autocite{cppdraft}。离开内部作用域时，\texttt{moved} 后构造、先析构，然后才是 \texttt{copied}。最外层结束时，源对象仍能安全析构。
 
 够用的值类别工作模型是：左值表达式有可重复识别的身份，例如已命名对象；纯右值常表示临时计算结果；将亡值表示资源可以被转移的对象。值类别描述表达式，不是永久贴在对象上的标签。\texttt{original} 是对象，而写下它这个表达式时通常是左值；\texttt{std::move(original)} 才得到将亡值表达式。
 

@@ -1,16 +1,9 @@
 \chapter{数值稳定性与 Python 互操作}
 \index{numerical stability}\index{floating point}\index{pybind11}\index{GIL}\index{NumPy}
 
-\begin{introduction}
-  \item 从二进制表示解释浮点比较失败，并给容差写出来源
-  \item 用补偿求和与在线方差保护可复现的统计口径
-  \item 区分金额、收益率和方差的表示与舍入责任
-  \item 设计明确 dtype、连续性、GIL 和所有权的批量 pybind11 边界
-\end{introduction}
+\chapteropening{能解释浮点比较边界，使用稳定求和与在线方差，区分金额和收益率的表示责任，并设计明确 dtype、布局、GIL 与所有权的批量绑定。}{一个无第三方依赖的数值核心、可选 pybind11 模块及 Python/C++ 一致性证据。}{第 5、12、14 章；会维护类不变量、写行为测试并以独立基准约束测量。}
 
-\chaptermeta{已完成第 5、12、14 章，能够维护类不变量、写行为测试并以正确性 oracle 约束测量。}{Python \texttt{float} 与 C++ \texttt{double} 通常同为 binary64，但 NumPy 数组还携带 dtype、shape、strides 与所有者；跨语言后这些元数据必须显式验收。}{看到末位差异先查表示、运算顺序与口径；看到扩展崩溃先查 dtype、连续性和寿命，不用“浮点误差”概括所有问题。}
-
-\section{本章输出：先验证算法，再跨边界}
+\section{问题：先验证算法，再跨边界}
 
 Python 研究代码移到 C++ 时，两个问题常被错误地混在一起：数值结果为何改变，以及调用为什么没有变快。\path{code/ch16} 把它们拆成一个无第三方依赖的 C++20 核心和一个可选 pybind11 薄绑定。核心始终可构建；只有环境已经提供 pybind11 时才生成 Python 模块。
 
@@ -38,7 +31,7 @@ tolerance-source input-abs=0.000e+00 operations=2
   scale=3.000e-01 abs=1.332e-16 rel=4.441e-16
 \end{lstlisting}
 
-独立手算 oracle 是 $10^{16}+1-10^{16}+3=4$。程序若只打印“计算完成”或拿同一个函数生成 expected，不能证明算法正确。
+独立手算基准是 $10^{16}+1-10^{16}+3=4$。程序若只打印“计算完成”或拿同一个函数生成 expected，不能证明算法正确。
 
 \section{浮点表示、比较与容差来源}
 
@@ -59,15 +52,15 @@ Python 的 \texttt{math.isclose} 也使用相对与绝对容差，但默认值�
 
 \section{求和顺序、补偿项与在线方差}
 
-浮点加法不满足实数意义下的结合律。顺序求和先执行 $10^{16}+1$ 时，较小的 1 会被舍掉；之后再减 $10^{16}$ 已无法恢复。\texttt{std::accumulate} 能表达归约，却仍按给定顺序反复做同一种加法，不能自动补偿已丢低位。
+浮点加法不满足实数意义下的结合律。顺序求和先执行 $10^{16}+1$ 时，较小的 1 会被舍掉；之后再减 $10^{16}$ 已无法恢复。\texttt{std::accumulate} 能表达归约，却仍按给定顺序反复做同一种加法，不能自动补偿已丢低位。误差如何累积、算法如何改善稳定性，需要结合问题尺度分析，不能只看一次输出\autocite{higham2002accuracy}。
 
 本章用 Neumaier 补偿求和：\texttt{total} 保存主和，\texttt{correction} 收集每次加法中未进入主和的低位。当新数绝对值更大时，误差表达式的方向也随之交换。完整可运行入口如下；核心实现来自同一静态库：
 
-\lstinputlisting[caption={朴素求和、补偿求和与独立 oracle}]{code/ch16/experiments/stability_report.cpp}
+\lstinputlisting[caption={朴素求和、补偿求和与独立判定基准}]{code/ch16/experiments/stability_report.cpp}
 
 方差也不能机械套用 $E[X^2]-E[X]^2$：两项很大而差很小时会发生灾难性消减。\texttt{sample\_moments} 使用 Welford 更新，每读一个值就更新 count、mean 与平方离差和，最后明确除以 $n-1$，所以输出叫 sample variance；若业务要总体方差，则分母与名称必须同时改变。
 
-Python 的 \texttt{math.fsum} 提供高精度求和工具，NumPy 的归约还可能按 dtype、轴和实现选择不同顺序；C++ 补偿算法不会自动等同于某个 NumPy 版本。失败触发是把输入顺序换成大数、小数、反向大数并观察朴素和偏离 oracle；诊断类别是 cancellation/order sensitivity，根因是有效位丢失，修复是改变算法、提高精度或重构问题，而非扩大测试容差。
+Python 的 \texttt{math.fsum} 提供高精度求和工具，NumPy 的归约还可能按 dtype、轴和实现选择不同顺序；C++ 补偿算法不会自动等同于某个 NumPy 版本。失败触发是把输入顺序换成大数、小数、反向大数并观察朴素和偏离独立判定基准；诊断类别是 cancellation/order sensitivity，根因是有效位丢失，修复是改变算法、提高精度或重构问题，而非扩大测试容差。
 
 \section{金额、收益率与方差需要不同表示}
 
@@ -116,7 +109,7 @@ Python 视图常通过 \texttt{base} 保持源对象存活；C++ \texttt{span} �
 
 \section{GIL 与可选 pybind11 薄绑定}
 
-Python 调入扩展时当前线程持有 GIL。长时间纯 C++ 循环若一直持有它，会阻止其他 Python 线程执行 Python 字节码；但释放 GIL 只移除解释器锁，不会替 C++ 共享状态建立 mutex 或 happens-before。
+Python 调入扩展时当前线程持有 GIL。长时间纯 C++ 循环若一直持有它，会阻止其他 Python 线程执行 Python 字节码；但释放 GIL 只移除解释器锁，不会替 C++ 共享状态建立 mutex 或 happens-before。pybind11 提供作用域式释放工具，同时要求释放期间不调用需要 GIL 的 Python API\autocite{pybind11docs}。
 
 \path{bindings/module.cpp} 先在持有 GIL 时取得 \texttt{buffer\_info}，随后只在不调用 Python API 的核心求和或填充循环周围创建 \texttt{py::gil\_scoped\_release}；作用域结束自动重新取得 GIL，之后才构造 Python 异常或返回对象。若循环中需要回调 Python、调整引用计数或创建数组，就不能在释放区间执行这些操作。
 
@@ -139,7 +132,7 @@ Python 的线程同样受 GIL 约束，但 NumPy 或其他扩展是否释放、�
   \item 只把 \texttt{gil\_scoped\_release} 移出数据指针取得之前，指出为什么此时访问 \texttt{py::array} 元数据不再安全；正确答案不是“多加一个锁”，而是缩回释放作用域。
 \end{enumerate}
 
-复现层固定数值与边界输出；修改层改变批大小或缺失值分布并保持独立 oracle；开放层为一段 Python 热点设计 dtype、所有权、GIL 与测量契约。
+复现层固定数值与边界输出；修改层改变批大小或缺失值分布并保持独立判定基准；开放层为一段 Python 热点设计 dtype、所有权、GIL 与测量契约。
 
 输出任务：提交 \path{code/ch16} 的 clean-build 命令、容差预算与三组精确输出，以及一页边界说明。说明须给出金额舍入口径、收益与方差定义；比较逐元素、批量复制和零拷贝；列出 dtype、stride、所有者与 GIL 的前置条件。附 ASan 的 \texttt{heap-use-after-free} 与 GIL probe 两类稳定证据。环境有 pybind11 时再提交可选模块输出；没有时提交“dependency-free core only”配置证据。
 
@@ -158,4 +151,4 @@ Python 的线程同样受 GIL 约束，但 NumPy 或其他扩展是否释放、�
 
 \section{本章小结}
 
-数值可靠性来自表示、算法和验收口径；互操作性能来自足够粗的边界。先以独立 oracle 验证无依赖核心，再把 dtype、连续性、所有者和 GIL 写进薄绑定协议。
+数值可靠性来自表示、算法和验收口径；互操作性能来自足够粗的边界。先以独立判定基准验证无依赖核心，再把 dtype、连续性、所有者和 GIL 写进薄绑定协议。
