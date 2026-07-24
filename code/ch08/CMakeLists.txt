@@ -6,6 +6,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(CTest)
+if(BUILD_TESTING)
+  find_package(Python3 REQUIRED COMPONENTS Interpreter)
+endif()
+if(NOT DEFINED QUANT_BUILD_NEGATIVE_TESTS)
+  set(QUANT_BUILD_NEGATIVE_TESTS ON)
+endif()
 
 function(ch08_target_options target)
   target_include_directories(${target} PRIVATE include tests)
@@ -42,3 +48,29 @@ add_test(NAME ch08_domain_pipeline_runs
   COMMAND ch08_domain_pipeline ${CMAKE_CURRENT_SOURCE_DIR}/data/events.csv)
 add_test(NAME ch08_runtime_strategy_runs COMMAND ch08_runtime_strategy)
 add_test(NAME ch08_invalid_values_are_rejected COMMAND ch08_test_invalid_values)
+add_test(NAME ch08_sell_down_solution_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_LIST_DIR}/../../tools/expect_output.py
+          --expected ${CMAKE_CURRENT_LIST_DIR}/expected/sell_down_solution.txt
+          -- $<TARGET_FILE:ch08_sell_down_solution>)
+if(QUANT_BUILD_NEGATIVE_TESTS)
+  add_test(NAME ch08_wrong_override_fails_during_compilation
+    COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_LIST_DIR}/../../tools/expect_compile_failure.py
+            --compiler ${CMAKE_CXX_COMPILER}
+            --source ${CMAKE_CURRENT_LIST_DIR}/failures/wrong_override.cpp
+            --output ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch08_wrong_override.obj
+            --diagnostic "does not override|marked.*override|override.*but does not")
+endif()
+add_test(NAME ch08_clean_domain_pipeline_configures_builds_and_runs
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_LIST_DIR}/../../tools/test_clean_cmake_project.py
+          --cmake ${CMAKE_COMMAND}
+          --source ${CMAKE_CURRENT_LIST_DIR}
+          --expected ${CMAKE_CURRENT_LIST_DIR}/expected/domain_pipeline.txt
+          --target ch08_domain_pipeline
+          --argument ${CMAKE_CURRENT_LIST_DIR}/data/events.csv
+          --generator "${CMAKE_GENERATOR}"
+          --compiler ${CMAKE_CXX_COMPILER}
+          --work-root ${CMAKE_CURRENT_BINARY_DIR}/clean-build-tests
+          --config $<CONFIG>)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import threading
 
 import numpy as np
 import pyarrow as pa
@@ -52,7 +53,32 @@ def main() -> int:
     expect_rejected(values.astype(np.float32), weights)
     expect_rejected(np.asfortranarray(values), weights)
     expect_rejected(values, weights.astype(np.float32))
-    print("pybind-arrow-consistency-ok rows=4 dtype=float64 contiguous=1")
+
+    started = threading.Event()
+    progressed = threading.Event()
+
+    def observe_progress() -> None:
+        started.wait()
+        progressed.set()
+
+    worker = threading.Thread(target=observe_progress)
+    worker.start()
+    large_values = np.ones((250_000, 16), dtype=np.float64)
+    large_weights = np.ones(16, dtype=np.float64)
+    previous_interval = sys.getswitchinterval()
+    try:
+        sys.setswitchinterval(10.0)
+        started.set()
+        quant_factor_kernel.weighted_factor(large_values, large_weights)
+        gil_released = progressed.is_set()
+    finally:
+        sys.setswitchinterval(previous_interval)
+        worker.join()
+    if not gil_released:
+        raise AssertionError("factor kernel held the GIL during batch computation")
+
+    print("pybind-arrow-consistency-ok rows=4 dtype=float64 contiguous=1 "
+          "gil-released=1")
     return 0
 
 

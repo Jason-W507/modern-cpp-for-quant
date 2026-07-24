@@ -58,7 +58,7 @@ ctest --test-dir build/factor --output-on-failure
 
 CTest 的固定四行矩阵先由手算验收，再由 \path{python/test_numpy_consistency.py} 使用 NumPy 独立计算。项目根目录的 \path{pyproject.toml} 与 \path{uv.lock} 锁定 CPython 3.12、pybind11、NumPy、PyArrow 和 pytest；\path{python/test_binding_consistency.py} 会真正导入生成的模块，并用 Arrow fixed-size-list 的子缓冲构造二维视图。当前固定输出是三行有限值和一行 NaN；比较使用明确的绝对/相对容差和 \texttt{equal\_nan=True}，不会从 C++ 结果反推 expected。
 
-找到 pybind11 的 CMake package 时，项目额外生成 \texttt{quant\_factor\_kernel}。绑定要求二维/一维 float64 C-contiguous 数组，并通过 \texttt{noconvert} 拒绝隐式 dtype 转换；核心计算期间只借用输入，返回数组拥有自己的副本：
+找到 pybind11 的 CMake package 时，项目额外生成 \texttt{quant\_factor\_kernel}。绑定要求二维/一维 float64 C-contiguous 数组，并通过 \texttt{noconvert} 拒绝隐式 dtype 转换；在构造 span 前还会检查行列乘法是否超出 \texttt{size\_t}。输入完成验证后，绑定仅在纯 C++ kernel 运行期间释放 GIL，重新取得 GIL 后才分配并复制返回数组，因此返回值拥有自己的内存：
 
 \lstinputlisting[caption={可选 pybind11 批量边界}]{capstones/factor_kernel/bindings/module.cpp}
 
@@ -81,7 +81,7 @@ ctest --test-dir build/order-book --output-on-failure
 
 固定场景先挂出 101 的六单位卖单和 100 的五单位买单，再提交 102 的四单位买单。成交价采用 resting order 的 101，maker 为 1，taker 为 3；卖一剩余两单位，买一仍为 100。测试还拒绝重复订单 ID。
 
-\texttt{SequenceGate} 将消息序号 1、2、2、4 分类为两次 accepted、一次 duplicate/stale 和一次 gap，next expected 保持 3。\texttt{MarketReplay} 在这一层之上缓存未来消息；序号 3 到达后自动处理 3、再排空已缓存的 4。它仍不会静默跳过缺口，也没有假装实现交易所重传或快照协议。
+\texttt{SequenceGate} 将消息序号 1、2、2、4 分类为两次 accepted、一次 duplicate/stale 和一次 gap，next expected 保持 3。\texttt{MarketReplay} 在这一层之上缓存未来消息；序号 3 到达后自动处理 3、再排空已缓存的 4。缓存同时限制允许的最大序号距离和待处理消息数，默认上限均为 1024；超过距离返回 \texttt{sequence\_gap\_exceeded}，容量耗尽时按 \texttt{reject\_newest} 策略返回 \texttt{pending\_overflow}，不会让恶意或损坏输入无限占用内存。它仍不会静默跳过缺口，也没有假装实现交易所重传或快照协议。
 
 \subsection{32 字节协议与可回放入口}
 
@@ -103,15 +103,15 @@ price/quantity & 24 & 8 & 两个大端序有符号 32 位整数 \\
 \end{tabular}
 \end{center}
 
-\texttt{MarketReplay::apply} 是协议测试的公开边界（seam）。解码错误不推进序号；旧序号计为 duplicate/stale；未来序号进入有序缓存且保持 next expected；只有缺口闭合后才按连续序号进入订单簿。结果、buffered/recovered 计数与盘口都可从公开接口观察：
+\texttt{MarketReplay::apply} 是协议测试的公开边界（seam）。解码错误不推进序号；旧序号计为 duplicate/stale；允许范围内的未来序号进入有序缓存且保持 next expected；只有缺口闭合后才按连续序号进入订单簿。统计把 \texttt{sequence\_accepted}、\texttt{book\_accepted} 与 \texttt{book\_rejected} 分开，单次结果也会汇总连带恢复消息的接受或拒绝，避免把“序号已消费”误写成“订单已进入簿”。结果、buffered/recovered 计数、待处理数量与盘口都可从公开接口观察：
 
 \lstinputlisting[caption={replay 公开结果、统计与入口}]{capstones/order_book/include/quant/capstone/market_replay.hpp}
 
 \lstinputlisting[caption={大端序解码、序号门与订单簿提交}]{capstones/order_book/src/market_replay.cpp}
 
-固定回放先拒绝 3 字节坏消息，再处理序号 1、2、重复 2、缺口 4 和恢复到 3。消息 3 到达后，缓存中的 4 随即排空；验收结果是 accepted=4、duplicate=1、gap=1、buffered=1、recovered=1、decode=1、trades=2、next=5。\path{test_spsc_replay.cpp} 进一步让单生产者线程通过容量 256 的 SPSC ring 交付 10000 条消息，消费线程全部回放，accepted 与 offered 必须相等。
+固定回放先拒绝 3 字节坏消息，再处理序号 1、2、重复 2、缺口 4 和恢复到 3。消息 3 到达后，缓存中的 4 随即排空；验收结果是 sequence-accepted=4、book-accepted=4、duplicate=1、gap=1、buffered=1、recovered=1、decode=1、trades=2、next=5。另一组固定测试把距离限制设为 3、容量设为 2，分别冻结越距拒绝与满载拒绝；还让恢复消息在订单簿层失败，确认单次结果显式报告一次接受和一次拒绝。\path{test_spsc_replay.cpp} 进一步让单生产者线程通过容量 256 的 SPSC ring 交付 10000 条消息，消费线程全部回放，sequence-accepted、book-accepted 与 offered 必须相等。
 
-\path{benchmarks/replay_benchmark.cpp} 预先编码 10000 条消息，计时区域只包含 \texttt{apply}。为避免本机计时器把单次调用大量量化为 0/100 ns，报告以每 100 条消息的窗口计时并换算单条均值；Python 驱动启动 11 个全新进程，合并 1100 个窗口样本后报告 p50/p99/p99.9 与各进程吞吐。\path{reports/replay-benchmark.json} 保存环境、原始窗口样本、正确性计数与限制，并明确不把窗口均值解释为窗口内单条消息的真实尾延迟。测试只锁消息与 accepted 数，不锁纳秒值。\texttt{CAPSTONE\_BUILD\_FUZZERS} 在 Clang/libFuzzer 下生成协议 fuzzer，任意字节都只能被拒绝或安全处理；发现样本必须缩减后转入普通回归测试。
+\path{benchmarks/replay_benchmark.cpp} 预先编码 10000 条消息，计时区域只包含 \texttt{apply}。为避免本机计时器把单次调用大量量化为 0/100 ns，报告以每 100 条消息的窗口计时并换算单条均值；Python 驱动启动 11 个全新进程，合并 1100 个窗口样本后报告 p50/p99/p99.9 与各进程吞吐。\path{reports/replay-benchmark.json} 保存环境、原始窗口样本、正确性计数与限制，并明确不把窗口均值解释为窗口内单条消息的真实尾延迟。测试只锁消息与 sequence/book 接受数，不锁纳秒值。\texttt{CAPSTONE\_BUILD\_FUZZERS} 在 Clang/libFuzzer 下生成协议 fuzzer，任意字节都只能被拒绝或安全处理；发现样本必须缩减后转入普通回归测试。
 
 \section{从教学订单簿演化到作品集}
 

@@ -31,6 +31,8 @@ int main() {
         break;
       case quant::capstone::ReplayStatus::decode_error:
       case quant::capstone::ReplayStatus::book_rejected:
+      case quant::capstone::ReplayStatus::sequence_gap_exceeded:
+      case quant::capstone::ReplayStatus::pending_overflow:
         throw std::logic_error{"sequence gate returned a transport status"};
     }
   }

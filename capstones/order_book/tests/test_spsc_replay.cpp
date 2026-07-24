@@ -71,10 +71,12 @@ int main() {
   producer.join();
   consumer.join();
 
-  if (replay.stats().accepted != message_count ||
+  if (replay.stats().sequence_accepted != message_count ||
+      replay.stats().book_accepted != message_count ||
       replay.next_expected() != message_count + 1) {
     std::cerr << "SPSC replay oracle mismatch\n";
     return 2;
   }
-  std::cout << "spsc-replay-ok offered=10000 accepted=10000 next=10001\n";
+  std::cout << "spsc-replay-ok offered=10000 sequence-accepted=10000 "
+               "book-accepted=10000 next=10001\n";
 }

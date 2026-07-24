@@ -57,3 +57,15 @@ foreach(failure_target IN ITEMS
     ch12_signed_overflow_failure)
   target_link_libraries(${failure_target} PRIVATE ch12_project_options)
 endforeach()
+
+if(QUANT_BUILD_FUZZERS)
+  if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    message(FATAL_ERROR "QUANT_BUILD_FUZZERS requires Clang with libFuzzer")
+  endif()
+  add_executable(quant_csv_fuzzer fuzz/csv_parser_fuzz.cpp)
+  target_include_directories(quant_csv_fuzzer PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/../../project/include)
+  target_link_libraries(quant_csv_fuzzer PRIVATE ch12_project_options)
+  target_compile_options(quant_csv_fuzzer PRIVATE -fsanitize=fuzzer,address)
+  target_link_options(quant_csv_fuzzer PRIVATE -fsanitize=fuzzer,address)
+endif()

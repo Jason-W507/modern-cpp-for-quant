@@ -1,4 +1,5 @@
 #include "quant/capstone/factor_kernel.hpp"
+#include "quant/capstone/detail/factor_validation.hpp"
 
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
@@ -24,13 +25,19 @@ PYBIND11_MODULE(quant_factor_kernel, module) {
         }
         const auto rows = static_cast<std::size_t>(value_info.shape[0]);
         const auto columns = static_cast<std::size_t>(value_info.shape[1]);
-        const auto scores = quant::capstone::weighted_factor(
-            quant::capstone::FactorBatchView{
-                std::span<const double>{
-                    static_cast<const double*>(value_info.ptr), rows * columns},
-                rows, columns},
-            std::span<const double>{
-                static_cast<const double*>(weight_info.ptr), columns});
+        const std::size_t element_count =
+            quant::capstone::detail::checked_element_count(rows, columns);
+        std::vector<double> scores;
+        {
+          py::gil_scoped_release release;
+          scores = quant::capstone::weighted_factor(
+              quant::capstone::FactorBatchView{
+                  std::span<const double>{
+                      static_cast<const double*>(value_info.ptr), element_count},
+                  rows, columns},
+              std::span<const double>{
+                  static_cast<const double*>(weight_info.ptr), columns});
+        }
 
         py::array_t<double> output(scores.size());
         auto output_info = output.request();

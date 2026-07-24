@@ -8,7 +8,8 @@ same row-major batch through two public seams:
 
 The formula skips NaN observations and divides each row's weighted sum by the
 sum of absolute weights that were actually observed. A row with no observed
-weight returns NaN. Infinite inputs and shape mismatches are rejected.
+weight returns NaN. Infinite inputs, shape mismatches and row-by-column shape
+multiplication overflow are rejected before any span is formed.
 
 ```sh
 cmake -S capstones/factor_kernel -B build/factor -DBUILD_TESTING=ON
@@ -20,6 +21,8 @@ When the locked Python environment is active, CTest imports the built
 `quant_factor_kernel` module and checks an Arrow fixed-size-list batch against
 an independent NumPy formula. Its inputs require float64 C-contiguous arrays
 without implicit conversion; the returned array owns its result.
+The binding releases the Python GIL only while the validated C++ kernel runs,
+then reacquires it before allocating and copying the NumPy result.
 
 ```sh
 uv sync --python 3.12

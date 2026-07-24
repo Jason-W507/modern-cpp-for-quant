@@ -134,6 +134,8 @@ enum class ReplayStatus {
   accepted,
   duplicate_or_stale,
   gap,
+  sequence_gap_exceeded,
+  pending_overflow,
   decode_error,
   book_rejected
 };

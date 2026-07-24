@@ -31,9 +31,25 @@ int main() {
     rejected_shape = true;
   }
 
-  if (!values_match || !rejected_shape) {
+  bool rejected_overflow = false;
+  try {
+    const std::vector<double> empty_values;
+    const std::vector<double> two_weights{0.5, 0.5};
+    static_cast<void>(quant::capstone::weighted_factor(
+        quant::capstone::FactorBatchView{
+            empty_values,
+            std::numeric_limits<std::size_t>::max() / 2 + 1,
+            2},
+        two_weights));
+  } catch (const std::invalid_argument&) {
+    rejected_overflow = true;
+  } catch (const std::exception&) {
+  }
+
+  if (!values_match || !rejected_shape || !rejected_overflow) {
     std::cerr << "factor kernel oracle mismatch\n";
     return 2;
   }
-  std::cout << "factor-kernel-tests-ok rows=4 finite=3 missing=1\n";
+  std::cout << "factor-kernel-tests-ok rows=4 finite=3 missing=1 "
+               "shape-overflow-rejected=1\n";
 }

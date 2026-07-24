@@ -1,15 +1,20 @@
 cmake_minimum_required(VERSION 3.20)
-project(ch07_ranges_pipeline LANGUAGES CXX)
-
-add_executable(ch07_ranges_pipeline
-  src/main.cpp
-  src/csv_reader.cpp
-  src/pipeline.cpp)
-target_include_directories(ch07_ranges_pipeline PRIVATE include)
-target_compile_features(ch07_ranges_pipeline PRIVATE cxx_std_20)
-
-if(MSVC)
-  target_compile_options(ch07_ranges_pipeline PRIVATE /W4 /permissive-)
-else()
-  target_compile_options(ch07_ranges_pipeline PRIVATE -Wall -Wextra -Wpedantic)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  project(ch07_ranges_pipeline LANGUAGES CXX)
 endif()
+include(${CMAKE_CURRENT_LIST_DIR}/../../cmake/QuantTargetDefaults.cmake)
+
+function(ch07_executable target source)
+  add_executable(${target} ${source})
+  quant_apply_target_defaults(${target})
+endfunction()
+
+ch07_executable(ch07_ranges_pipeline src/main.cpp)
+target_sources(ch07_ranges_pipeline PRIVATE src/csv_reader.cpp src/pipeline.cpp)
+target_include_directories(ch07_ranges_pipeline PRIVATE include)
+ch07_executable(ch07_lazy_views lazy_views.cpp)
+ch07_executable(ch07_reduction_order reduction_order.cpp)
+ch07_executable(ch07_top_prices_solution exercises/top_prices_solution.cpp)
+target_include_directories(ch07_top_prices_solution PRIVATE include)
+ch07_executable(ch07_container_choices container_choices.cpp)
+target_include_directories(ch07_container_choices PRIVATE include)

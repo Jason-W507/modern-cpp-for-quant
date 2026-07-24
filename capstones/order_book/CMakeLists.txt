@@ -4,6 +4,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 endif()
 
 include(CTest)
+find_package(Threads REQUIRED)
 
 add_library(capstone_order_book INTERFACE)
 target_include_directories(capstone_order_book INTERFACE include)
@@ -60,13 +61,13 @@ if(BUILD_TESTING)
     COMMAND capstone_market_replay_tests)
   set_tests_properties(capstone_market_replay_classifies_sequence_failures
     PROPERTIES PASS_REGULAR_EXPRESSION
-      "market-replay-tests-ok accepted=4 duplicate=1 gap=1 buffered=1 recovered=1 decode=1 trades=2 next=5")
+      "market-replay-tests-ok sequence-accepted=4 book-accepted=4 duplicate=1 gap=1 buffered=1 recovered=1 decode=1 trades=2 bounded=1 explicit-outcome=1 next=5")
 
   add_test(NAME capstone_replay_benchmark_preserves_message_count
     COMMAND capstone_replay_benchmark)
   set_tests_properties(capstone_replay_benchmark_preserves_message_count
     PROPERTIES PASS_REGULAR_EXPRESSION
-      "replay-benchmark-ok messages=10000 accepted=10000")
+      "replay-benchmark-ok messages=10000 sequence-accepted=10000 book-accepted=10000")
 
   find_package(Python3 COMPONENTS Interpreter QUIET)
   if(Python3_Interpreter_FOUND)
@@ -89,10 +90,11 @@ if(BUILD_TESTING)
 endif()
 
   add_executable(capstone_spsc_replay_tests tests/test_spsc_replay.cpp)
-  target_link_libraries(capstone_spsc_replay_tests PRIVATE capstone_market_replay)
+  target_link_libraries(capstone_spsc_replay_tests
+    PRIVATE capstone_market_replay Threads::Threads)
   add_test(NAME capstone_spsc_replay_preserves_every_message
     COMMAND capstone_spsc_replay_tests)
   set_tests_properties(capstone_spsc_replay_preserves_every_message
     PROPERTIES PASS_REGULAR_EXPRESSION
-      "spsc-replay-ok offered=10000 accepted=10000 next=10001")
+      "spsc-replay-ok offered=10000 sequence-accepted=10000 book-accepted=10000 next=10001")
 endif()

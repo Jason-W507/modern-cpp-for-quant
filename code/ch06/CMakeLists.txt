@@ -1,0 +1,15 @@
+cmake_minimum_required(VERSION 3.20)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  project(ch06_lifetime_and_ownership LANGUAGES CXX)
+endif()
+include(${CMAKE_CURRENT_LIST_DIR}/../../cmake/QuantTargetDefaults.cmake)
+
+function(ch06_executable target source)
+  add_executable(${target} ${source})
+  quant_apply_target_defaults(${target})
+endfunction()
+
+ch06_executable(ch06_lifetime_trace lifetime_trace.cpp)
+ch06_executable(ch06_borrowing_and_legacy borrowing_and_legacy.cpp)
+ch06_executable(ch06_raii_file raii_file.cpp)
+ch06_executable(ch06_ownership_choices ownership_choices.cpp)

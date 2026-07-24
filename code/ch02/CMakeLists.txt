@@ -1,0 +1,17 @@
+cmake_minimum_required(VERSION 3.20)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  project(ch02_language_basics LANGUAGES CXX)
+endif()
+include(${CMAKE_CURRENT_LIST_DIR}/../../cmake/QuantTargetDefaults.cmake)
+
+function(ch02_executable target source)
+  add_executable(${target} ${source})
+  quant_apply_target_defaults(${target})
+endfunction()
+
+ch02_executable(ch02_objects_and_literals objects_and_literals.cpp)
+ch02_executable(ch02_expressions expressions.cpp)
+ch02_executable(ch02_branches branches.cpp)
+ch02_executable(ch02_for_scope for_scope.cpp)
+ch02_executable(ch02_market_filter market_filter.cpp)
+ch02_executable(ch02_risk_budget_solution exercises/risk_budget_solution.cpp)

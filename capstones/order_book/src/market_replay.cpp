@@ -82,43 +82,69 @@ std::optional<AddMessage> decode_add(
 
 }  // namespace
 
+MarketReplay::MarketReplay(ReplayConfig config) : config_(config) {
+  if (config_.max_sequence_gap == 0 ||
+      config_.max_pending_messages == 0) {
+    throw std::invalid_argument{
+        "replay bounds require positive gap and pending-message limits"};
+  }
+}
+
 ReplayOutcome MarketReplay::apply(std::span<const std::uint8_t> bytes) {
   const auto message = decode_add(bytes);
   if (!message) {
     ++stats_.decode_errors;
-    return {ReplayStatus::decode_error, {}};
+    return {.status = ReplayStatus::decode_error};
   }
 
   const ReplayStatus sequence_status = sequence_.observe(message->sequence);
   if (sequence_status == ReplayStatus::duplicate_or_stale) {
     ++stats_.duplicates;
-    return {sequence_status, {}};
+    return {.status = sequence_status};
   }
   if (sequence_status == ReplayStatus::gap) {
+    ++stats_.gaps;
+    if (pending_.contains(message->sequence)) {
+      ++stats_.duplicates;
+      return {.status = ReplayStatus::duplicate_or_stale};
+    }
+    const std::uint64_t gap =
+        message->sequence - sequence_.next_expected();
+    if (gap > config_.max_sequence_gap) {
+      ++stats_.gap_rejections;
+      return {.status = ReplayStatus::sequence_gap_exceeded};
+    }
+    if (pending_.size() >= config_.max_pending_messages) {
+      ++stats_.pending_overflows;
+      return {.status = ReplayStatus::pending_overflow};
+    }
     const auto [position, inserted] = pending_.try_emplace(
         message->sequence, bytes.begin(), bytes.end());
     static_cast<void>(position);
     if (!inserted) {
       ++stats_.duplicates;
-      return {ReplayStatus::duplicate_or_stale, {}};
+      return {.status = ReplayStatus::duplicate_or_stale};
     }
-    ++stats_.gaps;
     ++stats_.buffered;
-    return {ReplayStatus::gap, {}};
+    return {.status = ReplayStatus::gap};
   }
 
-  ReplayOutcome outcome{ReplayStatus::accepted, {}};
+  ReplayOutcome outcome{.status = ReplayStatus::accepted,
+                        .sequence_accepted = 1};
+  ++stats_.sequence_accepted;
   const auto submit = [this, &outcome](const Order& order) {
     try {
       auto trades = book_.submit(order);
-      ++stats_.accepted;
+      ++stats_.book_accepted;
+      ++outcome.book_accepted;
       stats_.trades += trades.size();
       outcome.trades.insert(outcome.trades.end(),
                             std::make_move_iterator(trades.begin()),
                             std::make_move_iterator(trades.end()));
       return true;
     } catch (const std::invalid_argument&) {
-      ++stats_.book_rejections;
+      ++stats_.book_rejected;
+      ++outcome.book_rejected;
       return false;
     }
   };
@@ -139,6 +165,9 @@ ReplayOutcome MarketReplay::apply(std::span<const std::uint8_t> bytes) {
       throw std::logic_error{"buffered replay message violated sequence invariant"};
     }
     ++stats_.recovered;
+    ++stats_.sequence_accepted;
+    ++outcome.recovered;
+    ++outcome.sequence_accepted;
     submit(recovered->order);
   }
   return outcome;

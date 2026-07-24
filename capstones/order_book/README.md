@@ -12,10 +12,13 @@ ctest --test-dir build/order-book --output-on-failure
 ./build/order-book/capstone_replay_benchmark
 ```
 
-The behavior test freezes malformed, accepted, duplicate and gap outcomes,
-buffers out-of-order messages and drains them after the missing sequence
-arrives. The SPSC integration test moves 10,000 messages from one producer to
-one replay consumer without loss. The benchmark pre-encodes 10,000
+The behavior test freezes malformed, sequence-accepted, book-accepted,
+book-rejected, duplicate and gap outcomes. Out-of-order buffering is bounded
+by both the maximum sequence distance and message count; the baseline policy
+rejects the newest message when capacity is exhausted. A recovered message's
+book rejection is visible in the outcome rather than being counted as a
+successful book application. The SPSC integration test moves 10,000 messages
+from one producer to one replay consumer without loss. The benchmark pre-encodes 10,000
 messages, gates correctness before reporting p50/p99 nanoseconds and
 throughput, and intentionally does not claim production latency. Save raw runs,
 CPU/compiler details, affinity and frequency policy before comparing changes.

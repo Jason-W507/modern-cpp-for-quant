@@ -59,16 +59,57 @@ int main() {
   const auto& book = replay.book();
   const bool valid =
       outcome.status == quant::capstone::ReplayStatus::accepted &&
-      outcome.trades.size() == 2 && stats.accepted == 4 &&
+      outcome.trades.size() == 2 && stats.sequence_accepted == 4 &&
+      stats.book_accepted == 4 && stats.book_rejected == 0 &&
       stats.duplicates == 1 && stats.gaps == 1 &&
       stats.buffered == 1 && stats.recovered == 1 &&
       stats.decode_errors == 1 && replay.next_expected() == 5 &&
       book.best_bid() == 100 && book.quantity_at(quant::capstone::Side::buy, 100) == 5 &&
       book.best_ask() == 101 && book.quantity_at(quant::capstone::Side::sell, 101) == 1;
-  if (!valid) {
+
+  quant::capstone::MarketReplay bounded{quant::capstone::ReplayConfig{
+      .max_sequence_gap = 3,
+      .max_pending_messages = 2,
+      .overflow_policy = quant::capstone::ReplayOverflowPolicy::reject_newest}};
+  const auto too_far = bounded.apply(add_message(5, 50, 1, 100, 1));
+  const auto first_buffered = bounded.apply(add_message(3, 30, 1, 100, 1));
+  const auto second_buffered = bounded.apply(add_message(4, 40, 1, 100, 1));
+  const auto full = bounded.apply(add_message(2, 20, 1, 100, 1));
+  const bool bounds_hold =
+      too_far.status == quant::capstone::ReplayStatus::sequence_gap_exceeded &&
+      first_buffered.status == quant::capstone::ReplayStatus::gap &&
+      second_buffered.status == quant::capstone::ReplayStatus::gap &&
+      full.status == quant::capstone::ReplayStatus::pending_overflow &&
+      bounded.pending_messages() == 2 && bounded.stats().gap_rejections == 1 &&
+      bounded.stats().pending_overflows == 1 && bounded.next_expected() == 1;
+
+  quant::capstone::MarketReplay recovered_rejection;
+  recovered_rejection.apply(add_message(3, 0, 1, 100, 1));
+  recovered_rejection.apply(add_message(1, 1, 1, 99, 1));
+  const auto mixed =
+      recovered_rejection.apply(add_message(2, 2, 1, 100, 1));
+  const bool outcome_is_explicit =
+      mixed.status == quant::capstone::ReplayStatus::accepted &&
+      mixed.sequence_accepted == 2 && mixed.book_accepted == 1 &&
+      mixed.book_rejected == 1 && mixed.recovered == 1 &&
+      recovered_rejection.stats().sequence_accepted == 3 &&
+      recovered_rejection.stats().book_accepted == 2 &&
+      recovered_rejection.stats().book_rejected == 1;
+
+  bool invalid_config_rejected = false;
+  try {
+    static_cast<void>(quant::capstone::MarketReplay{
+        quant::capstone::ReplayConfig{.max_sequence_gap = 0,
+                                     .max_pending_messages = 1}});
+  } catch (const std::invalid_argument&) {
+    invalid_config_rejected = true;
+  }
+  if (!valid || !bounds_hold || !outcome_is_explicit ||
+      !invalid_config_rejected) {
     std::cerr << "market replay oracle mismatch\n";
     return 2;
   }
-  std::cout << "market-replay-tests-ok accepted=4 duplicate=1 gap=1 buffered=1 "
-               "recovered=1 decode=1 trades=2 next=5\n";
+  std::cout << "market-replay-tests-ok sequence-accepted=4 book-accepted=4 "
+               "duplicate=1 gap=1 buffered=1 recovered=1 decode=1 trades=2 "
+               "bounded=1 explicit-outcome=1 next=5\n";
 }

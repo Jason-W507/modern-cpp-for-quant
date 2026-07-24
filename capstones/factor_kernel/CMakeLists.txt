@@ -81,7 +81,7 @@ if(BUILD_TESTING)
     COMMAND capstone_factor_kernel_tests)
   set_tests_properties(capstone_factor_kernel_matches_worked_batch PROPERTIES
     PASS_REGULAR_EXPRESSION
-      "factor-kernel-tests-ok rows=4 finite=3 missing=1")
+      "factor-kernel-tests-ok rows=4 finite=3 missing=1 shape-overflow-rejected=1")
 
   find_package(Python3 REQUIRED COMPONENTS Interpreter)
   add_test(NAME capstone_factor_report_matches_generated_pair_statistics
@@ -119,7 +119,7 @@ if(BUILD_TESTING)
           ${CMAKE_CURRENT_LIST_DIR}/python/test_binding_consistency.py)
       set_tests_properties(capstone_factor_kernel_pybind_matches_arrow_numpy
         PROPERTIES PASS_REGULAR_EXPRESSION
-          "pybind-arrow-consistency-ok rows=4 dtype=float64 contiguous=1")
+          "pybind-arrow-consistency-ok rows=4 dtype=float64 contiguous=1 gil-released=1")
     endif()
   endif()
 endif()

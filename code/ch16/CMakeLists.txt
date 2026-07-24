@@ -2,8 +2,13 @@ cmake_minimum_required(VERSION 3.20)
 project(ch16_numerics_interop_lab LANGUAGES CXX)
 
 include(CTest)
-find_package(Python3 REQUIRED COMPONENTS Interpreter
-  OPTIONAL_COMPONENTS Development.Module)
+option(CH16_BUILD_PYTHON "Build the optional pybind11 module when available" ON)
+if(CH16_BUILD_PYTHON)
+  find_package(Python3 REQUIRED COMPONENTS Interpreter
+    OPTIONAL_COMPONENTS Development.Module)
+else()
+  find_package(Python3 REQUIRED COMPONENTS Interpreter)
+endif()
 
 add_library(ch16_project_options INTERFACE)
 target_compile_features(ch16_project_options INTERFACE cxx_std_20)
@@ -70,7 +75,7 @@ set_tests_properties(
 
 # CPython's official Windows ABI is built with MSVC.  A MinGW extension may
 # compile successfully yet fail to load because its runtime/ABI does not match.
-if(Python3_Development.Module_FOUND AND NOT MINGW)
+if(CH16_BUILD_PYTHON AND Python3_Development.Module_FOUND AND NOT MINGW)
   find_package(Threads REQUIRED)
   Python3_add_library(ch16_gil_probe MODULE WITH_SOABI failures/gil_probe.cpp)
   set_target_properties(ch16_gil_probe PROPERTIES
@@ -95,7 +100,6 @@ if(Python3_Development.Module_FOUND AND NOT MINGW)
                ${CMAKE_CURRENT_LIST_DIR}/python/test_gil_probe.py)
 endif()
 
-option(CH16_BUILD_PYTHON "Build the optional pybind11 module when available" ON)
 if(CH16_BUILD_PYTHON)
   find_package(pybind11 CONFIG QUIET)
   if(pybind11_FOUND)

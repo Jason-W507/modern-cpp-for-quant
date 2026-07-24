@@ -8,4 +8,5 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_executable(ch03_market_tool src/main.cpp src/market_math.cpp)
 target_include_directories(ch03_market_tool PRIVATE include)
 
+add_executable(ch03_parameter_modes parameter_modes.cpp)
 add_executable(ch03_basis_points_solution exercises/basis_points_solution.cpp)

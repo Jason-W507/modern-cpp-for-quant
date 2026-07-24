@@ -83,7 +83,8 @@ int main(int argc, char** argv) {
   std::sort(samples.begin(), samples.end());
   const double seconds = std::chrono::duration<double>(run_stop - run_start).count();
 
-  if (replay.stats().accepted != message_count ||
+  if (replay.stats().sequence_accepted != message_count ||
+      replay.stats().book_accepted != message_count ||
       replay.next_expected() != message_count + 1) {
     std::cerr << "replay benchmark correctness gate failed\n";
     return 2;
@@ -111,13 +112,15 @@ int main(int argc, char** argv) {
            << ", \"p99_ns\": " << p99
            << ", \"throughput_msg_s\": " << std::fixed
            << std::setprecision(0) << throughput
-           << "},\n  \"correctness\": {\"accepted\": "
-           << replay.stats().accepted << ", \"next_expected\": "
+           << "},\n  \"correctness\": {\"sequence_accepted\": "
+           << replay.stats().sequence_accepted << ", \"book_accepted\": "
+           << replay.stats().book_accepted << ", \"next_expected\": "
            << replay.next_expected()
            << "},\n  \"limitations\": [\"one process; use run_replay_benchmark.py for multi-process evidence\", \"window averages do not expose within-window single-message tails\", \"no affinity or frequency pinning\", \"teaching protocol, not an exchange feed\"]\n}\n";
   }
   std::cout << "replay-benchmark-ok messages=" << message_count
-            << " accepted=" << replay.stats().accepted
+            << " sequence-accepted=" << replay.stats().sequence_accepted
+            << " book-accepted=" << replay.stats().book_accepted
             << " p50_ns=" << p50
             << " p99_ns=" << p99
             << " throughput_msg_s=" << std::fixed << std::setprecision(0)

@@ -1,0 +1,10 @@
+include_guard(GLOBAL)
+
+function(quant_apply_target_defaults target)
+  target_compile_features(${target} PRIVATE cxx_std_20)
+  if(MSVC)
+    target_compile_options(${target} PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+endfunction()

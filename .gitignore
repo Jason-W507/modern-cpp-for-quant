@@ -1,5 +1,6 @@
 /build/
 /build-*/
+/dist/
 /tmp/
 /.venv/
 __pycache__/

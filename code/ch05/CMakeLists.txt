@@ -1,15 +1,21 @@
 cmake_minimum_required(VERSION 3.20)
-project(ch05_market_analyzer LANGUAGES CXX)
-
-add_executable(ch05_market_analyzer
-  src/main.cpp
-  src/csv_reader.cpp
-  src/market.cpp)
-target_include_directories(ch05_market_analyzer PRIVATE include)
-target_compile_features(ch05_market_analyzer PRIVATE cxx_std_20)
-
-if(MSVC)
-  target_compile_options(ch05_market_analyzer PRIVATE /W4 /permissive-)
-else()
-  target_compile_options(ch05_market_analyzer PRIVATE -Wall -Wextra -Wpedantic)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  project(ch05_market_analyzer LANGUAGES CXX)
 endif()
+include(${CMAKE_CURRENT_LIST_DIR}/../../cmake/QuantTargetDefaults.cmake)
+
+function(ch05_executable target source)
+  add_executable(${target} ${source})
+  quant_apply_target_defaults(${target})
+endfunction()
+
+ch05_executable(ch05_market_analyzer src/main.cpp)
+target_sources(ch05_market_analyzer PRIVATE src/csv_reader.cpp src/market.cpp)
+target_include_directories(ch05_market_analyzer PRIVATE include)
+ch05_executable(ch05_records records.cpp)
+ch05_executable(ch05_class_invariants class_invariants.cpp)
+target_sources(ch05_class_invariants PRIVATE src/market.cpp)
+target_include_directories(ch05_class_invariants PRIVATE include)
+ch05_executable(ch05_price_range_solution exercises/price_range_solution.cpp)
+target_sources(ch05_price_range_solution PRIVATE src/market.cpp)
+target_include_directories(ch05_price_range_solution PRIVATE include)
