@@ -78,15 +78,26 @@ if(BUILD_TESTING)
         --output ${CMAKE_CURRENT_BINARY_DIR}/replay-multiprocess-test.json
         --processes 3)
   set_tests_properties(capstone_replay_multiprocess_report_is_reproducible
-    PROPERTIES PASS_REGULAR_EXPRESSION
-      "replay-multiprocess-ok processes=3 samples=300")
+    PROPERTIES
+      FIXTURES_SETUP replay_multiprocess_report
+      PASS_REGULAR_EXPRESSION
+        "replay-multiprocess-ok processes=3 samples=300")
+  add_test(NAME capstone_generated_replay_report_preserves_environment
+    COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_LIST_DIR}/tests/test_replay_report.py
+      ${CMAKE_CURRENT_BINARY_DIR}/replay-multiprocess-test.json)
+  set_tests_properties(capstone_generated_replay_report_preserves_environment
+    PROPERTIES
+      FIXTURES_REQUIRED replay_multiprocess_report
+      PASS_REGULAR_EXPRESSION
+        "replay-report-contract-ok nearest-rank=1 aggregate-p999=1 environment=1")
   add_test(NAME capstone_replay_report_uses_nearest_rank_without_process_p999
     COMMAND ${Python3_EXECUTABLE}
       ${CMAKE_CURRENT_LIST_DIR}/tests/test_replay_report.py
       ${CMAKE_CURRENT_LIST_DIR}/reports/replay-benchmark.json)
   set_tests_properties(capstone_replay_report_uses_nearest_rank_without_process_p999
     PROPERTIES PASS_REGULAR_EXPRESSION
-      "replay-report-contract-ok nearest-rank=1 aggregate-p999=1")
+      "replay-report-contract-ok nearest-rank=1 aggregate-p999=1 environment=1")
 endif()
 
   add_executable(capstone_spsc_replay_tests tests/test_spsc_replay.cpp)

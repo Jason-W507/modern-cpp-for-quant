@@ -17,9 +17,14 @@ def main() -> int:
     assert percentile(list(range(1_100)), 0.999) == 1_098
 
     report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+    assert report["environment"]["compiler"]
+    assert report["environment"]["configuration"] in {"Debug", "Release"}
     assert "p999_ns" in report["summary"]
     assert all("p999_ns" not in item for item in report["process_summaries"])
-    print("replay-report-contract-ok nearest-rank=1 aggregate-p999=1")
+    print(
+        "replay-report-contract-ok "
+        "nearest-rank=1 aggregate-p999=1 environment=1"
+    )
     return 0
 
 

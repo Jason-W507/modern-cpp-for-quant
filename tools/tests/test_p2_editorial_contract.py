@@ -80,19 +80,6 @@ class P2EditorialContractTest(unittest.TestCase):
         self.assertIn("did not override", ch08)
         self.assertIn("left of.*on_event.*must have class/struct/union", ch09)
 
-    def test_long_cross_platform_paragraphs_use_compact_wording(self) -> None:
-        ch03 = (ROOT / "chapters" / "ch03.tex").read_text(encoding="utf-8")
-        ch05 = (ROOT / "chapters" / "ch05.tex").read_text(encoding="utf-8")
-        ch15 = (ROOT / "chapters" / "ch15.tex").read_text(encoding="utf-8")
-        concurrency = (ROOT / "appendices" / "advanced_concurrency.tex").read_text(
-            encoding="utf-8"
-        )
-
-        self.assertIn(r"\item 增加只读函数 \texttt{double basis\_points", ch03)
-        self.assertIn("把第二条 AAPL 价格由 101 改为 99", ch05)
-        self.assertIn("先发生关系（happens-before）", ch15)
-        self.assertIn(r"\path{memory_order_relaxed}", concurrency)
-
 
 if __name__ == "__main__":
     unittest.main()

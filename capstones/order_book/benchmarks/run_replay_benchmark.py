@@ -28,6 +28,7 @@ def main() -> int:
 
     all_samples: list[int] = []
     process_summaries: list[dict[str, int | float]] = []
+    benchmark_environment: dict[str, str] | None = None
     args.output.parent.mkdir(parents=True, exist_ok=True)
     for process_index in range(args.processes):
         report_path = args.output.parent / f"{args.output.stem}.run-{process_index}.json"
@@ -39,6 +40,14 @@ def main() -> int:
                 text=True,
             )
             report = json.loads(report_path.read_text(encoding="utf-8"))
+            current_environment = {
+                key: str(report["environment"][key])
+                for key in ("compiler", "configuration")
+            }
+            if benchmark_environment is None:
+                benchmark_environment = current_environment
+            elif current_environment != benchmark_environment:
+                raise ValueError("benchmark processes used inconsistent environments")
             samples = [int(value) for value in report["samples_ns"]]
             all_samples.extend(samples)
             process_summaries.append(
@@ -51,9 +60,13 @@ def main() -> int:
         finally:
             report_path.unlink(missing_ok=True)
 
+    if benchmark_environment is None:
+        raise RuntimeError("benchmark produced no environment report")
+
     aggregate = {
-        "schema": 2,
+        "schema": 3,
         "environment": {
+            **benchmark_environment,
             "platform": platform.platform(),
             "processor": platform.processor(),
             "processes": args.processes,

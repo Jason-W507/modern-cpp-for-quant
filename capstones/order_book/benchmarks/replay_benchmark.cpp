@@ -13,6 +13,9 @@
 
 namespace {
 
+#define QUANT_STRINGIFY_DETAIL(value) #value
+#define QUANT_STRINGIFY(value) QUANT_STRINGIFY_DETAIL(value)
+
 void append(std::vector<std::uint8_t>& bytes, std::uint64_t value,
             std::size_t width) {
   for (std::size_t index = 0; index < width; ++index) {
@@ -59,9 +62,17 @@ constexpr std::string_view compiler_name() {
 #elif defined(__GNUC__)
   return "GCC " __VERSION__;
 #elif defined(_MSC_VER)
-  return "MSVC";
+  return "MSVC " QUANT_STRINGIFY(_MSC_FULL_VER);
 #else
   return "unknown";
+#endif
+}
+
+constexpr std::string_view build_configuration() {
+#ifdef NDEBUG
+  return "Release";
+#else
+  return "Debug";
 #endif
 }
 
@@ -112,6 +123,7 @@ int main(int argc, char** argv) {
     }
     output << "{\n  \"schema\": 1,\n  \"environment\": {\"compiler\": \""
            << compiler_name()
+           << "\", \"configuration\": \"" << build_configuration()
            << "\", \"clock\": \"std::chrono::steady_clock\"},\n"
               "  \"workload\": {\"messages\": "
            << message_count
