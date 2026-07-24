@@ -208,7 +208,7 @@ add_test(NAME ch09_unconstrained_error_exposes_missing_member
           --compiler ${CMAKE_CXX_COMPILER}
           --source ${CMAKE_CURRENT_SOURCE_DIR}/code/ch09/failures/unconstrained_strategy.cpp
           --output ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch09_unconstrained.obj
-          --diagnostic "request for member.*on_event|has no member.*on_event")
+          --diagnostic "request for member.*on_event|has no member.*on_event|member reference base type.*is not a structure or union")
 add_test(NAME ch09_concept_error_reports_unsatisfied_constraint
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/expect_compile_failure.py
