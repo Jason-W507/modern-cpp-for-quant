@@ -61,8 +61,12 @@ jobs:
         run: cmake -S . -B build/msvc -A x64 -DBUILD_TESTING=ON -DQUANT_BUILD_PYTHON=OFF
       - name: Build
         run: cmake --build build/msvc --config ${{ matrix.build_type }} --parallel 2
-      - name: Test
-        run: ctest --test-dir build/msvc -C ${{ matrix.build_type }} --output-on-failure
+      - name: Test from the MSVC developer environment
+        shell: cmd
+        run: |
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set "VSINSTALL=%%i"
+          call "%VSINSTALL%\Common7\Tools\VsDevCmd.bat" -arch=x64
+          ctest --test-dir build/msvc -C ${{ matrix.build_type }} --output-on-failure
 
   locked-python:
     runs-on: ubuntu-24.04

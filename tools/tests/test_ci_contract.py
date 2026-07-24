@@ -31,6 +31,7 @@ class CIContractTest(unittest.TestCase):
             "windows-latest",
             "build_type: [Debug, Release]",
             "-A x64",
+            "VsDevCmd.bat",
             "ctest",
         ):
             self.assertIn(token, self.workflow)
