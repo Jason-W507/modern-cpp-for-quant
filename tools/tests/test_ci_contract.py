@@ -17,6 +17,7 @@ class CIContractTest(unittest.TestCase):
     def test_book_job_builds_checks_and_uploads_pdf(self) -> None:
         for token in (
             "book:",
+            "mkdir -p build/book/chapters build/book/appendices",
             "latexmk",
             "texlive-science",
             "check_pdf_build.py",

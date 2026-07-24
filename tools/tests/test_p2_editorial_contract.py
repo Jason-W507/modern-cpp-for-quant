@@ -69,6 +69,17 @@ class P2EditorialContractTest(unittest.TestCase):
                 for pattern in bad_patterns:
                     self.assertNotRegex(text, pattern, f"{path.name}: {pattern}")
 
+    def test_negative_compile_examples_accept_msvc_diagnostic_wording(self) -> None:
+        ch08 = (ROOT / "code" / "ch08" / "CMakeLists.txt").read_text(
+            encoding="utf-8"
+        )
+        ch09 = (ROOT / "code" / "ch09" / "CMakeLists.txt").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("did not override", ch08)
+        self.assertIn("left of.*on_event.*must have class/struct/union", ch09)
+
 
 if __name__ == "__main__":
     unittest.main()

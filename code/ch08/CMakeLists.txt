@@ -60,7 +60,7 @@ if(QUANT_BUILD_NEGATIVE_TESTS)
             --compiler ${CMAKE_CXX_COMPILER}
             --source ${CMAKE_CURRENT_LIST_DIR}/failures/wrong_override.cpp
             --output ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch08_wrong_override.obj
-            --diagnostic "does not override|marked.*override|override.*but does not")
+            --diagnostic "does not override|did not override|marked.*override|override.*but does not")
 endif()
 add_test(NAME ch08_clean_domain_pipeline_configures_builds_and_runs
   COMMAND ${Python3_EXECUTABLE}

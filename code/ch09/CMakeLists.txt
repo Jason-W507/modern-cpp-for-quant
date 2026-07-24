@@ -54,7 +54,7 @@ if(QUANT_BUILD_NEGATIVE_TESTS)
             --compiler ${CMAKE_CXX_COMPILER}
             --source ${CMAKE_CURRENT_LIST_DIR}/failures/unconstrained_strategy.cpp
             --output ${CMAKE_CURRENT_BINARY_DIR}/intentional-failures/ch09_unconstrained.obj
-            --diagnostic "request for member.*on_event|has no member.*on_event|member reference base type.*is not a structure or union")
+            --diagnostic "request for member.*on_event|has no member.*on_event|member reference base type.*is not a structure or union|left of.*on_event.*must have class/struct/union")
   add_test(NAME ch09_concept_error_reports_unsatisfied_constraint
     COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_LIST_DIR}/../../tools/expect_compile_failure.py

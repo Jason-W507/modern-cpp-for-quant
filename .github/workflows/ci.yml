@@ -116,7 +116,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y latexmk texlive-xetex texlive-lang-chinese texlive-latex-extra texlive-fonts-extra texlive-science biber poppler-utils
       - name: Build book
-        run: latexmk -xelatex -interaction=nonstopmode -halt-on-error -outdir=build/book main.tex
+        run: |
+          mkdir -p build/book/chapters build/book/appendices
+          latexmk -xelatex -interaction=nonstopmode -halt-on-error -outdir=build/book main.tex
       - name: Check references, layout, and page count with pdfinfo
         run: python tools/check_pdf_build.py --log build/book/main.log --pdf build/book/main.pdf --min-pages 200 --max-pages 280
       - name: Stage named PDF artifact
