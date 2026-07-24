@@ -46,6 +46,12 @@ class CIContractTest(unittest.TestCase):
         ):
             self.assertIn(token, self.workflow)
 
+    def test_factor_kernel_static_library_can_link_into_a_python_module(self) -> None:
+        cmake = (ROOT / "capstones" / "factor_kernel" / "CMakeLists.txt").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("POSITION_INDEPENDENT_CODE ON", cmake)
+
 
 if __name__ == "__main__":
     unittest.main()

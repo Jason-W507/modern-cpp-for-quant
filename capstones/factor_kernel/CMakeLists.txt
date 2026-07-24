@@ -8,6 +8,8 @@ include(CTest)
 add_library(capstone_factor_kernel src/factor_kernel.cpp)
 target_include_directories(capstone_factor_kernel PUBLIC include)
 target_compile_features(capstone_factor_kernel PUBLIC cxx_std_20)
+set_target_properties(capstone_factor_kernel PROPERTIES
+  POSITION_INDEPENDENT_CODE ON)
 
 if(MSVC)
   target_compile_options(capstone_factor_kernel PRIVATE /W4 /permissive-)
