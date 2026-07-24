@@ -18,6 +18,7 @@ class CIContractTest(unittest.TestCase):
         for token in (
             "book:",
             "latexmk",
+            "texlive-science",
             "check_pdf_build.py",
             "pdfinfo",
             "upload-artifact",
