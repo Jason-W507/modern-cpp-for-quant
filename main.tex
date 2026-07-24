@@ -5,7 +5,11 @@
 \author{Modern C++ 量化教程项目}
 \institute{定位：Quant Developer / Research Engineer}
 \date{2026 年 7 月}
-\version{0.3}
+\newread\versionfile
+\openin\versionfile=VERSION
+\read\versionfile to \BookVersion
+\closein\versionfile
+\version{\BookVersion}
 \bioinfo{读者基础}{已掌握 Python}
 \extrainfo{先建立正确性，再讨论速度；先取得证据，再做优化。}
 

@@ -32,9 +32,10 @@ int main() {
   test_support::require(
       test_support::close_to(result.performance.max_drawdown, 0.0),
       "monotone equity should have zero drawdown");
-  test_support::require(result.performance.volatility > 0.0 &&
-                            result.performance.volatility < 0.001,
-                        "step-return volatility should be small and positive");
+  test_support::require(
+      test_support::close_to(result.performance.volatility,
+                             0.002879597233822328, 1e-12),
+      "volatility should include the initial-to-first-event return");
   test_support::require(result.performance.trades.fill_count == 1 &&
                             result.performance.trades.buy_quantity == 25,
                         "trade summary should aggregate the fill");
@@ -47,7 +48,7 @@ int main() {
   test_support::require(costly_result.fills.size() == 1,
                         "cost model should preserve the order lifecycle");
   test_support::require(
-      test_support::close_to(costly_result.fills.front().price, 99.099),
+      test_support::close_to(costly_result.fills.front().price(), 99.099),
       "configured slippage should change the execution price");
   test_support::require(
       test_support::close_to(costly_result.final_portfolio.cash, 7'521.525),
@@ -73,6 +74,22 @@ int main() {
   test_support::require(
       mixed_symbols_rejected,
       "mixed symbols should be rejected until a complete price map exists");
+
+  const auto first_event_sensitive = quant::summarize_performance(
+      100.0, std::vector<double>{90.0, 99.0}, {});
+  test_support::require(
+      test_support::close_to(first_event_sensitive.volatility,
+                             0.1414213562373095, 1e-12),
+      "volatility should include initial cash to first event return");
+
+  bool zero_initial_cash_rejected = false;
+  try {
+    (void)quant::BacktestEngine{0.0};
+  } catch (const std::invalid_argument&) {
+    zero_initial_cash_rejected = true;
+  }
+  test_support::require(zero_initial_cash_rejected,
+                        "undefined zero-capital returns should fail at startup");
 
   std::cout << "end-to-end backtest seam ok\n";
 }

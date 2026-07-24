@@ -2,7 +2,7 @@
 
 ### Issue tracker
 
-Issues and PRDs are tracked as local Markdown under `.scratch/`; an approved `/to-tickets` breakdown is published as root `tickets.md`. External PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
+Issues and PRDs are tracked in GitHub Issues for `Jason-W507/modern-cpp-for-quant`; external contributor PRs are also a triage surface. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

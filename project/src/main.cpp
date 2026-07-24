@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
   }
   const auto parsed = quant::read_market_events(input);
   if (!parsed.has_value()) {
-    std::cerr << parsed.error << '\n';
+    std::cerr << quant::format_parse_error(*parsed.error) << '\n';
     return 2;
   }
 

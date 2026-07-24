@@ -1,8 +1,5 @@
-[project]
-name = "modern-cpp-for-quant-evidence"
-version = "0.1.0"
-requires-python = ">=3.12,<3.13"
-dependencies = [
+[dependency-groups]
+dev = [
   "numpy==2.5.1",
   "pyarrow==25.0.0",
   "pybind11==3.0.4",

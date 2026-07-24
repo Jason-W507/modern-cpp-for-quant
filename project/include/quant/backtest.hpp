@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <concepts>
 #include <optional>
 #include <stdexcept>
@@ -34,7 +35,13 @@ struct BacktestConfig final {
 
 class BacktestEngine final {
  public:
-  explicit BacktestEngine(BacktestConfig config) : config_(config) {}
+  explicit BacktestEngine(BacktestConfig config) : config_(config) {
+    if (!std::isfinite(config_.initial_cash) || config_.initial_cash <= 0.0) {
+      throw std::invalid_argument{
+          "backtest requires finite positive initial cash"};
+    }
+    validate_execution_config(config_.execution);
+  }
 
   explicit BacktestEngine(double initial_cash)
       : BacktestEngine(
@@ -58,10 +65,10 @@ class BacktestEngine final {
       return result;
     }
 
-    const std::string& run_symbol = events.front().symbol;
+    const std::string& run_symbol = events.front().symbol();
     const bool has_mixed_symbols =
         std::any_of(events.begin(), events.end(), [&run_symbol](const auto& event) {
-          return event.symbol != run_symbol;
+          return event.symbol() != run_symbol;
         });
     if (has_mixed_symbols) {
       throw std::invalid_argument{
@@ -70,14 +77,14 @@ class BacktestEngine final {
     }
 
     for (const MarketEvent& event : events) {
-      const auto before = portfolio.snapshot(event.symbol, event.price);
+      const auto before = portfolio.snapshot(event.symbol(), event.price());
       if (const auto order = strategy.on_market_event(event, before)) {
         if (const auto fill = exchange.match(*order, event)) {
           portfolio.apply_fill(*fill);
           result.fills.push_back(*fill);
         }
       }
-      result.final_portfolio = portfolio.snapshot(event.symbol, event.price);
+      result.final_portfolio = portfolio.snapshot(event.symbol(), event.price());
       equity_curve.push_back(result.final_portfolio.equity);
     }
 

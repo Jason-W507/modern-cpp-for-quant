@@ -1,36 +1,32 @@
-# Issue tracker: Local Markdown
+# Issue tracker: GitHub
 
-Issues and PRDs for this repo live as Markdown files in `.scratch/`.
+Issues and PRDs for this repository live in GitHub Issues. Use the `gh` CLI from a checkout whose `origin` points at `Jason-W507/modern-cpp-for-quant`.
 
 ## Conventions
 
-- One feature per directory: `.scratch/<feature-slug>/`
-- The PRD is `.scratch/<feature-slug>/PRD.md`
-- Implementation issues are `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01`
-- Triage state is recorded as a `Status:` line near the top of each issue file (see `triage-labels.md` for the role strings)
-- Comments and conversation history append to the bottom of the file under a `## Comments` heading
+- Create: `gh issue create --title "..." --body-file <file>`.
+- Read: `gh issue view <number> --comments`.
+- List: `gh issue list --state open --json number,title,body,labels,assignees`.
+- Comment: `gh issue comment <number> --body-file <file>`.
+- Label: `gh issue edit <number> --add-label "..."` or `--remove-label "..."`.
+- Close: `gh issue close <number> --comment "..."`.
 
-## When a skill says "publish to the issue tracker"
+Infer the repository from the local Git remote. Prefer body files for multiline Markdown so newlines and code fences render correctly.
 
-Create a new file under `.scratch/<feature-slug>/`, creating the directory if needed.
+## Pull requests as a triage surface
 
-Exception: the Matt Pocock `/to-tickets` skill publishes one aggregate
-`tickets.md` at the repository root, in dependency order, as required by that
-skill's local-tracker workflow. This file is the execution breakdown, not a PRD
-or an individually triaged issue; it therefore does not require per-ticket
-`Status:` and `## Comments` fields.
+**PRs as a request surface: yes.** External PRs run through the same triage labels and states as Issues. Collaborator work already in progress is not treated as an incoming request.
 
-## When a skill says "fetch the relevant ticket"
+- Read: `gh pr view <number> --comments` and `gh pr diff <number>`.
+- List: `gh pr list --state open --json number,title,body,labels,author,authorAssociation,comments`.
+- Treat `CONTRIBUTOR`, `FIRST_TIME_CONTRIBUTOR`, and `NONE` as external; exclude `OWNER`, `MEMBER`, and `COLLABORATOR` from request triage.
+- Comment/label/close with the corresponding `gh pr` commands.
 
-Read the file at the referenced path. The user will normally pass the path or issue number directly.
+GitHub shares one number space across Issues and PRs. Resolve an ambiguous `#42` with `gh pr view 42`, then fall back to `gh issue view 42`.
 
-## Wayfinding operations
+## Skill operations
 
-Used by `/wayfinder`. The map is a file with one child file per ticket.
-
-- **Map**: `.scratch/<effort>/map.md` — the Notes / Decisions-so-far / Fog body.
-- **Child ticket**: `.scratch/<effort>/issues/NN-<slug>.md`, numbered from `01`, with the question in the body. A `Type:` line records the ticket type (`research`/`prototype`/`grilling`/`task`); a `Status:` line records `claimed`/`resolved`.
-- **Blocking**: a `Blocked by: NN, NN` line near the top. A ticket is unblocked when every file it lists is `resolved`.
-- **Frontier**: scan `.scratch/<effort>/issues/` for files that are open, unblocked, and unclaimed; first by number wins.
-- **Claim**: set `Status: claimed` and save before any work.
-- **Resolve**: append the answer under an `## Answer` heading, set `Status: resolved`, then append a context pointer to the map's Decisions-so-far in `map.md`.
+- When a skill says “publish to the issue tracker”, create a GitHub Issue.
+- When a skill says “fetch the relevant ticket”, run `gh issue view <number> --comments`.
+- Wayfinder maps and children are GitHub Issues. Use native sub-issues and issue dependencies when available; otherwise use task lists and explicit `Blocked by: #<n>` lines.
+- Claim a ticket by assigning it to the driving developer; resolve it with a result comment and close it.

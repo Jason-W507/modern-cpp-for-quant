@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
-project(modern_cpp_for_quant VERSION 0.1.0 LANGUAGES CXX)
+file(STRINGS ${CMAKE_CURRENT_SOURCE_DIR}/VERSION QUANT_PROJECT_VERSION
+  LIMIT_COUNT 1)
+project(modern_cpp_for_quant VERSION ${QUANT_PROJECT_VERSION} LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -1028,3 +1030,11 @@ add_test(NAME book_contract_rejects_invalid_authoring_evidence
 add_test(NAME output_harness_rejects_whitespace_drift
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/test_output_contract.py)
+
+add_test(NAME version_contract_has_one_source
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/test_version_contract.py)
+
+add_test(NAME public_repository_contract
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/test_public_repository_contract.py)

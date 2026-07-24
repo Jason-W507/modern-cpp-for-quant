@@ -8,6 +8,12 @@ flow rather than a production trading platform:
 CSV -> MarketEvent -> Strategy -> OrderIntent -> Fill -> Portfolio -> Summary
 ```
 
+`MarketEvent`, `OrderIntent`, and `Fill` are validated value objects rather
+than public aggregates with invalid defaults. The portfolio is explicitly a
+cash account: initial cash must be finite and positive, purchases cannot exceed
+cash, and sales cannot exceed holdings. CSV failures retain line, field, and
+error-code data; the CLI renders that structured result separately.
+
 ## Reproduce it
 
 From the repository root on Linux or WSL:
@@ -23,8 +29,8 @@ ctest --test-dir build/ch17 --output-on-failure
 The default and configured-cost runs have exact output contracts:
 
 ```text
-backtest-ok events=3 fills=1 cash=7525.000 equity=10100.000 return=1.000000% max-drawdown=0.000000% volatility=0.000018 fee-per-fill=0.000 slippage-bps=0.000
-backtest-ok events=3 fills=1 cash=7521.525 equity=10096.525 return=0.965250% max-drawdown=0.034750% volatility=0.000018 fee-per-fill=1.000 slippage-bps=10.000
+backtest-ok events=3 fills=1 cash=7525.000 equity=10100.000 return=1.000000% max-drawdown=0.000000% volatility=0.002880 fee-per-fill=0.000 slippage-bps=0.000
+backtest-ok events=3 fills=1 cash=7521.525 equity=10096.525 return=0.965250% max-drawdown=0.034750% volatility=0.003081 fee-per-fill=1.000 slippage-bps=10.000
 ```
 
 Eleven CTest cases protect four public behavior seams, the two CLI summaries,
@@ -57,6 +63,7 @@ and CTest checks the stable diagnostic category.
 ## Deliberate limits
 
 - one symbol and one cash currency per run;
+- cash-account policy with no borrowing, margin, leverage, or short selling;
 - synchronous immediate full fills;
 - fixed fee and deterministic slippage only;
 - no calendar, corporate actions, borrowing, margin, risk service or exchange;

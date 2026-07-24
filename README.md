@@ -26,7 +26,7 @@ ctest --test-dir build-cpp --output-on-failure
 
 ## 验证当前书籍契约
 
-当前 0.3 修订版采用 18 章、五篇、8 个附录和 235 页成稿（出版护栏 200--250 页）的机器可读契约，并维护零基础语法覆盖矩阵、章节学习单元清单以及代码/项目快照约定。仓库同时提交已验证的 PDF：`output/pdf/python-quant-modern-cpp.pdf`。直接运行：
+当前 v0.3.0 修订版采用 18 章、五篇、8 个附录和 235 页成稿（出版护栏 200--250 页）的机器可读契约，并维护零基础语法覆盖矩阵、章节学习单元清单以及代码/项目快照约定。仓库同时提交已验证的 PDF：`output/pdf/python-quant-modern-cpp.pdf`。项目版本由根目录 `VERSION` 统一提供给 CMake、书稿与 Python 工具。直接运行：
 
 ```powershell
 python tools/check_book_contract.py
@@ -34,6 +34,6 @@ python tools/check_book_contract.py
 
 该检查也已接入 CTest；缺少章节职责、预算不闭合、语法练习早于首次教学或验收文档结构损坏都会让测试失败。作者约定见 `docs/authoring/`。
 
-## 模板许可
+## 许可
 
-本书使用 ElegantBook 类文件。本项目中的 `elegantbook.cls` 与模板许可见 `ELEGANTBOOK-LICENSE`，模板项目地址为 <https://github.com/ElegantLaTeX/ElegantBook>。
+本仓库采用分层许可：原创代码与工程文件使用 MIT License；原创书稿、封面和生成 PDF 使用 CC BY-NC-SA 4.0；`elegantbook.cls` 继续遵循 LPPL 1.3c。范围与第三方归属见 [`LICENSE.md`](LICENSE.md) 和 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)。
