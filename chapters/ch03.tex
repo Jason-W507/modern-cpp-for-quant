@@ -198,7 +198,7 @@ ctest --test-dir build-linux -R ch03_ --output-on-failure
 
 \begin{enumerate}
   \item 从空目录重建 \path{code/ch03} 的头文件、实现文件和入口，使用固定输入得到章首精确输出，并从全新构建树复现。
-  \item 为行情工具增加只读函数 \texttt{double basis\_points\allowbreak(const double\& rate)}，返回 \texttt{rate * 10000.0}；用 0.0015 验收结果 15，并证明调用者值不变。完整答案见 \path{code/ch03/exercises/basis_points_solution.cpp}。
+  \item 增加只读函数 \texttt{double basis\_points(const double\& rate)}，返回 \texttt{rate * 10000.0}。用 0.0015 验收结果 15，并证明调用者值不变。完整答案见 \path{code/ch03/exercises/basis_points_solution.cpp}。
   \item 运行三个故障实验，记录每个翻译单元的编译状态、链接状态、稳定类别、根因和最小恢复步骤；不要运行悬空引用程序来“看看会怎样”。
 \end{enumerate}
 
