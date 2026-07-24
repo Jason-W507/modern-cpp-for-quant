@@ -129,7 +129,7 @@ Windows 原生 MinGW 的目标文件带 \texttt{.exe}，生成器可写 \texttt{
 \begin{enumerate}
   \item 把 \texttt{Trend::up} 改为 \texttt{Trend::down}，先预测末尾精确输出为 \texttt{trend=down}，再运行验证。只改变枚举值，不修改字符串转换函数。
   \item 把有效对象的数量从 10 改为 0。预期程序进入 \texttt{catch} 并得到 \texttt{quantity must be positive}；随后恢复 10，解释为何不需要在每次统计前重复检查数量。
-  \item 把正常数据第二条 AAPL 价格从 101 改为 99。预期 \texttt{return=-1.00\%}、\texttt{low=99.00}、\texttt{high=100.00}、\texttt{trend=down}；行数和总数量不变。
+  \item 把正常数据第二条 AAPL 价格从 101 改为 99。预期 \texttt{return=-1.00\%}、\texttt{low=99.00}、\linebreak[1]\texttt{high=100.00}、\texttt{trend=down}；行数和总数量不变。
   \item 把正常文件的第 2 行数量改为 \texttt{ten}。预期 stdout 为空；stderr 先给 \texttt{error=line 2:}，随后是 \texttt{invalid number: quantity}；退出状态为 2。恢复后输出任务必须重新逐字匹配。
 \end{enumerate}
 
