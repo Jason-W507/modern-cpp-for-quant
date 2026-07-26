@@ -55,7 +55,7 @@ QUANT_BUILD_PYTHON         可选 Python 扩展模块
 latexmk -xelatex -interaction=nonstopmode -halt-on-error -outdir=build-book main.tex
 ```
 
-已验证的滚动版 PDF 提交在 [`output/pdf/python-quant-modern-cpp.pdf`](output/pdf/python-quant-modern-cpp.pdf)；正式版本使用 GitHub Release 中的带版本文件名。发布包由 `python tools/package_release.py` 读取根目录 `VERSION` 生成，并同时写出 SHA-256 校验和。
+已验证的滚动版 PDF 提交在 [`output/pdf/python-quant-modern-cpp.pdf`](output/pdf/python-quant-modern-cpp.pdf)；正式版本使用 GitHub Release 中的带版本文件名。`python tools/package_release.py --source build/book/main.pdf` 只接受本次构建的显式输入，读取根目录 `VERSION` 命名产物，并同时写出 SHA-256 校验和。
 
 ## 仓库结构
 
