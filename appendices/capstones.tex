@@ -111,7 +111,7 @@ price/quantity & 24 & 8 & 两个大端序有符号 32 位整数 \\
 
 \lstinputlisting[caption={大端序解码、序号门与订单簿提交}]{capstones/order_book/src/market_replay.cpp}
 
-固定回放先拒绝 3 字节坏消息，再处理序号 1、2、重复 2、缺口 4 和恢复到 3。消息 3 到达后，缓存中的 4 随即排空；验收结果是 sequence-accepted=4、book-accepted=4、duplicate=1、gap=1、buffered=1、recovered=1、decode=1、trades=2、next=5。另一组固定测试把距离限制设为 3、容量设为 2，分别冻结越距拒绝与满载拒绝；还让恢复消息在订单簿层失败，确认单次结果显式报告一次接受和一次拒绝。\path{test_spsc_replay.cpp} 进一步让单生产者线程通过容量 256 的 SPSC ring 交付 10000 条消息，消费线程全部回放，sequence-accepted、book-accepted 与 offered 必须相等。
+固定回放分别触发帧尺寸、版本、消息类型、声明长度、方向和保留字节六类解码错误，并确认它们都不推进序号；随后处理序号 1、2、重复 2、缺口 4 和恢复到 3。消息 3 到达后，缓存中的 4 随即排空；验收结果是 sequence-accepted=4、book-accepted=4、duplicate=1、gap=1、buffered=1、recovered=1、decode=6、trades=2、next=5。另一组固定测试把距离限制设为 3、容量设为 2，分别冻结越距拒绝与满载拒绝；还让恢复消息在订单簿层失败，确认单次结果显式报告一次接受和一次拒绝。\path{test_spsc_replay.cpp} 进一步让单生产者线程通过容量 256 的 SPSC ring 交付 10000 条消息，消费线程全部回放，sequence-accepted、book-accepted 与 offered 必须相等。
 
 \path{benchmarks/replay_benchmark.cpp} 预先编码 10000 条消息，计时区域只包含 \texttt{apply}。为避免本机计时器把单次调用大量量化为 0/100 ns，报告以每 100 条消息的窗口计时并换算单条均值；Python 驱动启动 11 个全新进程，合并 1100 个窗口样本后报告 p50/p99/p99.9 与各进程吞吐。\path{reports/replay-benchmark.json} 保存环境、原始窗口样本、正确性计数与限制，并明确不把窗口均值解释为窗口内单条消息的真实尾延迟。测试只锁消息与 sequence/book 接受数，不锁纳秒值。\texttt{CAPSTONE\_BUILD\_FUZZERS} 在 Clang/libFuzzer 下生成协议 fuzzer，任意字节都只能被拒绝或安全处理；发现样本必须缩减后转入普通回归测试。
 

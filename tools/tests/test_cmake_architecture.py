@@ -17,6 +17,7 @@ class CMakeArchitectureTest(unittest.TestCase):
             "QUANT_BUILD_BACKTEST",
             "QUANT_BUILD_CAPSTONES",
             "QUANT_BUILD_NEGATIVE_TESTS",
+            "QUANT_BUILD_FUZZERS",
             "QUANT_BUILD_PYTHON",
         ):
             self.assertIn(f"option({option}", root_cmake)
@@ -76,6 +77,13 @@ class CMakeArchitectureTest(unittest.TestCase):
             "set(CAPSTONE_BUILD_FUZZERS ${QUANT_BUILD_FUZZERS})", root_cmake
         )
 
+    def test_negative_switch_disables_root_intentional_failures(self) -> None:
+        integration = (
+            ROOT / "cmake" / "QuantAdvancedIntegrationTests.cmake"
+        ).read_text(encoding="utf-8")
+        self.assertIn("if(NOT QUANT_BUILD_NEGATIVE_TESTS)", integration)
+        self.assertIn("quant_disable_negative_tests(", integration)
+
     def test_capstone_targets_share_repository_warning_defaults(self) -> None:
         for relative in (
             "capstones/order_book/CMakeLists.txt",
@@ -84,6 +92,10 @@ class CMakeArchitectureTest(unittest.TestCase):
             text = (ROOT / relative).read_text(encoding="utf-8")
             self.assertIn("QuantTargetDefaults.cmake", text, relative)
             self.assertIn("quant_apply_target_defaults", text, relative)
+        factor = (ROOT / "capstones/factor_kernel/CMakeLists.txt").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("quant_apply_target_defaults(quant_factor_kernel)", factor)
 
 
 if __name__ == "__main__":

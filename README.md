@@ -44,6 +44,7 @@ QUANT_BUILD_CHAPTERS       逐章示例与附录
 QUANT_BUILD_BACKTEST       事件驱动回测项目
 QUANT_BUILD_CAPSTONES      两个岗位分流项目
 QUANT_BUILD_NEGATIVE_TESTS 故意失败的诊断实验
+QUANT_BUILD_FUZZERS        Clang/libFuzzer 协议模糊测试目标
 QUANT_BUILD_PYTHON         可选 Python 扩展模块
 ```
 

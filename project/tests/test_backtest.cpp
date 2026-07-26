@@ -95,6 +95,18 @@ int main() {
       reversed_time_rejected,
       "backtests should reject events that travel backward in time");
 
+  const auto equal_timestamp_result = engine.run(
+      std::vector<quant::MarketEvent>{{t0, "AAPL", 99.0, 1'000},
+                                      {t0, "AAPL", 101.0, 1'000}},
+      strategy);
+  test_support::require(
+      equal_timestamp_result.fills.size() == 1 &&
+          test_support::close_to(equal_timestamp_result.fills.front().price(),
+                                 99.0) &&
+          test_support::close_to(equal_timestamp_result.final_portfolio->equity,
+                                 10'050.0),
+      "equal timestamps should preserve the caller's input order");
+
   const auto empty_result = engine.run({}, strategy);
   test_support::require(!empty_result.final_portfolio.has_value(),
                         "empty runs should not fabricate a symbol snapshot");

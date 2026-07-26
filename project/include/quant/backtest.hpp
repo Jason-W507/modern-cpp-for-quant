@@ -79,8 +79,8 @@ class BacktestEngine final {
         }) != events.end();
     if (travels_backward) {
       throw std::invalid_argument{
-          "single-symbol backtest requires nondecreasing timestamps; define "
-          "an equal-timestamp ordering policy in the input sequence"};
+          "single-symbol backtest requires nondecreasing timestamps; events "
+          "with equal timestamps preserve input order"};
     }
 
     for (const MarketEvent& event : events) {

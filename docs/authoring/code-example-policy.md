@@ -33,7 +33,7 @@
 
 <!-- contract:automation -->
 
-- `python tools/check_book_contract.py` 验证 18 章职责、页数预算、语法矩阵和本约定的结构标记。
+- `python tools/check_book_contract.py` 验证 18 章职责、语法矩阵和本约定的结构标记。
 - 同一命令读取章节学习单元状态与代码证据登记；章节只有在正文、示例、失败实验、输出任务、自测和反馈证据齐全时才能标记为 `accepted`。
 - TeX 中的每个完整外部清单必须登记真实源码和 CMake target；新增故意失败或项目快照时必须登记诊断类别或独立构建入口。
 - `book-manifest.json` 的 `code_evidence` 中，完整清单项使用 `tex`、`source`、`target`；故意失败项使用 `source`、`stage`、`diagnostic_category`；项目快照项使用 `path`、`entry_target`。

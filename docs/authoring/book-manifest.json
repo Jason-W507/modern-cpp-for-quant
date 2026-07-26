@@ -579,7 +579,7 @@
           "self_checks": 8,
           "feedback": "appendices/solutions.tex",
           "project_connection": "code/ch09 is an independently buildable constrained-strategy evolution of the Chapter 8 strategy seam with static and dynamic behavior evidence.",
-          "publication_note": "The self-study progression keeps the ordinary function, function template, concept diagnostics, static/dynamic comparison and runnable evidence together; the content value explains any variance from its planning budget.",
+          "publication_note": "The self-study progression keeps the ordinary function, function template, concept diagnostics, static/dynamic comparison and runnable evidence together because they form one coherent learning unit.",
           "checklist_markers": [
             "prerequisites",
             "learning-output",
@@ -634,7 +634,7 @@
           "self_checks": 8,
           "feedback": "appendices/solutions.tex",
           "project_connection": "code/ch10 is an independently buildable error-recovery evolution of the Chapter 8 execution/portfolio and market-input seams with explicit errors, strong exception safety, and observable boundary behavior.",
-          "publication_note": "The self-study unit keeps the four-way mechanism comparison, contextual explicit errors, strong-guarantee implementation, observability boundary, runnable snapshot and error-injection feedback together; the content value explains any variance from its planning budget.",
+          "publication_note": "The self-study unit keeps the four-way mechanism comparison, contextual explicit errors, strong-guarantee implementation, observability boundary, runnable snapshot and error-injection feedback together because they share one recovery contract.",
           "checklist_markers": [
             "prerequisites",
             "learning-output",
@@ -674,7 +674,7 @@
           "self_checks": 8,
           "feedback": "appendices/solutions.tex",
           "project_connection": "code/ch11 is an independently buildable target-based evolution of the market analyzer; the root project reuses the same CMake target graph through add_subdirectory while clean-build tests verify Debug and Sanitized configurations.",
-          "publication_note": "The self-study unit keeps the complete target graph, real usage-requirement propagation, a link-stage failure experiment, three build configurations and a runnable consumer exercise together; the content value explains any variance from its planning budget.",
+          "publication_note": "The self-study unit keeps the complete target graph, real usage-requirement propagation, a link-stage failure experiment, three build configurations and a runnable consumer exercise together because they demonstrate one reproducible build graph.",
           "checklist_markers": [
             "prerequisites",
             "learning-output",
@@ -1023,8 +1023,7 @@
     "schema_version": 1,
     "state": "accepted",
     "publication": {
-      "guardrail": 250,
-      "note": "The expanded appendices are reader-facing material: they preserve the original recovery paths and add C++23 adoption guidance, memory-order literacy, role-specific capstones and interview algorithms. The higher guardrail reflects the user's decision that the former 155-page ceiling should not force excessive compression."
+      "note": "The appendices are reader-facing material: they preserve recovery paths and add C++23 adoption guidance, memory-order literacy, role-specific capstones and interview algorithms. Their inclusion is determined by learning value rather than a hand-maintained page target."
     },
     "units": [
       {

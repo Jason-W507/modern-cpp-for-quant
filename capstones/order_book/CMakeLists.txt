@@ -55,7 +55,7 @@ if(BUILD_TESTING)
     COMMAND capstone_market_replay_tests)
   set_tests_properties(capstone_market_replay_classifies_sequence_failures
     PROPERTIES PASS_REGULAR_EXPRESSION
-      "market-replay-tests-ok sequence-accepted=4 book-accepted=4 duplicate=1 gap=1 buffered=1 recovered=1 decode=1 trades=2 bounded=1 explicit-outcome=1 next=5")
+      "market-replay-tests-ok sequence-accepted=4 book-accepted=4 duplicate=1 gap=1 buffered=1 recovered=1 decode=6 trades=2 bounded=1 explicit-outcome=1 next=5")
 
   add_test(NAME capstone_replay_benchmark_preserves_message_count
     COMMAND capstone_replay_benchmark)

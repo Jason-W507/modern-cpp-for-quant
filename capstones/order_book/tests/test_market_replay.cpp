@@ -47,11 +47,32 @@ std::vector<std::uint8_t> add_message(std::uint64_t sequence,
 
 int main() {
   quant::capstone::MarketReplay replay;
-  const std::vector<std::uint8_t> malformed{1, 1, 0};
-  const auto malformed_outcome = replay.apply(malformed);
-  const bool decode_reason_is_explicit =
-      malformed_outcome.decode_error ==
-      quant::capstone::DecodeError::frame_size;
+  const auto rejects_as = [&replay](std::vector<std::uint8_t> bytes,
+                                    quant::capstone::DecodeError expected) {
+    const auto outcome = replay.apply(bytes);
+    return outcome.status == quant::capstone::ReplayStatus::decode_error &&
+           outcome.decode_error == expected && replay.next_expected() == 1;
+  };
+  bool decode_reasons_are_explicit = rejects_as(
+      {1, 1, 0}, quant::capstone::DecodeError::frame_size);
+  auto invalid_version = add_message(1, 10, 1, 100, 1);
+  invalid_version[0] = 2;
+  decode_reasons_are_explicit &= rejects_as(
+      invalid_version, quant::capstone::DecodeError::version);
+  auto invalid_type = add_message(1, 11, 1, 100, 1);
+  invalid_type[1] = 2;
+  decode_reasons_are_explicit &= rejects_as(
+      invalid_type, quant::capstone::DecodeError::message_type);
+  auto invalid_length = add_message(1, 12, 1, 100, 1);
+  invalid_length[3] = 31;
+  decode_reasons_are_explicit &= rejects_as(
+      invalid_length, quant::capstone::DecodeError::declared_length);
+  decode_reasons_are_explicit &= rejects_as(
+      add_message(1, 13, 9, 100, 1), quant::capstone::DecodeError::side);
+  auto invalid_reserved = add_message(1, 14, 1, 100, 1);
+  invalid_reserved[21] = 1;
+  decode_reasons_are_explicit &= rejects_as(
+      invalid_reserved, quant::capstone::DecodeError::reserved_bytes);
   replay.apply(add_message(1, 1, 2, 101, 6));
   replay.apply(add_message(2, 2, 1, 100, 5));
   replay.apply(add_message(2, 99, 1, 999, 1));
@@ -66,7 +87,7 @@ int main() {
       stats.book_accepted == 4 && stats.book_rejected == 0 &&
       stats.duplicates == 1 && stats.gaps == 1 &&
       stats.buffered == 1 && stats.recovered == 1 &&
-      stats.decode_errors == 1 && replay.next_expected() == 5 &&
+      stats.decode_errors == 6 && replay.next_expected() == 5 &&
       book.best_bid() == 100 && book.quantity_at(quant::capstone::Side::buy, 100) == 5 &&
       book.best_ask() == 101 && book.quantity_at(quant::capstone::Side::sell, 101) == 1;
 
@@ -107,12 +128,12 @@ int main() {
     invalid_config_rejected = true;
   }
   if (!valid || !bounds_hold || !outcome_is_explicit ||
-      !decode_reason_is_explicit ||
+      !decode_reasons_are_explicit ||
       !invalid_config_rejected) {
     std::cerr << "market replay oracle mismatch\n";
     return 2;
   }
   std::cout << "market-replay-tests-ok sequence-accepted=4 book-accepted=4 "
-               "duplicate=1 gap=1 buffered=1 recovered=1 decode=1 trades=2 "
+               "duplicate=1 gap=1 buffered=1 recovered=1 decode=6 trades=2 "
                "bounded=1 explicit-outcome=1 next=5\n";
 }
