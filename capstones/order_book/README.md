@@ -1,6 +1,6 @@
 # Quant Developer：订单簿与行情重放项目
 
-基线实现整数价格档位上的价格—时间优先撮合，以及固定 32 字节、大端序的新增订单消息。`MarketReplay::apply` 在消息进入序号门和订单簿之前，验证协议版本、消息类型、声明长度、保留字节与买卖方向。
+基线实现整数价格档位上的价格—时间优先撮合，以及固定 32 字节、大端序的新增订单消息。`MarketReplay::apply` 在消息进入序号门和订单簿之前，验证帧尺寸、协议版本、消息类型、声明长度、保留字节与买卖方向，并用 `DecodeError` 保留具体失败类别。订单入口与档位查询也会拒绝显式构造的非法 `Side` 值。
 
 ```sh
 cmake -S capstones/order_book -B build/order-book -DBUILD_TESTING=ON

@@ -48,7 +48,10 @@ std::vector<std::uint8_t> add_message(std::uint64_t sequence,
 int main() {
   quant::capstone::MarketReplay replay;
   const std::vector<std::uint8_t> malformed{1, 1, 0};
-  replay.apply(malformed);
+  const auto malformed_outcome = replay.apply(malformed);
+  const bool decode_reason_is_explicit =
+      malformed_outcome.decode_error ==
+      quant::capstone::DecodeError::frame_size;
   replay.apply(add_message(1, 1, 2, 101, 6));
   replay.apply(add_message(2, 2, 1, 100, 5));
   replay.apply(add_message(2, 99, 1, 999, 1));
@@ -69,8 +72,7 @@ int main() {
 
   quant::capstone::MarketReplay bounded{quant::capstone::ReplayConfig{
       .max_sequence_gap = 3,
-      .max_pending_messages = 2,
-      .overflow_policy = quant::capstone::ReplayOverflowPolicy::reject_newest}};
+      .max_pending_messages = 2}};
   const auto too_far = bounded.apply(add_message(5, 50, 1, 100, 1));
   const auto first_buffered = bounded.apply(add_message(3, 30, 1, 100, 1));
   const auto second_buffered = bounded.apply(add_message(4, 40, 1, 100, 1));
@@ -105,6 +107,7 @@ int main() {
     invalid_config_rejected = true;
   }
   if (!valid || !bounds_hold || !outcome_is_explicit ||
+      !decode_reason_is_explicit ||
       !invalid_config_rejected) {
     std::cerr << "market replay oracle mismatch\n";
     return 2;

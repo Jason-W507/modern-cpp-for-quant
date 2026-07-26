@@ -91,6 +91,16 @@ int main() {
   test_support::require(invalid_fill_rejected,
                         "non-finite fill fees should be rejected");
 
+  bool invalid_side_rejected = false;
+  try {
+    (void)quant::OrderIntent{"AAPL", static_cast<quant::Side>(42), 1};
+  } catch (const std::invalid_argument&) {
+    invalid_side_rejected = true;
+  }
+  test_support::require(
+      invalid_side_rejected,
+      "explicitly constructed invalid side values should be rejected");
+
   bool invalid_cash_rejected = false;
   try {
     (void)quant::Portfolio{0.0};

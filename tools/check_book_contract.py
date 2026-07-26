@@ -134,12 +134,8 @@ def load_json_document(path: Path, errors: list[str]) -> dict[str, object]:
 
 def validate_contract(
     contract: dict[str, object], errors: list[str]
-) -> tuple[int, int, set[int], set[str]]:
-    target = contract.get("target_pages")
+) -> tuple[int, set[int], set[str]]:
     parts = contract.get("parts")
-    if not isinstance(target, dict):
-        errors.append("target_pages must be an object")
-        target = {}
     if not isinstance(parts, list):
         errors.append("parts must be a list")
         parts = []
@@ -158,29 +154,14 @@ def validate_contract(
         errors.append(f"expected 5 parts, found {len(parts)}")
 
     chapters: list[dict[str, object]] = []
-    part_pages = 0
     for index, part in enumerate(parts, start=1):
         if not isinstance(part, dict):
             errors.append(f"part {index} must be an object")
             continue
         items = part.get("chapters")
-        budget = part.get("page_budget")
         if not isinstance(items, list):
             errors.append(f"part {index} chapters must be a list")
             continue
-        if not isinstance(budget, int):
-            errors.append(f"part {index} page_budget must be an integer")
-            continue
-        chapter_budget = sum(
-            item.get("page_budget", 0)
-            for item in items
-            if isinstance(item, dict) and isinstance(item.get("page_budget"), int)
-        )
-        if chapter_budget != budget:
-            errors.append(
-                f"part {index} budget is {budget}, but its chapters sum to {chapter_budget}"
-            )
-        part_pages += budget
         chapters.extend(item for item in items if isinstance(item, dict))
 
     numbers = [item.get("number") for item in chapters]
@@ -197,23 +178,7 @@ def validate_contract(
             if not isinstance(value, str) or not value.strip() or PLACEHOLDER.search(value):
                 errors.append(f"chapter {number} has an empty or placeholder {field}")
 
-    minimum = target.get("minimum")
-    planned = target.get("planned")
-    maximum = target.get("maximum")
-    front = target.get("front_matter")
-    appendices = target.get("appendices")
-    page_values = (minimum, planned, maximum, front, appendices)
-    if not all(isinstance(value, int) for value in page_values):
-        errors.append("all target page values must be integers")
-        return len(chapters), 0, valid_numbers, required_syntax_ids
-
-    if not minimum <= planned <= maximum:
-        errors.append(f"planned pages {planned} are outside {minimum}..{maximum}")
-    calculated = front + appendices + part_pages
-    if calculated != planned:
-        errors.append(f"planned pages are {planned}, but budgets sum to {calculated}")
-
-    return len(chapters), planned, valid_numbers, required_syntax_ids
+    return len(chapters), valid_numbers, required_syntax_ids
 
 
 def parse_coverage_rows(text: str) -> list[list[str]]:
@@ -671,7 +636,7 @@ def main() -> int:
     if not isinstance(contract, dict):
         errors.append("authoring manifest contract must be an object")
         contract = {}
-    chapter_count, planned_pages, chapter_numbers, required_syntax_ids = validate_contract(
+    chapter_count, chapter_numbers, required_syntax_ids = validate_contract(
         contract, errors
     )
     main_path = args.main.resolve() if args.main else source_path("main", "main.tex")
@@ -749,7 +714,7 @@ def main() -> int:
         "book-contract: valid "
         f"({chapter_count} chapters, {coverage_count} syntax concepts, "
         f"{listing_count} complete listings, {accepted_units} accepted units, "
-        f"{accepted_appendices} accepted appendices, {planned_pages} planned pages)"
+        f"{accepted_appendices} accepted appendices)"
     )
     return 0
 

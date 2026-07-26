@@ -13,6 +13,15 @@ using Timestamp = std::chrono::sys_time<std::chrono::milliseconds>;
 
 enum class Side : std::uint8_t { buy, sell };
 
+[[nodiscard]] constexpr bool is_valid_side(Side side) noexcept {
+  switch (side) {
+    case Side::buy:
+    case Side::sell:
+      return true;
+  }
+  return false;
+}
+
 namespace detail {
 
 inline void validate_nonempty_symbol(const std::string& symbol,
@@ -34,6 +43,12 @@ inline void validate_positive_quantity(std::int64_t value,
                                        const char* field) {
   if (value <= 0) {
     throw std::invalid_argument{std::string{field} + " must be positive"};
+  }
+}
+
+inline void validate_side(Side side, const char* owner) {
+  if (!is_valid_side(side)) {
+    throw std::invalid_argument{std::string{owner} + " requires buy or sell"};
   }
 }
 
@@ -69,6 +84,7 @@ class OrderIntent final {
   OrderIntent(std::string symbol, Side side, std::int64_t quantity)
       : symbol_(std::move(symbol)), side_(side), quantity_(quantity) {
     detail::validate_nonempty_symbol(symbol_, "order intent");
+    detail::validate_side(side_, "order intent");
     detail::validate_positive_quantity(quantity_, "order intent quantity");
   }
 
@@ -93,6 +109,7 @@ class Fill final {
         price_(price),
         fee_(fee) {
     detail::validate_nonempty_symbol(symbol_, "fill");
+    detail::validate_side(side_, "fill");
     detail::validate_positive_quantity(quantity_, "fill quantity");
     detail::validate_positive_finite(price_, "fill price");
     if (!std::isfinite(fee_) || fee_ < 0.0) {

@@ -55,29 +55,47 @@ struct AddMessage final {
   Order order;
 };
 
-std::optional<AddMessage> decode_add(
-    std::span<const std::uint8_t> bytes) {
-  if (bytes.size() != add_message_size ||
-      bytes[version_offset] != protocol_version ||
-      bytes[type_offset] != add_message_type ||
-      read_u16(bytes, length_offset) != add_message_size) {
-    return std::nullopt;
+struct DecodeResult final {
+  std::optional<AddMessage> message;
+  std::optional<DecodeError> error;
+};
+
+DecodeResult decode_add(std::span<const std::uint8_t> bytes) {
+  if (bytes.size() != add_message_size) {
+    return {std::nullopt, DecodeError::frame_size};
+  }
+  if (bytes[version_offset] != protocol_version) {
+    return {std::nullopt, DecodeError::version};
+  }
+  if (bytes[type_offset] != add_message_type) {
+    return {std::nullopt, DecodeError::message_type};
+  }
+  if (read_u16(bytes, length_offset) != add_message_size) {
+    return {std::nullopt, DecodeError::declared_length};
   }
   const std::uint8_t side_code = bytes[side_offset];
   if (side_code != buy_side_code && side_code != sell_side_code) {
-    return std::nullopt;
+    return {std::nullopt, DecodeError::side};
   }
   for (std::size_t offset = reserved_begin; offset < price_offset; ++offset) {
     if (bytes[offset] != 0) {
-      return std::nullopt;
+      return {std::nullopt, DecodeError::reserved_bytes};
     }
   }
-  return AddMessage{
-      read_u64(bytes, sequence_offset),
-      Order{read_u64(bytes, order_id_offset),
-            side_code == buy_side_code ? Side::buy : Side::sell,
-            std::bit_cast<std::int32_t>(read_u32(bytes, price_offset)),
-            std::bit_cast<std::int32_t>(read_u32(bytes, quantity_offset))}};
+  return {AddMessage{read_u64(bytes, sequence_offset),
+                     Order{read_u64(bytes, order_id_offset),
+                           side_code == buy_side_code ? Side::buy : Side::sell,
+                           std::bit_cast<std::int32_t>(
+                               read_u32(bytes, price_offset)),
+                           std::bit_cast<std::int32_t>(
+                               read_u32(bytes, quantity_offset))}},
+          std::nullopt};
+}
+
+ReplayOutcome make_outcome(ReplayStatus status) {
+  ReplayOutcome outcome;
+  outcome.status = status;
+  return outcome;
 }
 
 }  // namespace
@@ -91,46 +109,49 @@ MarketReplay::MarketReplay(ReplayConfig config) : config_(config) {
 }
 
 ReplayOutcome MarketReplay::apply(std::span<const std::uint8_t> bytes) {
-  const auto message = decode_add(bytes);
-  if (!message) {
+  const auto decoded = decode_add(bytes);
+  if (!decoded.message) {
     ++stats_.decode_errors;
-    return {.status = ReplayStatus::decode_error};
+    ReplayOutcome outcome = make_outcome(ReplayStatus::decode_error);
+    outcome.decode_error = decoded.error;
+    return outcome;
   }
+  const AddMessage& message = *decoded.message;
 
-  const ReplayStatus sequence_status = sequence_.observe(message->sequence);
+  const ReplayStatus sequence_status = sequence_.observe(message.sequence);
   if (sequence_status == ReplayStatus::duplicate_or_stale) {
     ++stats_.duplicates;
-    return {.status = sequence_status};
+    return make_outcome(sequence_status);
   }
   if (sequence_status == ReplayStatus::gap) {
     ++stats_.gaps;
-    if (pending_.contains(message->sequence)) {
+    if (pending_.contains(message.sequence)) {
       ++stats_.duplicates;
-      return {.status = ReplayStatus::duplicate_or_stale};
+      return make_outcome(ReplayStatus::duplicate_or_stale);
     }
     const std::uint64_t gap =
-        message->sequence - sequence_.next_expected();
+        message.sequence - sequence_.next_expected();
     if (gap > config_.max_sequence_gap) {
       ++stats_.gap_rejections;
-      return {.status = ReplayStatus::sequence_gap_exceeded};
+      return make_outcome(ReplayStatus::sequence_gap_exceeded);
     }
     if (pending_.size() >= config_.max_pending_messages) {
       ++stats_.pending_overflows;
-      return {.status = ReplayStatus::pending_overflow};
+      return make_outcome(ReplayStatus::pending_overflow);
     }
     const auto [position, inserted] = pending_.try_emplace(
-        message->sequence, bytes.begin(), bytes.end());
+        message.sequence, bytes.begin(), bytes.end());
     static_cast<void>(position);
     if (!inserted) {
       ++stats_.duplicates;
-      return {.status = ReplayStatus::duplicate_or_stale};
+      return make_outcome(ReplayStatus::duplicate_or_stale);
     }
     ++stats_.buffered;
-    return {.status = ReplayStatus::gap};
+    return make_outcome(ReplayStatus::gap);
   }
 
-  ReplayOutcome outcome{.status = ReplayStatus::accepted,
-                        .sequence_accepted = 1};
+  ReplayOutcome outcome = make_outcome(ReplayStatus::accepted);
+  outcome.sequence_accepted = 1;
   ++stats_.sequence_accepted;
   const auto submit = [this, &outcome](const Order& order) {
     try {
@@ -149,7 +170,7 @@ ReplayOutcome MarketReplay::apply(std::span<const std::uint8_t> bytes) {
     }
   };
 
-  if (!submit(message->order)) {
+  if (!submit(message.order)) {
     outcome.status = ReplayStatus::book_rejected;
   }
 
@@ -160,15 +181,16 @@ ReplayOutcome MarketReplay::apply(std::span<const std::uint8_t> bytes) {
     }
     const auto recovered = decode_add(found->second);
     pending_.erase(found);
-    if (!recovered ||
-        sequence_.observe(recovered->sequence) != ReplayStatus::accepted) {
+    if (!recovered.message ||
+        sequence_.observe(recovered.message->sequence) !=
+            ReplayStatus::accepted) {
       throw std::logic_error{"buffered replay message violated sequence invariant"};
     }
     ++stats_.recovered;
     ++stats_.sequence_accepted;
     ++outcome.recovered;
     ++outcome.sequence_accepted;
-    submit(recovered->order);
+    submit(recovered.message->order);
   }
   return outcome;
 }

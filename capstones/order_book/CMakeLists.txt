@@ -4,6 +4,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 endif()
 
 include(CTest)
+include(${CMAKE_CURRENT_LIST_DIR}/../../cmake/QuantTargetDefaults.cmake)
 find_package(Threads REQUIRED)
 
 add_library(capstone_order_book INTERFACE)
@@ -12,13 +13,16 @@ target_compile_features(capstone_order_book INTERFACE cxx_std_20)
 
 add_executable(capstone_order_book_demo src/main.cpp)
 target_link_libraries(capstone_order_book_demo PRIVATE capstone_order_book)
+quant_apply_target_defaults(capstone_order_book_demo)
 
 add_library(capstone_market_replay src/market_replay.cpp)
 target_link_libraries(capstone_market_replay PUBLIC capstone_order_book)
 target_include_directories(capstone_market_replay PUBLIC include)
+quant_apply_target_defaults(capstone_market_replay)
 
 add_executable(capstone_replay_benchmark benchmarks/replay_benchmark.cpp)
 target_link_libraries(capstone_replay_benchmark PRIVATE capstone_market_replay)
+quant_apply_target_defaults(capstone_replay_benchmark)
 
 option(CAPSTONE_BUILD_FUZZERS "Build libFuzzer protocol targets with Clang" OFF)
 if(CAPSTONE_BUILD_FUZZERS)
@@ -27,28 +31,17 @@ if(CAPSTONE_BUILD_FUZZERS)
   endif()
   add_executable(capstone_market_replay_fuzzer fuzz/market_replay_fuzz.cpp)
   target_link_libraries(capstone_market_replay_fuzzer PRIVATE capstone_market_replay)
+  quant_apply_target_defaults(capstone_market_replay_fuzzer)
   target_compile_options(capstone_market_replay_fuzzer PRIVATE
     -fsanitize=fuzzer,address,undefined -fno-omit-frame-pointer)
   target_link_options(capstone_market_replay_fuzzer PRIVATE
     -fsanitize=fuzzer,address,undefined)
 endif()
 
-if(MSVC)
-  target_compile_options(capstone_order_book_demo PRIVATE /W4 /permissive-)
-else()
-  target_compile_options(capstone_order_book_demo PRIVATE
-    -Wall -Wextra -Wpedantic)
-endif()
-
 if(BUILD_TESTING)
   add_executable(capstone_order_book_tests tests/test_order_book.cpp)
   target_link_libraries(capstone_order_book_tests PRIVATE capstone_order_book)
-  if(MSVC)
-    target_compile_options(capstone_order_book_tests PRIVATE /W4 /permissive-)
-  else()
-    target_compile_options(capstone_order_book_tests PRIVATE
-      -Wall -Wextra -Wpedantic)
-  endif()
+  quant_apply_target_defaults(capstone_order_book_tests)
   add_test(NAME capstone_order_book_preserves_price_time_priority
     COMMAND capstone_order_book_tests)
   set_tests_properties(capstone_order_book_preserves_price_time_priority
@@ -57,6 +50,7 @@ if(BUILD_TESTING)
 
   add_executable(capstone_market_replay_tests tests/test_market_replay.cpp)
   target_link_libraries(capstone_market_replay_tests PRIVATE capstone_market_replay)
+  quant_apply_target_defaults(capstone_market_replay_tests)
   add_test(NAME capstone_market_replay_classifies_sequence_failures
     COMMAND capstone_market_replay_tests)
   set_tests_properties(capstone_market_replay_classifies_sequence_failures
@@ -103,6 +97,7 @@ endif()
   add_executable(capstone_spsc_replay_tests tests/test_spsc_replay.cpp)
   target_link_libraries(capstone_spsc_replay_tests
     PRIVATE capstone_market_replay Threads::Threads)
+  quant_apply_target_defaults(capstone_spsc_replay_tests)
   add_test(NAME capstone_spsc_replay_preserves_every_message
     COMMAND capstone_spsc_replay_tests)
   set_tests_properties(capstone_spsc_replay_preserves_every_message

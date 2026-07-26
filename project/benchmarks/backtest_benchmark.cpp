@@ -27,8 +27,9 @@ int main() {
   for (std::size_t index = 0; index < warmup_count; ++index) {
     const auto result = run_once();
     ledger_valid = ledger_valid && result.fills.size() == 1 &&
-                   result.final_portfolio.equity == 10'100.0;
-    checksum += result.final_portfolio.equity;
+                   result.final_portfolio.has_value() &&
+                   result.final_portfolio->equity == 10'100.0;
+    checksum += result.final_portfolio->equity;
   }
 
   std::vector<long long> samples;
@@ -40,8 +41,9 @@ int main() {
     samples.push_back(
         std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count());
     ledger_valid = ledger_valid && result.fills.size() == 1 &&
-                   result.final_portfolio.equity == 10'100.0;
-    checksum += result.final_portfolio.equity;
+                   result.final_portfolio.has_value() &&
+                   result.final_portfolio->equity == 10'100.0;
+    checksum += result.final_portfolio->equity;
   }
 
   auto sorted_samples = samples;

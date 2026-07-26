@@ -23,7 +23,8 @@ class CIContractTest(unittest.TestCase):
             "check_pdf_build.py",
             "pdfinfo",
             "upload-artifact",
-            "python-quant-modern-cpp.pdf",
+            "package_release.py --source build/book/main.pdf",
+            "build/release/*",
         ):
             self.assertIn(token, self.workflow)
 
@@ -48,6 +49,39 @@ class CIContractTest(unittest.TestCase):
             "ch16_optional_pybind_module_preserves_core_behavior",
         ):
             self.assertIn(token, self.workflow)
+
+    def test_positive_tsan_job_runs_the_spsc_path(self) -> None:
+        for token in (
+            "thread-sanitizer:",
+            "-fsanitize=thread",
+            "capstone_spsc_replay_tests",
+            "capstone_spsc_replay_preserves_every_message",
+        ):
+            self.assertIn(token, self.workflow)
+
+    def test_scheduled_optional_dependency_job_builds_eigen_and_catch2(self) -> None:
+        for token in (
+            "schedule:",
+            "optional-dependencies:",
+            "FACTOR_KERNEL_BUILD_EIGEN=ON",
+            "FACTOR_KERNEL_BUILD_CATCH2=ON",
+        ):
+            self.assertIn(token, self.workflow)
+
+    def test_tag_release_packages_the_fresh_book_build(self) -> None:
+        for token in (
+            "refs/tags/v",
+            "--source build/book/main.pdf",
+            "pdftotext build/book/main.pdf",
+            "gh release create",
+        ):
+            self.assertIn(token, self.workflow)
+
+    def test_first_party_actions_are_pinned_to_commits(self) -> None:
+        self.assertNotRegex(
+            self.workflow,
+            r"uses: actions/(?:checkout|setup-python|upload-artifact|download-artifact)@v\d",
+        )
 
     def test_factor_kernel_static_library_can_link_into_a_python_module(self) -> None:
         cmake = (ROOT / "capstones" / "factor_kernel" / "CMakeLists.txt").read_text(

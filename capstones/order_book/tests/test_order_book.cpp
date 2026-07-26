@@ -38,6 +38,22 @@ int main() {
     std::cerr << "replay oracle mismatch\n";
     return 2;
   }
+  bool invalid_side_rejected = false;
+  try {
+    book.submit(Order{4, static_cast<Side>(42), 100, 1});
+  } catch (const std::invalid_argument&) {
+    invalid_side_rejected = true;
+  }
+  bool invalid_query_rejected = false;
+  try {
+    (void)book.quantity_at(static_cast<Side>(42), 100);
+  } catch (const std::invalid_argument&) {
+    invalid_query_rejected = true;
+  }
+  if (!invalid_side_rejected || !invalid_query_rejected) {
+    std::cerr << "side validation mismatch\n";
+    return 2;
+  }
   std::cout << "order-book-tests-ok trades=" << trades.size()
             << " best-bid=" << *book.best_bid()
             << " best-ask=" << *book.best_ask()

@@ -46,6 +46,7 @@ if(QUANT_BUILD_BACKTEST)
 endif()
 
 if(QUANT_BUILD_CAPSTONES)
+  set(CAPSTONE_BUILD_FUZZERS ${QUANT_BUILD_FUZZERS})
   add_subdirectory(capstones/order_book)
   set(FACTOR_KERNEL_BUILD_PYTHON ${QUANT_BUILD_PYTHON})
   add_subdirectory(capstones/factor_kernel)

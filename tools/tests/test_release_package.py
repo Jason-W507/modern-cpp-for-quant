@@ -19,6 +19,8 @@ class ReleasePackageTest(unittest.TestCase):
                 str(ROOT / "tools" / "package_release.py"),
                 "--output-dir",
                 str(output_dir),
+                "--source",
+                str(ROOT / "output" / "pdf" / "python-quant-modern-cpp.pdf"),
             ],
             capture_output=True,
             text=True,

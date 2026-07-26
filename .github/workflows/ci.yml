@@ -3,6 +3,9 @@ name: cpp-and-book-contract
 on:
   push:
   pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * 1'
 
 jobs:
   cpp:
@@ -13,7 +16,7 @@ jobs:
         compiler: [gcc, clang]
         build_type: [Debug, Release]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Select compiler
         run: |
           if [ "${{ matrix.compiler }}" = gcc ]; then
@@ -33,7 +36,7 @@ jobs:
   sanitizers:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Configure Clang ASan and UBSan
         env:
           CC: clang
@@ -49,6 +52,25 @@ jobs:
       - name: Test
         run: ctest --test-dir build/sanitized --output-on-failure
 
+  thread-sanitizer:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Configure the positive SPSC path with TSan
+        env:
+          CC: gcc
+          CXX: g++
+        run: >-
+          cmake -S capstones/order_book -B build/tsan
+          -DCMAKE_BUILD_TYPE=Debug
+          -DBUILD_TESTING=ON
+          -DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer"
+          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread"
+      - name: Build the SPSC replay test
+        run: cmake --build build/tsan --target capstone_spsc_replay_tests --parallel 2
+      - name: Run the positive concurrent path
+        run: ctest --test-dir build/tsan --output-on-failure -R capstone_spsc_replay_preserves_every_message
+
   windows-msvc:
     runs-on: windows-latest
     strategy:
@@ -56,7 +78,7 @@ jobs:
       matrix:
         build_type: [Debug, Release]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Configure MSVC x64
         run: cmake -S . -B build/msvc -A x64 -DBUILD_TESTING=ON -DQUANT_BUILD_PYTHON=OFF
       - name: Build
@@ -71,8 +93,8 @@ jobs:
   locked-python:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.12'
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
@@ -107,10 +129,27 @@ jobs:
           cmake --build build/ch16-python --parallel 2
           ctest --test-dir build/ch16-python --output-on-failure --no-tests=error -R ch16_optional_pybind_module_preserves_core_behavior
 
+  optional-dependencies:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Configure Eigen and Catch2 branches
+        run: >-
+          cmake -S capstones/factor_kernel -B build/optional
+          -DBUILD_TESTING=ON
+          -DFACTOR_KERNEL_BUILD_PYTHON=OFF
+          -DFACTOR_KERNEL_BUILD_EIGEN=ON
+          -DFACTOR_KERNEL_BUILD_CATCH2=ON
+      - name: Build and test optional dependencies
+        run: |
+          cmake --build build/optional --parallel 2
+          ctest --test-dir build/optional --output-on-failure
+
   book:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Install XeLaTeX, Biber, and PDF inspection tools
         run: |
           sudo apt-get update
@@ -119,21 +158,42 @@ jobs:
         run: |
           mkdir -p build/book/chapters build/book/appendices
           latexmk -xelatex -interaction=nonstopmode -halt-on-error -outdir=build/book main.tex
-      - name: Check references, layout, and page count with pdfinfo
+      - name: Check references, layout, and plausible PDF artifact with pdfinfo
         run: python tools/check_pdf_build.py --log build/book/main.log --pdf build/book/main.pdf --min-pages 200 --max-pages 280
-      - name: Stage named PDF artifact
-        run: cp build/book/main.pdf build/book/python-quant-modern-cpp.pdf
-      - uses: actions/upload-artifact@v4
+      - name: Verify the version printed inside the book
+        run: pdftotext build/book/main.pdf - | grep -F "版本：$(cat VERSION)"
+      - name: Package this build for release
+        run: python tools/package_release.py --source build/book/main.pdf --output-dir build/release
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: python-quant-modern-cpp-pdf
-          path: build/book/python-quant-modern-cpp.pdf
+          name: modern-cpp-for-quant-release
+          path: build/release/*
           if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [book]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: modern-cpp-for-quant-release
+          path: build/release
+      - name: Verify tag and project version agree
+        run: test "$GITHUB_REF_NAME" = "v$(cat VERSION)"
+      - name: Publish the freshly built PDF and checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" build/release/* --title "$GITHUB_REF_NAME" --generate-notes
 
   authoring-contract:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.12'
       - run: python tools/check_book_contract.py

@@ -70,6 +70,21 @@ class CMakeArchitectureTest(unittest.TestCase):
             msg=completed.stdout + completed.stderr,
         )
 
+    def test_root_fuzzer_switch_reaches_order_book_capstone(self) -> None:
+        root_cmake = (ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+        self.assertIn(
+            "set(CAPSTONE_BUILD_FUZZERS ${QUANT_BUILD_FUZZERS})", root_cmake
+        )
+
+    def test_capstone_targets_share_repository_warning_defaults(self) -> None:
+        for relative in (
+            "capstones/order_book/CMakeLists.txt",
+            "capstones/factor_kernel/CMakeLists.txt",
+        ):
+            text = (ROOT / relative).read_text(encoding="utf-8")
+            self.assertIn("QuantTargetDefaults.cmake", text, relative)
+            self.assertIn("quant_apply_target_defaults", text, relative)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -62,10 +62,14 @@ int main(int argc, char** argv) {
     std::cerr << "model-boundary-error " << error.what() << '\n';
     return 2;
   }
+  if (!result.final_portfolio) {
+    std::cout << "backtest-ok events=0 fills=0 final-portfolio=none\n";
+    return 0;
+  }
   std::cout << std::fixed << "backtest-ok events=" << parsed.events.size()
             << " fills=" << result.fills.size() << " cash="
-            << std::setprecision(3) << result.final_portfolio.cash
-            << " equity=" << result.final_portfolio.equity << " return="
+            << std::setprecision(3) << result.final_portfolio->cash
+            << " equity=" << result.final_portfolio->equity << " return="
             << std::setprecision(6) << result.performance.total_return * 100.0
             << "% max-drawdown=" << result.performance.max_drawdown * 100.0
             << "% volatility=" << result.performance.volatility

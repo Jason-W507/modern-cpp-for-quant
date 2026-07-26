@@ -24,7 +24,7 @@ concept StrategyForMarketEvent = requires(const Strategy& strategy,
 
 struct BacktestResult final {
   std::vector<Fill> fills;
-  PortfolioSnapshot final_portfolio;
+  std::optional<PortfolioSnapshot> final_portfolio;
   PerformanceSummary performance;
 };
 
@@ -57,8 +57,6 @@ class BacktestEngine final {
     equity_curve.reserve(events.size());
 
     if (events.empty()) {
-      result.final_portfolio = PortfolioSnapshot{"", 0, config_.initial_cash,
-                                                  config_.initial_cash};
       result.performance =
           summarize_performance(config_.initial_cash, equity_curve,
                                 result.fills);
@@ -75,6 +73,15 @@ class BacktestEngine final {
           "single-symbol backtest requires one symbol; define a complete price "
           "map before enabling multi-asset valuation"};
     }
+    const bool travels_backward = std::adjacent_find(
+        events.begin(), events.end(), [](const auto& earlier, const auto& later) {
+          return later.timestamp() < earlier.timestamp();
+        }) != events.end();
+    if (travels_backward) {
+      throw std::invalid_argument{
+          "single-symbol backtest requires nondecreasing timestamps; define "
+          "an equal-timestamp ordering policy in the input sequence"};
+    }
 
     for (const MarketEvent& event : events) {
       const auto before = portfolio.snapshot(event.symbol(), event.price());
@@ -85,7 +92,7 @@ class BacktestEngine final {
         }
       }
       result.final_portfolio = portfolio.snapshot(event.symbol(), event.price());
-      equity_curve.push_back(result.final_portfolio.equity);
+      equity_curve.push_back(result.final_portfolio->equity);
     }
 
     result.performance =

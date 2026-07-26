@@ -3,7 +3,7 @@ add_test(NAME book_contract
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_book_contract.py
           --root ${CMAKE_CURRENT_SOURCE_DIR})
 set_tests_properties(book_contract PROPERTIES
-  PASS_REGULAR_EXPRESSION "18 chapters.*235 planned pages")
+  PASS_REGULAR_EXPRESSION "18 chapters.*accepted appendices")
 
 add_test(NAME book_contract_rejects_invalid_authoring_evidence
   COMMAND ${Python3_EXECUTABLE}
@@ -40,4 +40,3 @@ add_test(NAME cmake_architecture_contract
 add_test(NAME release_package_contract
   COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/test_release_package.py)
-

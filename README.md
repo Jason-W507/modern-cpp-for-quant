@@ -2,7 +2,7 @@
 
 一本面向已会 Python、准备量化投资求职或进入量化开发工作的 C++20 中文自学教程。
 
-**[下载 v0.3.2 PDF（234 页）](https://github.com/Jason-W507/modern-cpp-for-quant/releases/download/v0.3.2/python-quant-modern-cpp-v0.3.2.pdf)** · [校验和](https://github.com/Jason-W507/modern-cpp-for-quant/releases/download/v0.3.2/SHA256SUMS) · [查看最新 Release](https://github.com/Jason-W507/modern-cpp-for-quant/releases/latest)
+**[下载 v0.3.3 PDF](https://github.com/Jason-W507/modern-cpp-for-quant/releases/download/v0.3.3/python-quant-modern-cpp-v0.3.3.pdf)** · [校验和](https://github.com/Jason-W507/modern-cpp-for-quant/releases/download/v0.3.3/SHA256SUMS) · [查看最新 Release](https://github.com/Jason-W507/modern-cpp-for-quant/releases/latest)
 
 ## 项目概览
 
@@ -20,7 +20,7 @@
 |---|---|---|
 | 面试速通 | 第 1--10 章 → 第 12 章 → 附录“面试与练习” | 能解释 Python/C++ 差异，完成基础练习和错误诊断 |
 | Quant Developer | 第 1--15 章 → 回测项目 → Order-book Capstone | 事件驱动回测、并发管线、协议解析与有界 replay |
-| Research Engineer | 第 1--12、14、16 章 → Factor-kernel Capstone | 数值一致性、批量边界、pybind11 与可复现实验 |
+| Research Engineer | 第 1--14、16 章 → Factor-kernel Capstone | 数值一致性、数据布局、批量边界、pybind11 与可复现实验 |
 
 ## 两个岗位分流 Capstone
 
@@ -70,7 +70,7 @@ docs/authoring/        写作契约与验收记录
 output/pdf/            经验证的滚动版 PDF
 ```
 
-书籍契约采用 18 章、五篇、8 个附录与 235 页规划预算。运行 `python tools/check_book_contract.py` 可检查章节职责、基础语法覆盖、学习单元和代码快照；规划预算与实际 PDF 页数分别核验，避免把目标页数当作构建结果。
+书籍契约记录 18 章、五篇、8 个附录的职责、基础语法覆盖、学习单元和代码快照。运行 `python tools/check_book_contract.py` 可检查这些源码事实；PDF 页数仅在构建后动态读取，不再作为需要人工维护的规划字段。
 
 ## 已验证环境
 

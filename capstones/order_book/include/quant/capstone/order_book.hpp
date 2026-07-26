@@ -14,6 +14,15 @@ namespace quant::capstone {
 
 enum class Side { buy, sell };
 
+[[nodiscard]] constexpr bool is_valid_side(Side side) noexcept {
+  switch (side) {
+    case Side::buy:
+    case Side::sell:
+      return true;
+  }
+  return false;
+}
+
 struct Order final {
   std::uint64_t id{};
   Side side{};
@@ -71,6 +80,9 @@ class LimitOrderBook final {
 
   [[nodiscard]] std::int64_t quantity_at(Side side,
                                          std::int64_t price_ticks) const {
+    if (!is_valid_side(side)) {
+      throw std::invalid_argument{"quantity query requires buy or sell"};
+    }
     if (side == Side::sell) {
       return ask_quantity_at(price_ticks);
     }
@@ -84,6 +96,9 @@ class LimitOrderBook final {
   using AskLevels = std::map<std::int64_t, std::deque<Order>>;
 
   static void validate(const Order& order) {
+    if (!is_valid_side(order.side)) {
+      throw std::invalid_argument{"order side must be buy or sell"};
+    }
     if (order.id == 0 || order.price_ticks <= 0 || order.quantity <= 0) {
       throw std::invalid_argument{"order fields must be positive"};
     }

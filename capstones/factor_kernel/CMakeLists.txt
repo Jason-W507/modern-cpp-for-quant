@@ -4,21 +4,18 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 endif()
 
 include(CTest)
+include(${CMAKE_CURRENT_LIST_DIR}/../../cmake/QuantTargetDefaults.cmake)
 
 add_library(capstone_factor_kernel src/factor_kernel.cpp)
 target_include_directories(capstone_factor_kernel PUBLIC include)
 target_compile_features(capstone_factor_kernel PUBLIC cxx_std_20)
+quant_apply_target_defaults(capstone_factor_kernel)
 set_target_properties(capstone_factor_kernel PROPERTIES
   POSITION_INDEPENDENT_CODE ON)
 
-if(MSVC)
-  target_compile_options(capstone_factor_kernel PRIVATE /W4 /permissive-)
-else()
-  target_compile_options(capstone_factor_kernel PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
 add_executable(capstone_factor_kernel_cli src/main.cpp)
 target_link_libraries(capstone_factor_kernel_cli PRIVATE capstone_factor_kernel)
+quant_apply_target_defaults(capstone_factor_kernel_cli)
 
 option(FACTOR_KERNEL_BUILD_PYTHON "Build the optional pybind11 batch module" ON)
 if(FACTOR_KERNEL_BUILD_PYTHON)
@@ -28,6 +25,7 @@ if(FACTOR_KERNEL_BUILD_PYTHON)
   if(pybind11_FOUND)
     pybind11_add_module(quant_factor_kernel bindings/module.cpp)
     target_link_libraries(quant_factor_kernel PRIVATE capstone_factor_kernel)
+    quant_apply_target_defaults(quant_factor_kernel)
   else()
     message(STATUS "factor kernel: pybind11 not found; building CLI and core only")
   endif()
@@ -47,10 +45,12 @@ if(FACTOR_KERNEL_BUILD_EIGEN)
   add_library(capstone_factor_kernel_eigen eigen/eigen_factor.cpp)
   target_link_libraries(capstone_factor_kernel_eigen
     PUBLIC capstone_factor_kernel Eigen3::Eigen)
+  quant_apply_target_defaults(capstone_factor_kernel_eigen)
   if(BUILD_TESTING)
     add_executable(capstone_factor_kernel_eigen_tests tests/test_eigen_factor.cpp)
     target_link_libraries(capstone_factor_kernel_eigen_tests
       PRIVATE capstone_factor_kernel_eigen)
+    quant_apply_target_defaults(capstone_factor_kernel_eigen_tests)
     add_test(NAME capstone_factor_kernel_eigen_matches_scalar
       COMMAND capstone_factor_kernel_eigen_tests)
     set_tests_properties(capstone_factor_kernel_eigen_matches_scalar PROPERTIES
@@ -59,6 +59,7 @@ if(FACTOR_KERNEL_BUILD_EIGEN)
   add_executable(capstone_factor_compare benchmarks/factor_compare.cpp)
   target_link_libraries(capstone_factor_compare
     PRIVATE capstone_factor_kernel_eigen)
+  quant_apply_target_defaults(capstone_factor_compare)
 endif()
 
 option(FACTOR_KERNEL_BUILD_CATCH2 "Build the pinned Catch2 parameterized tests" OFF)
@@ -72,6 +73,7 @@ if(FACTOR_KERNEL_BUILD_CATCH2 AND BUILD_TESTING)
     tests/test_factor_kernel_catch2.cpp)
   target_link_libraries(capstone_factor_kernel_catch2_tests
     PRIVATE capstone_factor_kernel Catch2::Catch2WithMain)
+  quant_apply_target_defaults(capstone_factor_kernel_catch2_tests)
   add_test(NAME capstone_factor_kernel_catch2_parameterized
     COMMAND capstone_factor_kernel_catch2_tests)
 endif()
@@ -79,6 +81,7 @@ endif()
 if(BUILD_TESTING)
   add_executable(capstone_factor_kernel_tests tests/test_factor_kernel.cpp)
   target_link_libraries(capstone_factor_kernel_tests PRIVATE capstone_factor_kernel)
+  quant_apply_target_defaults(capstone_factor_kernel_tests)
   add_test(NAME capstone_factor_kernel_matches_worked_batch
     COMMAND capstone_factor_kernel_tests)
   set_tests_properties(capstone_factor_kernel_matches_worked_batch PROPERTIES

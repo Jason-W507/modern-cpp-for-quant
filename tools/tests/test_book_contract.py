@@ -31,7 +31,7 @@ class BookContractCliTest(unittest.TestCase):
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertIn("18 chapters", result.stdout)
-        self.assertIn("235 planned pages", result.stdout)
+        self.assertNotIn("planned pages", result.stdout)
 
     def test_authoring_registry_does_not_duplicate_rendered_page_count(self) -> None:
         manifest = json.loads(
@@ -46,7 +46,11 @@ class BookContractCliTest(unittest.TestCase):
         note = final_chapter["evidence"]["publication_note"]
         self.assertNotIn("235-page PDF", note)
         self.assertNotIn("234-page PDF", note)
-        self.assertEqual(250, manifest["contract"]["target_pages"]["maximum"])
+        self.assertNotIn("target_pages", manifest["contract"])
+        for part in manifest["contract"]["parts"]:
+            self.assertNotIn("page_budget", part)
+            for chapter in part["chapters"]:
+                self.assertNotIn("page_budget", chapter)
         self.assertNotIn("166-page", note)
         self.assertNotIn("170-page", note)
 

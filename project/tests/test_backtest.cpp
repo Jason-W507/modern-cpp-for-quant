@@ -1,4 +1,6 @@
+#include <chrono>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -18,13 +20,15 @@ int main() {
   const auto result = engine.run(events, strategy);
   test_support::require(result.fills.size() == 1,
                         "strategy should fill exactly once");
-  test_support::require(result.final_portfolio.quantity == 25,
+  test_support::require(result.final_portfolio.has_value(),
+                        "nonempty runs should produce a final portfolio");
+  test_support::require(result.final_portfolio->quantity == 25,
                         "final position should contain the purchased shares");
   test_support::require(
-      test_support::close_to(result.final_portfolio.cash, 7'525.0),
+      test_support::close_to(result.final_portfolio->cash, 7'525.0),
       "final cash should reflect the purchase");
   test_support::require(
-      test_support::close_to(result.final_portfolio.equity, 10'100.0),
+      test_support::close_to(result.final_portfolio->equity, 10'100.0),
       "final equity should use the last market price");
   test_support::require(
       test_support::close_to(result.performance.total_return, 0.01),
@@ -51,10 +55,10 @@ int main() {
       test_support::close_to(costly_result.fills.front().price(), 99.099),
       "configured slippage should change the execution price");
   test_support::require(
-      test_support::close_to(costly_result.final_portfolio.cash, 7'521.525),
+      test_support::close_to(costly_result.final_portfolio->cash, 7'521.525),
       "configured costs should flow through the cash ledger");
   test_support::require(
-      test_support::close_to(costly_result.final_portfolio.equity, 10'096.525),
+      test_support::close_to(costly_result.final_portfolio->equity, 10'096.525),
       "configured costs should flow through final equity");
   test_support::require(
       test_support::close_to(costly_result.performance.total_return, 0.0096525),
@@ -75,6 +79,26 @@ int main() {
       mixed_symbols_rejected,
       "mixed symbols should be rejected until a complete price map exists");
 
+  const auto t0 = quant::Timestamp{};
+  const auto t1 = t0 + std::chrono::milliseconds{1};
+  bool reversed_time_rejected = false;
+  try {
+    (void)engine.run(
+        std::vector<quant::MarketEvent>{{t1, "AAPL", 99.0, 1},
+                                        {t0, "AAPL", 100.0, 1}},
+        strategy);
+  } catch (const std::invalid_argument& error) {
+    reversed_time_rejected =
+        std::string{error.what()}.find("nondecreasing") != std::string::npos;
+  }
+  test_support::require(
+      reversed_time_rejected,
+      "backtests should reject events that travel backward in time");
+
+  const auto empty_result = engine.run({}, strategy);
+  test_support::require(!empty_result.final_portfolio.has_value(),
+                        "empty runs should not fabricate a symbol snapshot");
+
   const auto first_event_sensitive = quant::summarize_performance(
       100.0, std::vector<double>{90.0, 99.0}, {});
   test_support::require(
@@ -90,6 +114,42 @@ int main() {
   }
   test_support::require(zero_initial_cash_rejected,
                         "undefined zero-capital returns should fail at startup");
+
+  bool quantity_overflow_rejected = false;
+  try {
+    (void)quant::summarize_performance(
+        100.0, {},
+        {quant::Fill{{}, "AAPL", quant::Side::buy,
+                     std::numeric_limits<std::int64_t>::max(), 1.0, 0.0},
+         quant::Fill{{}, "AAPL", quant::Side::buy, 1, 1.0, 0.0}});
+  } catch (const std::overflow_error&) {
+    quantity_overflow_rejected = true;
+  }
+  test_support::require(quantity_overflow_rejected,
+                        "trade quantity aggregation should reject overflow");
+
+  bool notional_overflow_rejected = false;
+  try {
+    (void)quant::summarize_performance(
+        100.0, {},
+        {quant::Fill{{}, "AAPL", quant::Side::buy, 2,
+                     std::numeric_limits<double>::max(), 0.0}});
+  } catch (const std::overflow_error&) {
+    notional_overflow_rejected = true;
+  }
+  test_support::require(notional_overflow_rejected,
+                        "trade notional aggregation should reject infinity");
+
+  bool return_overflow_rejected = false;
+  try {
+    (void)quant::summarize_performance(
+        std::numeric_limits<double>::min(),
+        {std::numeric_limits<double>::max()}, {});
+  } catch (const std::overflow_error&) {
+    return_overflow_rejected = true;
+  }
+  test_support::require(return_overflow_rejected,
+                        "performance aggregation should reject infinite returns");
 
   std::cout << "end-to-end backtest seam ok\n";
 }

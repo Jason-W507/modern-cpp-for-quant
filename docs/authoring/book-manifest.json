@@ -13,13 +13,6 @@
       2,
       6
     ],
-    "target_pages": {
-      "minimum": 200,
-      "planned": 235,
-      "maximum": 250,
-      "front_matter": 6,
-      "appendices": 97
-    },
     "required_syntax_ids": [
       "program-entry",
       "include-directive",
@@ -90,138 +83,115 @@
     "parts": [
       {
         "name": "从零写出 C++ 程序",
-        "page_budget": 37,
         "chapters": [
           {
             "number": 1,
             "title": "首次构建与诊断",
-            "page_budget": 6,
             "learning_output": "在 Linux/WSL 与 GCC 主线上从空目录编译、链接、运行程序，并区分三个错误阶段。"
           },
           {
             "number": 2,
             "title": "变量、类型、表达式与控制流",
-            "page_budget": 8,
             "learning_output": "使用静态类型、初始化、运算符、分支和循环完成可运行的行情筛选任务。"
           },
           {
             "number": 3,
             "title": "函数、引用、const 与多文件组织",
-            "page_budget": 7,
             "learning_output": "把单文件程序拆成函数、声明、定义、头文件和实现文件，并解释参数传递。"
           },
           {
             "number": 4,
             "title": "标准数据工具、算法与 CSV",
-            "page_budget": 8,
             "learning_output": "使用 string、vector、迭代器、算法和 lambda 读取并校验 CSV 行情。"
           },
           {
             "number": 5,
             "title": "类与行情分析器",
-            "page_budget": 8,
             "learning_output": "使用 struct、class、枚举和构造函数交付多文件行情分析命令行程序。"
           }
         ]
       },
       {
         "name": "Modern C++ 对象与组件",
-        "page_budget": 36,
         "chapters": [
           {
             "number": 6,
             "title": "对象生命周期、RAII 与所有权",
-            "page_budget": 8,
             "learning_output": "从生命周期推理复制移动、引用、裸指针识读、RAII 和智能指针选择。"
           },
           {
             "number": 7,
             "title": "STL 与 ranges",
-            "page_budget": 7,
             "learning_output": "构造生命周期清楚、结果可验证的现代量化数据管道。"
           },
           {
             "number": 8,
             "title": "接口与值语义",
-            "page_budget": 7,
             "learning_output": "把行情分析代码重构为维护订单、成交和组合不变量的组件。"
           },
           {
             "number": 9,
             "title": "模板、concepts 与多态",
-            "page_budget": 7,
             "learning_output": "从普通实现演化出有约束的泛型策略接口，并解释静态与动态多态取舍。"
           },
           {
             "number": 10,
             "title": "错误处理与可观测性",
-            "page_budget": 7,
             "learning_output": "为正常缺席、外部失败和程序员错误选择机制并保留诊断上下文。"
           }
         ]
       },
       {
         "name": "可靠工程",
-        "page_budget": 13,
         "chapters": [
           {
             "number": 11,
             "title": "CMake 与依赖",
-            "page_budget": 6,
             "learning_output": "从干净目录复现包含库、示例和测试的 target-based CMake 工程。"
           },
           {
             "number": 12,
             "title": "测试与调试工具",
-            "page_budget": 7,
             "learning_output": "使用行为测试、GDB、警告、sanitizer 和静态分析定位真实故障。"
           }
         ]
       },
       {
         "name": "量化性能与互操作",
-        "page_budget": 24,
         "chapters": [
           {
             "number": 13,
             "title": "数据布局、缓存与分配",
-            "page_budget": 6,
             "learning_output": "通过正确性受控的实验解释对象表示、局部性、分配和 false sharing。"
           },
           {
             "number": 14,
             "title": "Benchmark 与 profiling",
-            "page_budget": 6,
             "learning_output": "提交包含基线、环境、样本、结论和限制的可反驳性能报告。"
           },
           {
             "number": 15,
             "title": "并发、任务与背压",
-            "page_budget": 6,
             "learning_output": "从所有权和 happens-before 推理同步、停止、异常传播和背压协议。"
           },
           {
             "number": 16,
             "title": "数值稳定性与 Python 互操作",
-            "page_budget": 6,
             "learning_output": "验证浮点算法，并设计清楚 dtype、连续性、GIL 和缓冲所有权的批量边界。"
           }
         ]
       },
       {
         "name": "项目、求职与工作",
-        "page_budget": 22,
         "chapters": [
           {
             "number": 17,
             "title": "演化式事件驱动回测引擎",
-            "page_budget": 10,
             "learning_output": "把行情分析器演化为可构建、可测试、可测量且边界明确的回测引擎。"
           },
           {
             "number": 18,
             "title": "量化 C++ 求职与入职",
-            "page_budget": 12,
             "learning_output": "把逐章证据组织成面试回答、作品集叙事和入职前三个月行动计划。"
           }
         ]
@@ -558,7 +528,7 @@
           "self_checks": 8,
           "feedback": "appendices/solutions.tex",
           "project_connection": "code/ch08 is an independently buildable domain-component evolution of the market analyzer with validated event, order, fill and portfolio boundaries.",
-          "publication_note": "This chapter intentionally keeps validated value objects, two behavior seams, runtime-polymorphism comparison, failure diagnosis, exercises and runnable evidence together; the content value, rather than a hand-maintained rendered count, explains any variance from its planning budget.",
+          "publication_note": "This chapter intentionally keeps validated value objects, two behavior seams, runtime-polymorphism comparison, failure diagnosis, exercises and runnable evidence together; rendered length is an output of that content rather than a hand-maintained source fact.",
           "checklist_markers": [
             "prerequisites",
             "learning-output",

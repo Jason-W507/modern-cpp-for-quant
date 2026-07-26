@@ -5,17 +5,24 @@
 #include <cstddef>
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <span>
 #include <vector>
 
 namespace quant::capstone {
 
-enum class ReplayOverflowPolicy { reject_newest };
-
 struct ReplayConfig final {
   std::uint64_t max_sequence_gap{1'024};
   std::size_t max_pending_messages{1'024};
-  ReplayOverflowPolicy overflow_policy{ReplayOverflowPolicy::reject_newest};
+};
+
+enum class DecodeError {
+  frame_size,
+  version,
+  message_type,
+  declared_length,
+  side,
+  reserved_bytes
 };
 
 struct ReplayStats final {
@@ -38,6 +45,7 @@ struct ReplayOutcome final {
   std::size_t book_accepted{};
   std::size_t book_rejected{};
   std::size_t recovered{};
+  std::optional<DecodeError> decode_error;
   std::vector<Trade> trades;
 };
 

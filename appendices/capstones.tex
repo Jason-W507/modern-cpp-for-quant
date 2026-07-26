@@ -81,7 +81,7 @@ ctest --test-dir build/order-book --output-on-failure
 
 固定场景先挂出 101 的六单位卖单和 100 的五单位买单，再提交 102 的四单位买单。成交价采用 resting order 的 101，maker 为 1，taker 为 3；卖一剩余两单位，买一仍为 100。测试还拒绝重复订单 ID。
 
-\texttt{SequenceGate} 将消息序号 1、2、2、4 分类为两次 accepted、一次 duplicate/stale 和一次 gap，next expected 保持 3。\texttt{MarketReplay} 在这一层之上缓存未来消息；序号 3 到达后自动处理 3、再排空已缓存的 4。缓存同时限制允许的最大序号距离和待处理消息数，默认上限均为 1024；超过距离返回 \texttt{sequence\_gap\_exceeded}，容量耗尽时按 \texttt{reject\_newest} 策略返回 \texttt{pending\_overflow}，不会让恶意或损坏输入无限占用内存。它仍不会静默跳过缺口，也没有假装实现交易所重传或快照协议。
+\texttt{SequenceGate} 将消息序号 1、2、2、4 分类为两次 accepted、一次 duplicate/stale 和一次 gap，next expected 保持 3。\texttt{MarketReplay} 在这一层之上缓存未来消息；序号 3 到达后自动处理 3、再排空已缓存的 4。缓存同时限制允许的最大序号距离和待处理消息数，默认上限均为 1024；超过距离返回 \texttt{sequence\_gap\_exceeded}，容量耗尽时固定返回 \texttt{pending\_overflow}，不会让恶意或损坏输入无限占用内存。这里只有一种行为，因此接口没有暴露一个看似可选、实际从未参与分支的策略字段。它仍不会静默跳过缺口，也没有假装实现交易所重传或快照协议。
 
 \subsection{32 字节协议与可回放入口}
 
@@ -103,7 +103,7 @@ price/quantity & 24 & 8 & 两个大端序有符号 32 位整数 \\
 \end{tabular}
 \end{center}
 
-\texttt{MarketReplay::apply} 是协议测试的公开边界。解码错误不推进序号；旧序号计为 duplicate/stale；允许范围内的未来序号进入有序缓存并维持预期序号，只有缺口闭合后才按连续序号进入订单簿。
+\texttt{MarketReplay::apply} 是协议测试的公开边界。\texttt{DecodeError} 区分帧尺寸、版本、消息类型、声明长度、方向与保留字节错误；解码错误不推进序号。旧序号计为 duplicate/stale；允许范围内的未来序号进入有序缓存并维持预期序号，只有缺口闭合后才按连续序号进入订单簿。订单簿入口和档位查询还会拒绝显式转换得到的非法 \texttt{Side}，不会把“非 buy”一律解释成 sell。
 
 统计分别记录 \texttt{sequence\_accepted}、\texttt{book\_accepted} 与 \texttt{book\_rejected}。单次结果也会汇总连带恢复消息的接受或拒绝，避免把“序号已消费”误写成“订单已进入簿”。结果、buffered/recovered 计数、待处理数量与盘口都可从公开接口观察：
 

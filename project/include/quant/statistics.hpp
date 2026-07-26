@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -34,14 +35,33 @@ inline PerformanceSummary summarize_performance(
   }
   PerformanceSummary summary;
   summary.trades.fill_count = fills.size();
+  double notional_compensation = 0.0;
+  const auto checked_quantity_add = [](std::int64_t& total,
+                                       std::int64_t quantity) {
+    if (quantity > std::numeric_limits<std::int64_t>::max() - total) {
+      throw std::overflow_error{"trade quantity total overflow"};
+    }
+    total += quantity;
+  };
   for (const Fill& fill : fills) {
     if (fill.side() == Side::buy) {
-      summary.trades.buy_quantity += fill.quantity();
+      checked_quantity_add(summary.trades.buy_quantity, fill.quantity());
     } else {
-      summary.trades.sell_quantity += fill.quantity();
+      checked_quantity_add(summary.trades.sell_quantity, fill.quantity());
     }
-    summary.trades.gross_notional +=
+    const double term =
         fill.price() * static_cast<double>(fill.quantity());
+    if (!std::isfinite(term)) {
+      throw std::overflow_error{"trade notional multiplication overflow"};
+    }
+    const double corrected = term - notional_compensation;
+    const double next = summary.trades.gross_notional + corrected;
+    if (!std::isfinite(next)) {
+      throw std::overflow_error{"trade notional total overflow"};
+    }
+    notional_compensation =
+        (next - summary.trades.gross_notional) - corrected;
+    summary.trades.gross_notional = next;
   }
 
   if (equity_curve.empty()) {
@@ -50,8 +70,9 @@ inline PerformanceSummary summarize_performance(
   summary.total_return = equity_curve.back() / initial_cash - 1.0;
 
   double peak = initial_cash;
-  std::vector<double> returns;
-  returns.reserve(equity_curve.size());
+  std::size_t return_count = 0;
+  double return_mean = 0.0;
+  double return_m2 = 0.0;
   double previous_equity = initial_cash;
   for (std::size_t index = 0; index < equity_curve.size(); ++index) {
     const double equity = equity_curve[index];
@@ -62,23 +83,24 @@ inline PerformanceSummary summarize_performance(
     peak = std::max(peak, equity);
     summary.max_drawdown =
         std::max(summary.max_drawdown, (peak - equity) / peak);
-    returns.push_back(equity / previous_equity - 1.0);
+    const double event_return = equity / previous_equity - 1.0;
+    if (!std::isfinite(event_return)) {
+      throw std::overflow_error{"performance return overflow"};
+    }
+    ++return_count;
+    const double delta = event_return - return_mean;
+    return_mean += delta / static_cast<double>(return_count);
+    const double delta_after_mean = event_return - return_mean;
+    return_m2 += delta * delta_after_mean;
+    if (!std::isfinite(return_m2)) {
+      throw std::overflow_error{"performance variance overflow"};
+    }
     previous_equity = equity;
   }
 
-  if (returns.size() >= 2) {
-    double mean = 0.0;
-    for (const double value : returns) {
-      mean += value;
-    }
-    mean /= static_cast<double>(returns.size());
-    double squared_deviation = 0.0;
-    for (const double value : returns) {
-      const double deviation = value - mean;
-      squared_deviation += deviation * deviation;
-    }
-    summary.volatility =
-        std::sqrt(squared_deviation / static_cast<double>(returns.size() - 1));
+  if (return_count >= 2) {
+    summary.volatility = std::sqrt(
+        return_m2 / static_cast<double>(return_count - 1));
   }
   return summary;
 }
